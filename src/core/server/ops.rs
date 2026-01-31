@@ -1,69 +1,18 @@
 use std::process::Stdio;
-use tokio::process::{Child, Command, ChildStdin};
+use tokio::process::Command;
 use tokio::io::{AsyncBufReadExt, BufReader, AsyncWriteExt};
 use anyhow::{Context, Result, anyhow};
 use tracing::{info, error, warn};
 use std::sync::Arc;
-use tokio::sync::{Mutex, broadcast};
-use super::config::ServerConfig;
-use std::collections::HashSet;
 use std::time::Duration;
 use std::path::PathBuf;
-use strum::Display;
 use sysinfo::{Pid, System, ProcessesToUpdate};
-use serde::Serialize;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize)]
-pub enum ServerStatus {
-    Stopped,
-    Starting,
-    Running,
-    Stopping,
-    Crashed,
-}
-
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct ResourceUsage {
-    pub cpu_usage: f32,
-    pub memory_usage: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct ProgressPayload {
-    pub current: u64,
-    pub total: u64,
-    pub message: String,
-}
-
-#[allow(dead_code)]
-pub struct ServerHandle {
-    config: Arc<Mutex<ServerConfig>>,
-    child: Arc<Mutex<Option<Child>>>,
-    stdin: Arc<Mutex<Option<ChildStdin>>>,
-    status: Arc<Mutex<ServerStatus>>,
-    usage: Arc<Mutex<ResourceUsage>>,
-    online_players: Arc<Mutex<HashSet<String>>>,
-    log_sender: broadcast::Sender<String>,
-    progress_sender: broadcast::Sender<ProgressPayload>,
-}
+use super::handle::ServerHandle;
+use super::types::{ServerStatus, ResourceUsage};
+use super::super::config::ServerConfig;
 
 impl ServerHandle {
-    pub fn new(config: ServerConfig) -> Self {
-        let (log_sender, _) = broadcast::channel(100);
-        let (progress_sender, _) = broadcast::channel(10);
-        Self {
-            config: Arc::new(Mutex::new(config)),
-            child: Arc::new(Mutex::new(None)),
-            stdin: Arc::new(Mutex::new(None)),
-            status: Arc::new(Mutex::new(ServerStatus::Stopped)),
-            usage: Arc::new(Mutex::new(ResourceUsage::default())),
-            online_players: Arc::new(Mutex::new(HashSet::new())),
-            log_sender,
-            progress_sender,
-        }
-    }
-
     pub async fn update_config(&self, new_config: ServerConfig) {
         let mut config = self.config.lock().await;
         *config = new_config;
@@ -148,7 +97,6 @@ impl ServerHandle {
                     usage.cpu_usage = process.cpu_usage();
                     usage.memory_usage = process.memory();
                 } else {
-                    // Process might have exited
                     break;
                 }
 
@@ -168,7 +116,6 @@ impl ServerHandle {
                 info!("[Server Output] {}", line);
                 let _ = log_sender_stdout.send(line.clone());
                 
-                // Parse server status
                 if line.contains("Done") && line.contains("For help, type \"help\"") {
                     let mut status = status_clone.lock().await;
                     if *status == ServerStatus::Starting {
@@ -177,7 +124,6 @@ impl ServerHandle {
                     }
                 }
 
-                // Parse player join/leave
                 if line.contains("joined the game") {
                     if let Some(username) = line.split("INFO]: ").nth(1).and_then(|s| s.split(' ').next()) {
                         let mut players = online_players_clone.lock().await;
@@ -221,11 +167,6 @@ impl ServerHandle {
         }
     }
 
-    pub async fn get_online_players(&self) -> Vec<String> {
-        let players = self.online_players.lock().await;
-        players.iter().cloned().collect()
-    }
-
     #[allow(dead_code)]
     pub async fn stop(&self) -> Result<()> {
         let mut status = self.status.lock().await;
@@ -240,7 +181,6 @@ impl ServerHandle {
             info!("Stopping server: {}", config.name);
         }
 
-        // Try graceful shutdown first
         if let Err(e) = self.send_command("stop").await {
             warn!("Failed to send stop command: {}. Falling back to kill.", e);
         }
@@ -250,7 +190,6 @@ impl ServerHandle {
         let stdin_arc = Arc::clone(&self.stdin);
         let online_players_arc = Arc::clone(&self.online_players);
 
-        // Wait for process to exit or timeout
         tokio::spawn(async move {
             let mut child_lock = child_arc.lock().await;
             if let Some(mut child) = child_lock.take() {
@@ -270,39 +209,10 @@ impl ServerHandle {
             let mut stdin_lock = stdin_arc.lock().await;
             *stdin_lock = None;
             
-            // Clear online players
             let mut players = online_players_arc.lock().await;
             players.clear();
         });
 
         Ok(())
-    }
-
-    pub async fn get_status(&self) -> ServerStatus {
-        *self.status.lock().await
-    }
-
-    pub async fn get_usage(&self) -> ResourceUsage {
-        self.usage.lock().await.clone()
-    }
-
-    pub fn subscribe_logs(&self) -> broadcast::Receiver<String> {
-        self.log_sender.subscribe()
-    }
-
-    pub fn subscribe_progress(&self) -> broadcast::Receiver<ProgressPayload> {
-        self.progress_sender.subscribe()
-    }
-
-    pub fn emit_log(&self, line: String) {
-        let _ = self.log_sender.send(line);
-    }
-
-    pub fn emit_progress(&self, current: u64, total: u64, message: String) {
-        let _ = self.progress_sender.send(ProgressPayload {
-            current,
-            total,
-            message,
-        });
     }
 }
