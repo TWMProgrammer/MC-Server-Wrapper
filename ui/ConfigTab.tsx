@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Save, RefreshCw, Search, Settings2, Info, X, FileText } from 'lucide-react'
+import { Save, RefreshCw, Search, Settings2, Info, X, FileText, Edit3 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 import { Select } from './components/Select'
+import { TextEditor } from './components/TextEditor'
 
 interface ConfigFile {
   name: string
@@ -23,6 +24,8 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [availableConfigs, setAvailableConfigs] = useState<ConfigFile[]>([])
   const [selectedConfig, setSelectedConfig] = useState<ConfigFile | null>(null)
+  const [isRawEditing, setIsRawEditing] = useState(false)
+  const [rawContent, setRawContent] = useState('')
 
   const fetchAvailableConfigs = async () => {
     try {
@@ -51,6 +54,36 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
       setError(err as string)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRawEdit = async () => {
+    if (!selectedConfig) return
+    try {
+      const content = await invoke<string>('read_text_file', {
+        instanceId,
+        relPath: selectedConfig.path
+      })
+      setRawContent(content)
+      setIsRawEditing(true)
+    } catch (err) {
+      setError(err as string)
+    }
+  }
+
+  const handleRawSave = async (content: string) => {
+    if (!selectedConfig) return
+    try {
+      await invoke('save_text_file', {
+        instanceId,
+        relPath: selectedConfig.path,
+        content
+      })
+      setRawContent(content)
+      // Refresh properties after raw save
+      fetchProperties()
+    } catch (err) {
+      setError(err as string)
     }
   }
 
@@ -217,6 +250,19 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
                 transition: { duration: 0.2, ease: "easeOut" }
               }}
               whileTap={{ scale: 0.98 }}
+              onClick={handleRawEdit}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-black/5 dark:bg-white/[0.03] hover:bg-black/10 dark:hover:bg-white/[0.08] border border-black/10 dark:border-white/10 rounded-2xl transition-all duration-200 text-sm font-bold uppercase tracking-widest text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
+            >
+              <Edit3 size={18} />
+              Edit Raw
+            </motion.button>
+            <motion.button
+              whileHover={{
+                scale: 1.02,
+                translateY: -2,
+                transition: { duration: 0.2, ease: "easeOut" }
+              }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleSave}
               disabled={saving}
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3.5 bg-primary hover:bg-primary-hover disabled:bg-black/5 dark:disabled:bg-white/5 disabled:text-gray-400 dark:disabled:text-white/20 disabled:cursor-not-allowed rounded-2xl transition-all duration-200 text-sm font-bold uppercase tracking-widest text-white shadow-glow-primary"
@@ -230,6 +276,17 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
             </motion.button>
           </div>
         </div>
+
+        <AnimatePresence>
+          {isRawEditing && (
+            <TextEditor
+              title={selectedConfig?.name || 'Config Editor'}
+              initialValue={rawContent}
+              onSave={handleRawSave}
+              onClose={() => setIsRawEditing(false)}
+            />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {error && (
