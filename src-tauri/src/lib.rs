@@ -463,6 +463,35 @@ async fn remove_player(
 }
 
 #[tauri::command]
+async fn get_config_value(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    rel_path: String,
+    format: config_files::ConfigFormat,
+) -> Result<serde_json::Value, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    config_files::read_config_value(&instance.path, &rel_path, format).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn save_config_value(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    rel_path: String,
+    format: config_files::ConfigFormat,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    config_files::save_config_value(&instance.path, &rel_path, format, value).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn get_available_configs(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
@@ -684,6 +713,8 @@ pub fn run() {
         get_available_configs,
         get_config_file,
         save_config_file,
+        get_config_value,
+        save_config_value,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
