@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
+use tracing::info;
 use super::server::ServerHandle;
 use super::instance::{InstanceManager, InstanceMetadata};
 use super::config::ServerConfig;
@@ -36,13 +37,11 @@ impl ServerManager {
     }
 
     pub async fn create_instance_full(&self, name: &str, version: &str, mod_loader: Option<String>, loader_version: Option<String>) -> Result<InstanceMetadata> {
-        let instance = self.instance_manager.create_instance(name, version).await?;
+        let instance = self.instance_manager.create_instance_full(name, version, mod_loader, loader_version).await?;
         
         // In a real app, we might want to trigger the download here
         // or let the UI handle progress. For now, we'll just return the metadata.
         // The jar will be downloaded when the server starts.
-        
-        // TODO: Handle mod loader installation logic here or in start_server
         
         Ok(instance)
     }
@@ -65,7 +64,43 @@ impl ServerManager {
         
         // Download jar if missing
         if !jar_path.exists() {
-            self.downloader.download_server(&instance.version, &jar_path).await?;
+            if let Some(loader) = &instance.mod_loader {
+                info!("Downloading {} loader for version {}", loader, instance.version);
+                self.mod_loader_client.download_loader(
+                    loader,
+                    &instance.version,
+                    instance.loader_version.as_deref(),
+                    &jar_path
+                ).await?;
+
+                // If it's forge, we need to run the installer
+                if loader.to_lowercase() == "forge" {
+                    info!("Running Forge installer...");
+                    let installer_path = &jar_path; // For now it's downloaded as server.jar
+                    let java_cmd = "java"; // In a real app, use configured java path
+                    
+                    let status = tokio::process::Command::new(java_cmd)
+                        .current_dir(&instance.path)
+                        .arg("-jar")
+                        .arg(installer_path)
+                        .arg("--installServer")
+                        .status()
+                        .await?;
+
+                    if !status.success() {
+                        return Err(anyhow!("Forge installer failed with status: {}", status));
+                    }
+
+                    // Forge installer creates a bunch of files, including a run.bat/sh or a new jar.
+                    // For modern Forge, it creates a 'libraries' folder and a user_jvm_args.txt.
+                    // The actual jar to run might be different.
+                    // For simplicity in this step, let's assume we've handled the basic download.
+                    // Real Forge setup is complex and varies by version.
+                }
+            } else {
+                self.downloader.download_server(&instance.version, &jar_path).await?;
+            }
+
             // Also create eula.txt if it doesn't exist
             let eula_path = instance.path.join("eula.txt");
             if !eula_path.exists() {

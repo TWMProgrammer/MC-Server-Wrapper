@@ -15,7 +15,63 @@ struct FabricLoaderVersion {
 #[derive(Debug, Deserialize)]
 struct FabricLoader {
     pub version: String,
-    pub stable: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct FabricInstallerVersion {
+    pub version: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct QuiltLoaderVersion {
+    pub loader: QuiltLoader,
+}
+
+#[derive(Debug, Deserialize)]
+struct QuiltLoader {
+    pub version: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ForgePromotions {
+    pub promos: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperBuilds {
+    pub builds: Vec<PaperBuildSummary>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperBuildSummary {
+    pub build: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperBuildDetails {
+    pub build: u32,
+    pub downloads: PaperDownloads,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperDownloads {
+    pub application: PaperDownload,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperDownload {
+    pub name: String,
+    pub sha256: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PurpurVersions {
+    pub builds: PurpurBuilds,
+}
+
+#[derive(Debug, Deserialize)]
+struct PurpurBuilds {
+    pub all: Vec<String>,
 }
 
 pub struct ModLoaderClient {
@@ -25,7 +81,10 @@ pub struct ModLoaderClient {
 impl ModLoaderClient {
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .user_agent("mc-server-wrapper")
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
         }
     }
 
@@ -45,31 +104,267 @@ impl ModLoaderClient {
         Ok(versions)
     }
 
+    pub async fn get_fabric_installer_versions(&self) -> Result<Vec<String>> {
+        let url = "https://meta.fabricmc.net/v2/versions/installer";
+        let response = self.client.get(url).send().await?;
+        let installers: Vec<FabricInstallerVersion> = response.json().await?;
+        Ok(installers.into_iter().map(|i| i.version).collect())
+    }
+
+    pub async fn download_fabric(&self, mc_version: &str, loader_version: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+        // We use the server-jp-launcher from Fabric Meta
+        let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}/{}/server/jar", mc_version, loader_version);
+        let response = self.client.get(url).send().await?;
+        let bytes = response.bytes().await?;
+        tokio::fs::write(target_path, bytes).await?;
+        Ok(())
+    }
+
+    pub async fn get_quilt_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let url = format!("https://meta.quiltmc.org/v3/versions/loader/{}", mc_version);
+        let response = self.client.get(&url).send().await?;
+        
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let loaders: Vec<QuiltLoaderVersion> = response.json().await?;
+        let versions = loaders.into_iter()
+            .map(|l| l.loader.version)
+            .collect();
+        
+        Ok(versions)
+    }
+
     pub async fn get_forge_versions(&self, mc_version: &str) -> Result<Vec<String>> {
-        // Forge is more complex, for now let's just return an empty list or a mock
-        // Real implementation would parse maven-metadata.xml or a similar source
-        Ok(vec![])
+        let url = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
+        let response = self.client.get(url).send().await?;
+
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let promotions: ForgePromotions = response.json().await?;
+        let mut versions = Vec::new();
+
+        // Find versions matching mc_version
+        // Keys are like "1.20.1-latest" or "1.20.1-recommended"
+        for (key, val) in promotions.promos {
+            if key.starts_with(mc_version) {
+                versions.push(val);
+            }
+        }
+
+        // Remove duplicates and sort (though promos are limited)
+        versions.sort();
+        versions.dedup();
+        versions.reverse(); // Newest first
+
+        Ok(versions)
+    }
+
+    pub async fn get_neoforge_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        // NeoForge uses Maven metadata. For now, let's try to fetch it and parse with regex 
+        // to avoid adding an XML dependency if possible, or just use a known API if it exists.
+        // NeoForge doesn't have a simple "meta" API like Fabric/Quilt yet that is widely known/stable.
+        // However, we can fetch from Maven: https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml
+        
+        let url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml";
+        let response = self.client.get(url).send().await?;
+
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let text = response.text().await?;
+        let mut versions = Vec::new();
+
+        // Simple regex to extract versions from <version> tags
+        // Maven metadata looks like <versioning><versions><version>...</version></versions></versioning>
+        // For NeoForge, version names are like "20.1.100" (for 1.20.1) or "21.0.1" (for 1.21)
+        // NeoForge versions usually start with the major MC version (e.g., 20.x for 1.20.x)
+        
+        let mc_parts: Vec<&str> = mc_version.split('.').collect();
+        if mc_parts.len() < 2 {
+            return Ok(vec![]);
+        }
+        
+        let major = mc_parts[1]; // "20" from "1.20.1"
+        
+        let re = regex::Regex::new(r"<version>([^<]+)</version>")?;
+        for cap in re.captures_iter(&text) {
+            let ver = &cap[1];
+            // NeoForge versioning: 1.20.1 -> versions start with 20.1
+            // 1.21 -> versions start with 21.0
+            let prefix = if mc_parts.len() > 2 {
+                format!("{}.{}", major, mc_parts[2])
+            } else {
+                format!("{}.0", major)
+            };
+
+            if ver.starts_with(&prefix) {
+                versions.push(ver.to_string());
+            }
+        }
+
+        versions.sort_by(|a, b| {
+            // Natural sort or just reverse alphabetical since they are numbers
+            b.cmp(a)
+        });
+
+        Ok(versions)
+    }
+
+    pub async fn get_paper_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds", mc_version);
+        let response = self.client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let paper_builds: PaperBuilds = response.json().await?;
+        let mut versions: Vec<String> = paper_builds.builds.into_iter()
+            .map(|b| b.build.to_string())
+            .collect();
+        
+        versions.reverse(); // Newest builds first
+        Ok(versions)
+    }
+
+    pub async fn download_paper(&self, mc_version: &str, build: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+        let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds/{}", mc_version, build);
+        let response = self.client.get(&url).send().await?;
+        let build_info: PaperBuildDetails = response.json().await?;
+        
+        let download_name = build_info.downloads.application.name;
+        let download_url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds/{}/downloads/{}", mc_version, build, download_name);
+        
+        let response = self.client.get(download_url).send().await?;
+        let bytes = response.bytes().await?;
+        
+        // Verify SHA256
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update(&bytes);
+        let actual_sha256 = format!("{:x}", hasher.finalize());
+        
+        if actual_sha256 != build_info.downloads.application.sha256 {
+            return Err(anyhow::anyhow!("SHA256 mismatch for Paper download! Expected: {}, Got: {}", build_info.downloads.application.sha256, actual_sha256));
+        }
+
+        tokio::fs::write(target_path, bytes).await?;
+        Ok(())
+    }
+
+    pub async fn download_forge(&self, mc_version: &str, forge_version: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+        // Forge download URL pattern: https://maven.minecraftforge.net/net/minecraftforge/forge/{mc_version}-{forge_version}/forge-{mc_version}-{forge_version}-installer.jar
+        let version_str = format!("{}-{}", mc_version, forge_version);
+        let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{}/forge-{}-installer.jar", version_str, version_str);
+        
+        let response = self.client.get(url).send().await?;
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("Failed to download Forge installer: {}", response.status()));
+        }
+
+        let bytes = response.bytes().await?;
+        tokio::fs::write(target_path, bytes).await?;
+        Ok(())
+    }
+
+    pub async fn download_loader(&self, loader_name: &str, mc_version: &str, loader_version: Option<&str>, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+        match loader_name.to_lowercase().as_str() {
+            "paper" => {
+                let build = loader_version.ok_or_else(|| anyhow::anyhow!("Paper requires a build number"))?;
+                self.download_paper(mc_version, build, target_path).await
+            },
+            "fabric" => {
+                let version = loader_version.ok_or_else(|| anyhow::anyhow!("Fabric requires a loader version"))?;
+                self.download_fabric(mc_version, version, target_path).await
+            },
+            "forge" => {
+                let version = loader_version.ok_or_else(|| anyhow::anyhow!("Forge requires a version"))?;
+                self.download_forge(mc_version, version, target_path).await
+            },
+            _ => Err(anyhow::anyhow!("Unsupported mod loader: {}", loader_name)),
+        }
+    }
+    pub async fn get_purpur_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let url = format!("https://api.purpurmc.org/v2/purpur/{}", mc_version);
+        let response = self.client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let purpur_versions: PurpurVersions = response.json().await?;
+        let mut versions = purpur_versions.builds.all;
+        
+        versions.reverse(); // Newest builds first
+        Ok(versions)
     }
 
     pub async fn get_available_loaders(&self, mc_version: &str) -> Result<Vec<ModLoader>> {
         let mut loaders = Vec::new();
 
         // Fabric
-        let fabric_versions = self.get_fabric_versions(mc_version).await?;
-        if !fabric_versions.is_empty() {
-            loaders.push(ModLoader {
-                name: "Fabric".to_string(),
-                versions: fabric_versions,
-            });
+        if let Ok(versions) = self.get_fabric_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Fabric".to_string(),
+                    versions,
+                });
+            }
         }
 
-        // Forge (Stub)
-        let forge_versions = self.get_forge_versions(mc_version).await?;
-        if !forge_versions.is_empty() {
-            loaders.push(ModLoader {
-                name: "Forge".to_string(),
-                versions: forge_versions,
-            });
+        // Quilt
+        if let Ok(versions) = self.get_quilt_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Quilt".to_string(),
+                    versions,
+                });
+            }
+        }
+
+        // Forge
+        if let Ok(versions) = self.get_forge_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Forge".to_string(),
+                    versions,
+                });
+            }
+        }
+
+        // NeoForge
+        if let Ok(versions) = self.get_neoforge_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "NeoForge".to_string(),
+                    versions,
+                });
+            }
+        }
+
+        // Paper
+        if let Ok(versions) = self.get_paper_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Paper".to_string(),
+                    versions,
+                });
+            }
+        }
+
+        // Purpur
+        if let Ok(versions) = self.get_purpur_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Purpur".to_string(),
+                    versions,
+                });
+            }
         }
 
         Ok(loaders)

@@ -25,6 +25,8 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { CreateInstanceModal } from './CreateInstanceModal'
+import { InstanceSettingsDropdown } from './InstanceSettingsDropdown'
+import { InstanceFolderDropdown } from './InstanceFolderDropdown'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -132,6 +134,13 @@ function App() {
         max_players: inst.max_players || 20
       }))
       setInstances(enrichedList)
+      if (enrichedList.length > 0 && !selectedInstance) {
+        setSelectedInstance(enrichedList[0].id)
+      } else if (enrichedList.length > 0 && selectedInstance && !enrichedList.find(i => i.id === selectedInstance)) {
+        setSelectedInstance(enrichedList[0].id)
+      } else if (enrichedList.length === 0) {
+        setSelectedInstance(null)
+      }
       setLoading(false)
     } catch (e) {
       console.error(e)
@@ -312,12 +321,19 @@ function App() {
                   ))}
                 </div>
                 <div className="flex items-center gap-4 text-gray-500">
-                  <button className="hover:text-white transition-colors">
-                    <FolderOpen size={20} />
-                  </button>
-                  <button className="hover:text-white transition-colors">
-                    <Settings size={20} />
-                  </button>
+                  <InstanceFolderDropdown
+                    instance={{
+                      id: currentInstance.id,
+                      name: currentInstance.name
+                    }}
+                  />
+                  <InstanceSettingsDropdown
+                    instance={{
+                      id: currentInstance.id,
+                      name: currentInstance.name
+                    }}
+                    onUpdated={loadInstances}
+                  />
                 </div>
               </div>
             </div>
@@ -441,7 +457,7 @@ function App() {
                         value={command}
                         onChange={(e) => setCommand(e.target.value)}
                         placeholder="Type a command..."
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-mono px-2"
+                        className="w-full bg-transparent border-none focus:ring-0 focus:outline-none text-xs font-mono px-2"
                         autoComplete="off"
                       />
                       <button type="submit" className="hidden" />
@@ -473,7 +489,7 @@ function App() {
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
                       placeholder="Type a command..."
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-mono px-2"
+                      className="w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm font-mono px-2"
                       autoComplete="off"
                     />
                     <button type="submit" className="hidden" />
@@ -505,7 +521,10 @@ function App() {
       <CreateInstanceModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onCreated={loadInstances}
+        onCreated={() => {
+          loadInstances()
+          setShowCreateModal(false)
+        }}
       />
     </div>
   )

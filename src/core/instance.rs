@@ -11,6 +11,8 @@ pub struct InstanceMetadata {
     pub id: Uuid,
     pub name: String,
     pub version: String,
+    pub mod_loader: Option<String>,
+    pub loader_version: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_run: Option<DateTime<Utc>>,
     pub path: PathBuf,
@@ -32,6 +34,10 @@ impl InstanceManager {
     }
 
     pub async fn create_instance(&self, name: &str, version: &str) -> Result<InstanceMetadata> {
+        self.create_instance_full(name, version, None, None).await
+    }
+
+    pub async fn create_instance_full(&self, name: &str, version: &str, mod_loader: Option<String>, loader_version: Option<String>) -> Result<InstanceMetadata> {
         let id = Uuid::new_v4();
         let instance_path = self.base_dir.join(id.to_string());
         fs::create_dir_all(&instance_path).await?;
@@ -40,6 +46,8 @@ impl InstanceManager {
             id,
             name: name.to_string(),
             version: version.to_string(),
+            mod_loader,
+            loader_version,
             created_at: Utc::now(),
             last_run: None,
             path: instance_path,
@@ -77,6 +85,56 @@ impl InstanceManager {
             }
             self.save_registry(&instances).await?;
             info!("Deleted instance: {} (ID: {})", instance.name, id);
+        }
+        Ok(())
+    }
+
+    pub async fn clone_instance(&self, id: Uuid, new_name: &str) -> Result<InstanceMetadata> {
+        let instance = self.get_instance(id).await?
+            .context("Instance not found")?;
+        
+        let new_id = Uuid::new_v4();
+        let new_path = self.base_dir.join(new_id.to_string());
+        
+        // Copy directory recursively
+        self.copy_dir_all(&instance.path, &new_path).await?;
+
+        let new_metadata = InstanceMetadata {
+            id: new_id,
+            name: new_name.to_string(),
+            version: instance.version.clone(),
+            mod_loader: instance.mod_loader.clone(),
+            loader_version: instance.loader_version.clone(),
+            created_at: Utc::now(),
+            last_run: None,
+            path: new_path,
+        };
+
+        let mut instances = self.list_instances().await?;
+        instances.push(new_metadata.clone());
+        self.save_registry(&instances).await?;
+
+        info!("Cloned instance: {} to {} (New ID: {})", instance.name, new_name, new_id);
+        Ok(new_metadata)
+    }
+
+    async fn copy_dir_all(&self, src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {
+        let src = src.as_ref();
+        let dst = dst.as_ref();
+        
+        if !dst.exists() {
+            fs::create_dir_all(dst).await?;
+        }
+
+        for entry in walkdir::WalkDir::new(src).into_iter().filter_map(|e| e.ok()) {
+            let relative_path = entry.path().strip_prefix(src)?;
+            let target_path = dst.join(relative_path);
+
+            if entry.file_type().is_dir() {
+                fs::create_dir_all(&target_path).await?;
+            } else {
+                fs::copy(entry.path(), &target_path).await?;
+            }
         }
         Ok(())
     }

@@ -95,6 +95,59 @@ async fn send_command(
     }
 }
 
+#[tauri::command]
+async fn delete_instance(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    instance_manager.delete_instance(id).await.map_err(|e: anyhow::Error| e.to_string())
+}
+
+#[tauri::command]
+async fn clone_instance(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    new_name: String,
+) -> Result<mc_server_wrapper_core::instance::InstanceMetadata, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    instance_manager.clone_instance(id, &new_name).await.map_err(|e: anyhow::Error| e.to_string())
+}
+
+#[tauri::command]
+async fn open_instance_folder(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    if let Some(instance) = instance_manager.get_instance(id).await.map_err(|e: anyhow::Error| e.to_string())? {
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("explorer")
+                .arg(instance.path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .arg(instance.path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open")
+                .arg(instance.path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    } else {
+        Err("Instance not found".to_string())
+    }
+}
+
 #[derive(Clone, serde::Serialize)]
 struct LogPayload {
     instance_id: String,
@@ -176,6 +229,9 @@ pub fn run() {
         get_minecraft_versions,
         get_mod_loaders,
         create_instance_full,
+        delete_instance,
+        clone_instance,
+        open_instance_folder,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

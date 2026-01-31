@@ -21,20 +21,11 @@ const SERVER_TYPES: ServerType[] = [
     icon: <Box className="text-green-500" size={24} />,
   },
   {
-    id: 'spigot',
-    name: 'Spigot',
-    description: 'Most used modded Minecraft server software based on CraftBukkit.',
-    category: 'Playable Server',
-    icon: <Zap className="text-yellow-500" size={24} />,
-  },
-  {
     id: 'paper',
     name: 'Paper',
     description: 'High performance fork of Spigot with many features and performance improvements.',
     category: 'Playable Server',
     icon: <Send className="text-blue-400" size={24} />,
-    badge: 'recommended for new servers',
-    badgeColor: 'text-blue-400',
   },
   {
     id: 'purpur',
@@ -51,11 +42,25 @@ const SERVER_TYPES: ServerType[] = [
     icon: <Hammer className="text-orange-500" size={24} />,
   },
   {
+    id: 'neoforge',
+    name: 'NeoForge',
+    description: 'A community-driven fork of Forge, designed to be more modern and open.',
+    category: 'Playable Server',
+    icon: <Zap className="text-orange-400" size={24} />,
+  },
+  {
     id: 'fabric',
     name: 'Fabric',
     description: 'Fabric is a lightweight, experimental modding toolchain for Minecraft.',
     category: 'Playable Server',
     icon: <Layers className="text-orange-200" size={24} />,
+  },
+  {
+    id: 'quilt',
+    name: 'Quilt',
+    description: 'The Quilt Project is an open-source, community-driven modding toolchain.',
+    category: 'Playable Server',
+    icon: <Layers className="text-purple-400" size={24} />,
   },
   {
     id: 'bungeecord',
@@ -132,6 +137,20 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
   const [selectedLoaderVersion, setSelectedLoaderVersion] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const resetForm = () => {
+    setActiveTab('custom');
+    setSelectedServerType(null);
+    setSearch('');
+    setName('');
+    setShowSnapshots(false);
+    setShowBetas(false);
+    if (manifest?.latest?.release) {
+      setSelectedVersion(manifest.latest.release);
+    }
+    setSelectedLoader('none');
+    setSelectedLoaderVersion(null);
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadVersions();
@@ -180,7 +199,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
   }
 
   async function loadModLoaders(version: string) {
-    if (selectedServerType !== 'forge' && selectedServerType !== 'fabric') {
+    const isModded = ['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '');
+    if (!isModded) {
       setModLoaders([]);
       return;
     }
@@ -189,7 +209,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
       const loaders = await invoke<ModLoader[]>('get_mod_loaders', { mcVersion: version });
       setModLoaders(loaders);
       // Set default loader version if available
-      const currentLoader = loaders.find(l => l.name.toLowerCase() === selectedServerType);
+      const currentLoader = loaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase()));
       if (currentLoader && currentLoader.versions.length > 0) {
         setSelectedLoaderVersion(currentLoader.versions[0]);
       }
@@ -224,6 +244,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
         loaderVersion: selectedLoaderVersion,
       });
       onCreated();
+      resetForm();
       onClose();
     } catch (e) {
       console.error('Failed to create instance', e);
@@ -421,21 +442,24 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                     </div>
 
                     {/* Mod Loader Version Selection (if applicable) */}
-                    {(selectedServerType === 'forge' || selectedServerType === 'fabric') && (
+                    {['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
                       <div className="p-4 border-t border-white/10 bg-white/[0.02]">
                         <div className="flex items-center gap-4">
                           <div className="text-sm font-medium text-white/70">
-                            {selectedServerType === 'forge' ? 'Forge' : 'Fabric'} Version:
+                            {SERVER_TYPES.find(t => t.id === selectedServerType)?.name} Version:
                           </div>
                           <div className="flex-1 flex items-center gap-2">
                             <select
                               value={selectedLoaderVersion || ''}
                               onChange={e => setSelectedLoaderVersion(e.target.value)}
-                              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none"
+                              className="bg-[#1a1b1e] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                             >
-                              {modLoaders.find(l => l.name.toLowerCase() === selectedServerType)?.versions.map(v => (
+                              {modLoaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase()))?.versions.map(v => (
                                 <option key={v} value={v}>{v}</option>
                               ))}
+                              {!modLoaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase())) && (
+                                <option disabled>No versions available</option>
+                              )}
                             </select>
                           </div>
                         </div>
