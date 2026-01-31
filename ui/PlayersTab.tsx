@@ -208,15 +208,17 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
             </button>
           ))}
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02, translateY: -2 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary/20 transition-all text-xs font-black uppercase tracking-widest"
-          onClick={() => invoke('open_instance_folder', { instanceId })}
-        >
-          <FileText size={18} />
-          Edit Raw Configs
-        </motion.button>
+        {activeSubTab !== 'all' && (
+          <motion.button
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary/20 transition-all text-xs font-black uppercase tracking-widest"
+            onClick={() => invoke('open_player_list_file', { instanceId, listType: activeSubTab })}
+          >
+            <FileText size={18} />
+            Edit Raw Configs
+          </motion.button>
+        )}
       </div>
 
       <AnimatePresence mode="wait">

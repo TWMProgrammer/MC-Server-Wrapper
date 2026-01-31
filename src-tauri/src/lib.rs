@@ -211,6 +211,56 @@ async fn open_instance_folder(
 }
 
 #[tauri::command]
+async fn open_player_list_file(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    list_type: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    if let Some(instance) = instance_manager.get_instance(id).await.map_err(|e: anyhow::Error| e.to_string())? {
+        let file_name = match list_type.as_str() {
+            "whitelist" => "whitelist.json",
+            "ops" => "ops.json",
+            "banned-players" => "banned-players.json",
+            "banned-ips" => "banned-ips.json",
+            _ => return Err("Invalid list type".to_string()),
+        };
+        let file_path = instance.path.join(file_name);
+        
+        // Create the file if it doesn't exist, so the editor can open it
+        if !file_path.exists() {
+            tokio::fs::write(&file_path, "[]").await.map_err(|e| e.to_string())?;
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("powershell")
+                .arg("-Command")
+                .arg(format!("Start-Process '{}'", file_path.to_string_lossy()))
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open")
+                .arg(file_path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open")
+                .arg(file_path)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    } else {
+        Err("Instance not found".to_string())
+    }
+}
+
+#[tauri::command]
 async fn read_latest_log(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
@@ -540,6 +590,7 @@ pub fn run() {
         delete_instance,
         clone_instance,
         open_instance_folder,
+        open_player_list_file,
         read_latest_log,
         get_players,
         get_online_players,
