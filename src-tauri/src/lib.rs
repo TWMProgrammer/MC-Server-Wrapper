@@ -207,6 +207,24 @@ async fn open_instance_folder(
     }
 }
 
+#[tauri::command]
+async fn read_latest_log(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<String, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    if let Some(instance) = instance_manager.get_instance(id).await.map_err(|e: anyhow::Error| e.to_string())? {
+        let log_path = instance.path.join("logs").join("latest.log");
+        if log_path.exists() {
+            tokio::fs::read_to_string(log_path).await.map_err(|e| e.to_string())
+        } else {
+            Ok("".to_string())
+        }
+    } else {
+        Err("Instance not found".to_string())
+    }
+}
+
 #[derive(Clone, serde::Serialize)]
 struct LogPayload {
     instance_id: String,
@@ -335,6 +353,7 @@ pub fn run() {
         delete_instance,
         clone_instance,
         open_instance_folder,
+        read_latest_log,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

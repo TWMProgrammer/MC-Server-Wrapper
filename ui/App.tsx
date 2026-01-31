@@ -19,7 +19,8 @@ import {
   Terminal,
   Puzzle,
   History,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -28,6 +29,7 @@ import { CreateInstanceModal } from './CreateInstanceModal'
 import { InstanceSettingsDropdown } from './InstanceSettingsDropdown'
 import { InstanceFolderDropdown } from './InstanceFolderDropdown'
 import { DownloadProgressModal } from './DownloadProgressModal'
+import { LogsTab } from './LogsTab'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -56,7 +58,7 @@ interface ResourceUsage {
   timestamp?: number;
 }
 
-type TabId = 'dashboard' | 'console' | 'plugins' | 'players' | 'backups' | 'scheduler' | 'settings';
+type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'players' | 'backups' | 'scheduler' | 'settings';
 
 function App() {
   const [instances, setInstances] = useState<Instance[]>([])
@@ -210,6 +212,7 @@ function App() {
   const TABS: { id: TabId; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'console', label: 'Console', icon: Terminal },
+    { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'plugins', label: 'Plugins', icon: Puzzle },
     { id: 'players', label: 'Players', icon: Users },
     { id: 'backups', label: 'Backups', icon: History },
@@ -532,7 +535,11 @@ function App() {
                 </div>
               )}
 
-              {activeTab !== 'dashboard' && activeTab !== 'console' && (
+              {activeTab === 'logs' && (
+                <LogsTab instanceId={selectedInstance} />
+              )}
+
+              {activeTab !== 'dashboard' && activeTab !== 'console' && activeTab !== 'logs' && (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
                   {activeTab === 'plugins' && <Puzzle size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'players' && <Users size={48} className="mb-4 opacity-20" />}
