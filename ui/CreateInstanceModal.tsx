@@ -116,6 +116,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
   const [selectedServerType, setSelectedServerType] = useState<string | null>(null);
   const [manifest, setManifest] = useState<VersionManifest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingModLoaders, setLoadingModLoaders] = useState(false);
   const [search, setSearch] = useState('');
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [showBetas, setShowBetas] = useState(false);
@@ -191,6 +192,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     }
 
     try {
+      setLoadingModLoaders(true);
       const loaders = await invoke<ModLoader[]>('get_mod_loaders', { mcVersion: version });
       setModLoaders(loaders);
       // Set default loader version if available
@@ -200,6 +202,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
       }
     } catch (e) {
       console.error('Failed to load mod loaders', e);
+    } finally {
+      setLoadingModLoaders(false);
     }
   }
 
@@ -538,6 +542,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                                   }
                                   placeholder="Select version"
                                   direction="up"
+                                  loading={loadingModLoaders}
                                 />
                               </div>
                             </motion.div>
@@ -580,17 +585,17 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                   Cancel
                 </button>
                 <motion.button
-                  whileHover={(!name || !selectedVersion || creating) ? {} : {
+                  whileHover={(!name || !selectedVersion || creating || loadingModLoaders) ? {} : {
                     scale: 1.02,
                     translateY: -2,
                     transition: { duration: 0.2, ease: "easeOut" }
                   }}
-                  whileTap={(!name || !selectedVersion || creating) ? {} : { scale: 0.98 }}
+                  whileTap={(!name || !selectedVersion || creating || loadingModLoaders) ? {} : { scale: 0.98 }}
                   onClick={handleCreate}
-                  disabled={!name || !selectedVersion || creating}
+                  disabled={!name || !selectedVersion || creating || loadingModLoaders}
                   className={cn(
                     "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-3 shadow-2xl",
-                    !name || !selectedVersion || creating
+                    !name || !selectedVersion || creating || loadingModLoaders
                       ? "bg-black/5 dark:bg-white/5 text-gray-400 dark:text-white/10 cursor-not-allowed"
                       : "bg-primary hover:bg-primary-hover text-white shadow-glow-primary"
                   )}

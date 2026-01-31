@@ -15,9 +15,20 @@ interface SelectProps {
   className?: string
   placeholder?: string
   direction?: 'up' | 'down'
+  disabled?: boolean
+  loading?: boolean
 }
 
-export function Select({ value, onChange, options, className, placeholder, direction = 'down' }: SelectProps) {
+export function Select({
+  value,
+  onChange,
+  options,
+  className,
+  placeholder,
+  direction = 'down',
+  disabled = false,
+  loading = false
+}: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -35,23 +46,31 @@ export function Select({ value, onChange, options, className, placeholder, direc
   }, [])
 
   const isUp = direction === 'up'
+  const isDisabled = disabled || loading
 
   return (
     <div className={cn("relative w-full", isOpen && "z-[60]", className)} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !isDisabled && setIsOpen(!isOpen)}
+        disabled={isDisabled}
         className={cn(
           "w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white transition-all hover:bg-black/10 dark:hover:bg-white/[0.05] focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-left",
-          isOpen && "border-primary/50 ring-2 ring-primary/50 bg-black/10 dark:bg-white/[0.08]"
+          isOpen && "border-primary/50 ring-2 ring-primary/50 bg-black/10 dark:bg-white/[0.08]",
+          isDisabled && "opacity-50 cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/[0.03]"
         )}
       >
-        <span className={cn("truncate", !selectedOption && "text-gray-500 dark:text-white/30")}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div className="flex items-center gap-2 overflow-hidden">
+          {loading && (
+            <div className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+          )}
+          <span className={cn("truncate", !selectedOption && "text-gray-500 dark:text-white/30")}>
+            {loading ? 'Loading...' : (selectedOption ? selectedOption.label : placeholder)}
+          </span>
+        </div>
         <ChevronDown
           size={16}
-          className={cn("text-gray-500 dark:text-white/30 transition-transform duration-200", isOpen && "rotate-180 text-primary")}
+          className={cn("text-gray-500 dark:text-white/30 transition-transform duration-200 shrink-0", isOpen && "rotate-180 text-primary")}
         />
       </button>
 
