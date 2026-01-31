@@ -1,9 +1,12 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::server::{ServerStatus, ResourceUsage, ServerHandle};
+use mc_server_wrapper_core::players;
+use mc_server_wrapper_core::server_properties;
 use tauri::{State, Manager, Emitter};
 use std::sync::Arc;
 use uuid::Uuid;
+use chrono;
 
 #[tauri::command]
 async fn list_instances(instance_manager: State<'_, Arc<InstanceManager>>) -> Result<Vec<mc_server_wrapper_core::instance::InstanceMetadata>, String> {
@@ -225,6 +228,174 @@ async fn read_latest_log(
     }
 }
 
+#[tauri::command]
+async fn get_online_players(
+    server_manager: State<'_, Arc<ServerManager>>,
+    instance_id: String,
+) -> Result<Vec<String>, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    if let Some(server) = server_manager.get_server(id).await {
+        Ok(server.get_online_players().await)
+    } else {
+        Ok(vec![])
+    }
+}
+
+#[tauri::command]
+async fn get_players(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<players::AllPlayerLists, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    let whitelist = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
+    let ops = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
+    let banned_players = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
+    let banned_ips = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+    
+    Ok(players::AllPlayerLists {
+        whitelist,
+        ops,
+        banned_players,
+        banned_ips,
+    })
+}
+
+#[tauri::command]
+async fn add_player(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    list_type: String,
+    username: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+
+    let (uuid, name) = players::fetch_player_uuid(&username).await.map_err(|e| e.to_string())?;
+
+    match list_type.as_str() {
+        "whitelist" => {
+            let mut list = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
+            if !list.iter().any(|p| p.uuid == uuid) {
+                list.push(players::PlayerEntry { uuid, name });
+                players::write_whitelist(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            }
+        },
+        "ops" => {
+            let mut list = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
+            if !list.iter().any(|p| p.uuid == uuid) {
+                list.push(players::OpEntry { uuid, name, level: 4, bypasses_player_limit: false });
+                players::write_ops(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            }
+        },
+        "banned-players" => {
+            let mut list = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
+            if !list.iter().any(|p| p.uuid == uuid) {
+                list.push(players::BannedPlayerEntry {
+                    uuid,
+                    name,
+                    created: chrono::Utc::now().to_rfc3339(),
+                    source: "Server Wrapper".to_string(),
+                    expires: "forever".to_string(),
+                    reason: "Banned by admin".to_string(),
+                });
+                players::write_banned_players(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            }
+        },
+        _ => return Err("Invalid list type".to_string()),
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn add_banned_ip(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    ip: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+
+    let mut list = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+    if !list.iter().any(|p| p.ip == ip) {
+        list.push(players::BannedIpEntry {
+            ip,
+            created: chrono::Utc::now().to_rfc3339(),
+            source: "Server Wrapper".to_string(),
+            expires: "forever".to_string(),
+            reason: "Banned by admin".to_string(),
+        });
+        players::write_banned_ips(&instance.path, &list).await.map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn remove_player(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    list_type: String,
+    identifier: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+
+    match list_type.as_str() {
+        "whitelist" => {
+            let mut list = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
+            list.retain(|p| p.uuid != identifier);
+            players::write_whitelist(&instance.path, &list).await.map_err(|e| e.to_string())?;
+        },
+        "ops" => {
+            let mut list = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
+            list.retain(|p| p.uuid != identifier);
+            players::write_ops(&instance.path, &list).await.map_err(|e| e.to_string())?;
+        },
+        "banned-players" => {
+            let mut list = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
+            list.retain(|p| p.uuid != identifier);
+            players::write_banned_players(&instance.path, &list).await.map_err(|e| e.to_string())?;
+        },
+        "banned-ips" => {
+            let mut list = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+            list.retain(|p| p.ip != identifier);
+            players::write_banned_ips(&instance.path, &list).await.map_err(|e| e.to_string())?;
+        },
+        _ => return Err("Invalid list type".to_string()),
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_server_properties(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    server_properties::read_server_properties(&instance.path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn save_server_properties(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    properties: std::collections::HashMap<String, String>,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    server_properties::write_server_properties(&instance.path, &properties).await.map_err(|e| e.to_string())
+}
+
 #[derive(Clone, serde::Serialize)]
 struct LogPayload {
     instance_id: String,
@@ -354,6 +525,13 @@ pub fn run() {
         clone_instance,
         open_instance_folder,
         read_latest_log,
+        get_players,
+        get_online_players,
+        add_player,
+        add_banned_ip,
+        remove_player,
+        get_server_properties,
+        save_server_properties,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

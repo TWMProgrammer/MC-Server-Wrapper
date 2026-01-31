@@ -21,4 +21,40 @@ export interface ResourceUsage {
   timestamp?: number;
 }
 
-export type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'mods' | 'players' | 'backups' | 'scheduler' | 'settings';
+export type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'mods' | 'players' | 'config' | 'backups' | 'scheduler' | 'settings';
+
+export interface PlayerEntry {
+  uuid: string;
+  name: string;
+}
+
+export interface OpEntry {
+  uuid: string;
+  name: string;
+  level: number;
+  bypassesPlayerLimit: boolean;
+}
+
+export interface BannedPlayerEntry {
+  uuid: string;
+  name: string;
+  created: string;
+  source: string;
+  expires: string;
+  reason: string;
+}
+
+export interface BannedIpEntry {
+  ip: string;
+  created: string;
+  source: string;
+  expires: string;
+  reason: string;
+}
+
+export interface AllPlayerLists {
+  whitelist: PlayerEntry[];
+  ops: OpEntry[];
+  banned_players: BannedPlayerEntry[];
+  banned_ips: BannedIpEntry[];
+}

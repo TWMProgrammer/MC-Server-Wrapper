@@ -6,6 +6,7 @@ use tracing::{info, error, warn};
 use std::sync::Arc;
 use tokio::sync::{Mutex, broadcast};
 use super::config::ServerConfig;
+use std::collections::HashSet;
 use std::time::Duration;
 use std::path::PathBuf;
 use strum::Display;
@@ -42,6 +43,7 @@ pub struct ServerHandle {
     stdin: Arc<Mutex<Option<ChildStdin>>>,
     status: Arc<Mutex<ServerStatus>>,
     usage: Arc<Mutex<ResourceUsage>>,
+    online_players: Arc<Mutex<HashSet<String>>>,
     log_sender: broadcast::Sender<String>,
     progress_sender: broadcast::Sender<ProgressPayload>,
 }
@@ -56,6 +58,7 @@ impl ServerHandle {
             stdin: Arc::new(Mutex::new(None)),
             status: Arc::new(Mutex::new(ServerStatus::Stopped)),
             usage: Arc::new(Mutex::new(ResourceUsage::default())),
+            online_players: Arc::new(Mutex::new(HashSet::new())),
             log_sender,
             progress_sender,
         }
@@ -158,16 +161,32 @@ impl ServerHandle {
 
         // Output capture tasks
         let log_sender_stdout = self.log_sender.clone();
+        let online_players_clone = Arc::clone(&self.online_players);
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 info!("[Server Output] {}", line);
                 let _ = log_sender_stdout.send(line.clone());
+                
+                // Parse server status
                 if line.contains("Done") && line.contains("For help, type \"help\"") {
                     let mut status = status_clone.lock().await;
                     if *status == ServerStatus::Starting {
                         *status = ServerStatus::Running;
                         info!("Server is now Running");
+                    }
+                }
+
+                // Parse player join/leave
+                if line.contains("joined the game") {
+                    if let Some(username) = line.split("INFO]: ").nth(1).and_then(|s| s.split(' ').next()) {
+                        let mut players = online_players_clone.lock().await;
+                        players.insert(username.to_string());
+                    }
+                } else if line.contains("left the game") {
+                    if let Some(username) = line.split("INFO]: ").nth(1).and_then(|s| s.split(' ').next()) {
+                        let mut players = online_players_clone.lock().await;
+                        players.remove(username);
                     }
                 }
             }
@@ -202,6 +221,11 @@ impl ServerHandle {
         }
     }
 
+    pub async fn get_online_players(&self) -> Vec<String> {
+        let players = self.online_players.lock().await;
+        players.iter().cloned().collect()
+    }
+
     #[allow(dead_code)]
     pub async fn stop(&self) -> Result<()> {
         let mut status = self.status.lock().await;
@@ -224,6 +248,7 @@ impl ServerHandle {
         let child_arc = Arc::clone(&self.child);
         let status_arc = Arc::clone(&self.status);
         let stdin_arc = Arc::clone(&self.stdin);
+        let online_players_arc = Arc::clone(&self.online_players);
 
         // Wait for process to exit or timeout
         tokio::spawn(async move {
@@ -244,6 +269,10 @@ impl ServerHandle {
             *status = ServerStatus::Stopped;
             let mut stdin_lock = stdin_arc.lock().await;
             *stdin_lock = None;
+            
+            // Clear online players
+            let mut players = online_players_arc.lock().await;
+            players.clear();
         });
 
         Ok(())

@@ -9,16 +9,19 @@ import {
   Layers,
   History,
   Calendar,
-  FileText
+  FileText,
+  Sliders
 } from 'lucide-react'
 import { CreateInstanceModal } from './CreateInstanceModal'
 import { DownloadProgressModal } from './DownloadProgressModal'
 import { LogsTab } from './LogsTab'
+import { ConfigTab } from './ConfigTab'
 import { useServer } from './hooks/useServer'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 import { Dashboard } from './components/Dashboard'
 import { Console } from './components/Console'
+import { PlayersTab } from './PlayersTab'
 import { TabId } from './types'
 
 function App() {
@@ -73,9 +76,10 @@ function App() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'console', label: 'Console', icon: Terminal },
     { id: 'logs', label: 'Logs', icon: FileText },
+    { id: 'players', label: 'Players', icon: Users },
+    { id: 'config', label: 'Config', icon: Sliders },
     { id: 'plugins', label: 'Plugins', icon: Puzzle },
     { id: 'mods', label: 'Mods', icon: Layers },
-    { id: 'players', label: 'Players', icon: Users },
     { id: 'backups', label: 'Backups', icon: History },
     { id: 'scheduler', label: 'Scheduler', icon: Calendar },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -157,11 +161,18 @@ function App() {
                 <LogsTab instanceId={selectedInstanceId} />
               )}
 
-              {activeTab !== 'dashboard' && activeTab !== 'console' && activeTab !== 'logs' && (
+              {activeTab === 'players' && (
+                <PlayersTab instanceId={selectedInstanceId} />
+              )}
+
+              {activeTab === 'config' && (
+                <ConfigTab instanceId={selectedInstanceId} />
+              )}
+
+              {activeTab !== 'dashboard' && activeTab !== 'console' && activeTab !== 'logs' && activeTab !== 'players' && activeTab !== 'config' && (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
                   {activeTab === 'plugins' && <Puzzle size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'mods' && <Layers size={48} className="mb-4 opacity-20" />}
-                  {activeTab === 'players' && <Users size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'backups' && <History size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'scheduler' && <Calendar size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'settings' && <Settings size={48} className="mb-4 opacity-20" />}
