@@ -1,0 +1,35 @@
+# Rust build artifacts
+/target
+/src-tauri/target
+
+# Node.js / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Tauri
+src-tauri/gen/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project specific
+/instances/
+/backups/
+/logs/
+/temp/
+*.log
