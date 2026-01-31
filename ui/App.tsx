@@ -18,6 +18,7 @@ import {
   FolderOpen,
   Terminal,
   Puzzle,
+  Layers,
   History,
   Calendar,
   FileText
@@ -58,7 +59,7 @@ interface ResourceUsage {
   timestamp?: number;
 }
 
-type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'players' | 'backups' | 'scheduler' | 'settings';
+type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'mods' | 'players' | 'backups' | 'scheduler' | 'settings';
 
 function App() {
   const [instances, setInstances] = useState<Instance[]>([])
@@ -209,16 +210,45 @@ function App() {
 
   const currentInstance = instances.find(i => i.id === selectedInstance);
 
-  const TABS: { id: TabId; label: string; icon: any }[] = [
+  const supportsPlugins = (loader?: string) => {
+    if (!loader) return false;
+    const l = loader.toLowerCase();
+    return ['paper', 'purpur', 'spigot', 'bukkit'].includes(l);
+  };
+
+  const supportsMods = (loader?: string) => {
+    if (!loader) return false;
+    const l = loader.toLowerCase();
+    return ['fabric', 'forge', 'neoforge', 'quilt'].includes(l);
+  };
+
+  const ALL_TABS: { id: TabId; label: string; icon: any }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'console', label: 'Console', icon: Terminal },
     { id: 'logs', label: 'Logs', icon: FileText },
     { id: 'plugins', label: 'Plugins', icon: Puzzle },
+    { id: 'mods', label: 'Mods', icon: Layers },
     { id: 'players', label: 'Players', icon: Users },
     { id: 'backups', label: 'Backups', icon: History },
     { id: 'scheduler', label: 'Scheduler', icon: Calendar },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
+
+  const tabs = ALL_TABS.filter(tab => {
+    if (tab.id === 'plugins') return supportsPlugins(currentInstance?.mod_loader);
+    if (tab.id === 'mods') return supportsMods(currentInstance?.mod_loader);
+    return true;
+  });
+
+  // Ensure active tab is valid for current instance
+  useEffect(() => {
+    if (currentInstance) {
+      const isValid = tabs.some(t => t.id === activeTab);
+      if (!isValid) {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [currentInstance, activeTab, tabs]);
 
   return (
     <div className="flex h-screen bg-[#1a1a1a] text-white">
@@ -342,7 +372,7 @@ function App() {
               {/* Tabs */}
               <div className="flex items-center justify-between border-t border-white/5 mt-4">
                 <div className="flex gap-1">
-                  {TABS.map(tab => (
+                  {tabs.map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
@@ -351,7 +381,10 @@ function App() {
                         activeTab === tab.id ? "text-white" : "text-gray-500 hover:text-gray-300"
                       )}
                     >
-                      {tab.label}
+                      <div className="flex items-center gap-2">
+                        <tab.icon size={14} className={activeTab === tab.id ? "text-blue-400" : "text-gray-500"} />
+                        {tab.label}
+                      </div>
                       {activeTab === tab.id && (
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
                       )}
@@ -542,6 +575,7 @@ function App() {
               {activeTab !== 'dashboard' && activeTab !== 'console' && activeTab !== 'logs' && (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
                   {activeTab === 'plugins' && <Puzzle size={48} className="mb-4 opacity-20" />}
+                  {activeTab === 'mods' && <Layers size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'players' && <Users size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'backups' && <History size={48} className="mb-4 opacity-20" />}
                   {activeTab === 'scheduler' && <Calendar size={48} className="mb-4 opacity-20" />}
