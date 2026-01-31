@@ -14,9 +14,10 @@ interface SelectProps {
   options: Option[]
   className?: string
   placeholder?: string
+  direction?: 'up' | 'down'
 }
 
-export function Select({ value, onChange, options, className, placeholder }: SelectProps) {
+export function Select({ value, onChange, options, className, placeholder, direction = 'down' }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -32,6 +33,8 @@ export function Select({ value, onChange, options, className, placeholder }: Sel
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const isUp = direction === 'up'
 
   return (
     <div className={cn("relative w-full", isOpen && "z-[60]", className)} ref={containerRef}>
@@ -55,11 +58,14 @@ export function Select({ value, onChange, options, className, placeholder }: Sel
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            initial={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            exit={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute z-[100] w-full mt-2 bg-white dark:bg-[#0D0D0F] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl"
+            className={cn(
+              "absolute z-[100] w-full bg-white dark:bg-[#0D0D0F] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl",
+              isUp ? "bottom-full mb-2" : "top-full mt-2"
+            )}
           >
             <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-black/10 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
               {options.length === 0 ? (

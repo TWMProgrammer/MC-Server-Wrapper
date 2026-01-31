@@ -537,6 +537,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                                     })) || []
                                   }
                                   placeholder="Select version"
+                                  direction="up"
                                 />
                               </div>
                             </motion.div>
