@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { X, Search, Filter, Box, Download, Info, Check, ChevronRight, HardDrive, Globe, Package, Zap, Send, Hammer, Layers, Network, Gamepad2, Blocks } from 'lucide-react'
+import { X, Search, Filter, Box, Download, Info, Check, ChevronRight, HardDrive, Globe, Package, Zap, Send, Hammer, Layers, Network, Gamepad2, Blocks, Terminal, Sparkles, Plus } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 import { Instance } from './types'
+import { Select } from './components/Select'
 
 interface ServerType {
   id: string;
@@ -20,7 +22,7 @@ const SERVER_TYPES: ServerType[] = [
     name: 'Vanilla',
     description: 'The basic Vanilla experience without plugins.',
     category: 'Playable Server',
-    icon: <Box className="text-green-500" size={24} />,
+    icon: <Box className="text-emerald-400" size={24} />,
   },
   {
     id: 'paper',
@@ -32,37 +34,37 @@ const SERVER_TYPES: ServerType[] = [
   {
     id: 'purpur',
     name: 'Purpur',
-    description: 'Purpur is a drop-in replacement for Paper servers designed for configurability and new, fun, exciting gameplay features.',
+    description: 'Purpur is a drop-in replacement for Paper servers designed for configurability and new features.',
     category: 'Playable Server',
-    icon: <Box className="text-purple-500" size={24} />,
+    icon: <Sparkles className="text-purple-400" size={24} />,
   },
   {
     id: 'forge',
     name: 'Forge',
     description: 'Drastically change the way how Minecraft looks and feels with mods.',
     category: 'Playable Server',
-    icon: <Hammer className="text-orange-500" size={24} />,
+    icon: <Hammer className="text-orange-400" size={24} />,
   },
   {
     id: 'neoforge',
     name: 'NeoForge',
     description: 'A community-driven fork of Forge, designed to be more modern and open.',
     category: 'Playable Server',
-    icon: <Zap className="text-orange-400" size={24} />,
+    icon: <Zap className="text-amber-400" size={24} />,
   },
   {
     id: 'fabric',
     name: 'Fabric',
     description: 'Fabric is a lightweight, experimental modding toolchain for Minecraft.',
     category: 'Playable Server',
-    icon: <Layers className="text-orange-200" size={24} />,
+    icon: <Layers className="text-indigo-400" size={24} />,
   },
   {
     id: 'bungeecord',
     name: 'BungeeCord',
     description: 'Efficiently proxies, maintains connections and transport between multiple servers.',
     category: 'Network Proxy',
-    icon: <Network className="text-green-500" size={24} />,
+    icon: <Network className="text-emerald-400" size={24} />,
   },
   {
     id: 'velocity',
@@ -241,267 +243,353 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
   const categories = ['Playable Server', 'Network Proxy', 'Other'] as const;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[#1a1b1e] border border-white/10 rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-white/10 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center shadow-lg shadow-green-900/20">
-              <Box className="text-white" size={24} />
-            </div>
-            <div className="flex-1 max-w-md">
-              <input
-                type="text"
-                placeholder="Instance Name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                autoFocus
-              />
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/50 hover:text-white">
-            <X size={20} />
-          </button>
-        </div>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+          />
 
-        {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-64 bg-black/20 border-r border-white/10 p-2 flex flex-col gap-1">
-            <SidebarItem
-              icon={<Globe size={18} />}
-              label="Minecraft"
-              active={activeTab === 'custom'}
-              onClick={() => setActiveTab('custom')}
-            />
-            <SidebarItem
-              icon={<HardDrive size={18} />}
-              label="Import from ZIP"
-              active={activeTab === 'import'}
-              onClick={() => setActiveTab('import')}
-            />
-            <div className="my-2 border-t border-white/5" />
-            <SidebarItem
-              icon={<Package size={18} />}
-              label="Modrinth"
-              active={activeTab === 'modrinth'}
-              onClick={() => setActiveTab('modrinth')}
-              disabled
-            />
-            <SidebarItem
-              icon={<Package size={18} />}
-              label="CurseForge"
-              active={activeTab === 'curseforge'}
-              onClick={() => setActiveTab('curseforge')}
-              disabled
-            />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="bg-surface border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5 transition-colors duration-300"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-6 bg-black/[0.01] dark:bg-white/[0.02]">
+              <div className="flex items-center gap-6 flex-1">
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center shadow-glow-primary border border-primary/20">
+                  <Plus className="text-primary" size={28} />
+                </div>
+                <div className="flex-1 max-w-md">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1.5 ml-1">New Instance</div>
+                  <input
+                    type="text"
+                    placeholder="Enter instance name..."
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-5 py-3 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-medium"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={onClose}
+                className="p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors text-gray-400 dark:text-white/30 hover:text-gray-900 dark:hover:text-white"
+              >
+                <X size={24} />
+              </motion.button>
+            </div>
 
-          {/* Content Area */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#121214]">
-            {activeTab === 'custom' && (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {!selectedServerType ? (
-                  /* Software Selection Grid */
-                  <div className="flex-1 overflow-auto p-6">
-                    <div className="space-y-8">
-                      {categories.map(category => (
-                        <div key={category} className="space-y-4">
-                          <h2 className="text-lg font-bold text-white/90 px-1">{category}</h2>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {SERVER_TYPES.filter(t => t.category === category).map(type => (
-                              <button
-                                key={type.id}
-                                onClick={() => setSelectedServerType(type.id)}
-                                className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.07] hover:border-white/10 transition-all text-left group"
-                              >
-                                <div className="p-3 rounded-lg bg-black/20 group-hover:bg-black/40 transition-colors">
-                                  {type.icon}
+            {/* Main Content */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Sidebar */}
+              <div className="w-72 bg-black/5 dark:bg-black/20 border-r border-black/5 dark:border-white/5 p-4 flex flex-col gap-2 transition-colors duration-300">
+                <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-white/30">Sources</div>
+                <SidebarItem
+                  icon={<Globe size={20} />}
+                  label="Official Minecraft"
+                  active={activeTab === 'custom'}
+                  onClick={() => setActiveTab('custom')}
+                />
+                <SidebarItem
+                  icon={<HardDrive size={20} />}
+                  label="Local ZIP File"
+                  active={activeTab === 'import'}
+                  onClick={() => setActiveTab('import')}
+                />
+                <div className="my-4 border-t border-black/5 dark:border-white/5" />
+                <div className="px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-white/30">Coming Soon</div>
+                <SidebarItem
+                  icon={<Package size={20} />}
+                  label="Modrinth"
+                  active={activeTab === 'modrinth'}
+                  onClick={() => setActiveTab('modrinth')}
+                  disabled
+                />
+                <SidebarItem
+                  icon={<Package size={20} />}
+                  label="CurseForge"
+                  active={activeTab === 'curseforge'}
+                  onClick={() => setActiveTab('curseforge')}
+                  disabled
+                />
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-background transition-colors duration-300">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'custom' ? (
+                    <motion.div
+                      key="custom"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="flex-1 flex flex-col overflow-hidden"
+                    >
+                      {!selectedServerType ? (
+                        /* Software Selection Grid */
+                        <div className="flex-1 overflow-auto p-8 custom-scrollbar">
+                          <div className="space-y-10">
+                            {categories.map((category, catIdx) => (
+                              <div key={category} className="space-y-6">
+                                <h2 className="text-sm font-black text-gray-500 dark:text-white/40 uppercase tracking-[0.2em] px-2">{category}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                  {SERVER_TYPES.filter(t => t.category === category).map((type, i) => (
+                                    <motion.button
+                                      key={type.id}
+                                      initial={{ opacity: 0, y: 20 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: (catIdx * 0.1) + (i * 0.05) }}
+                                      whileHover={{ scale: 1.02, translateY: -4 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      onClick={() => setSelectedServerType(type.id)}
+                                      className="flex flex-col gap-4 p-5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:border-primary/30 transition-all text-left group relative overflow-hidden"
+                                    >
+                                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
+                                      <div className="p-4 rounded-2xl bg-black/10 dark:bg-black/40 w-fit group-hover:bg-primary/20 group-hover:text-primary transition-all shadow-inner-light">
+                                        {type.icon}
+                                      </div>
+                                      <div className="space-y-2 relative z-10">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">{type.name}</span>
+                                          {type.badge && (
+                                            <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5", type.badgeColor)}>
+                                              {type.badge}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 dark:text-white/40 leading-relaxed line-clamp-2 font-medium">
+                                          {type.description}
+                                        </p>
+                                      </div>
+                                    </motion.button>
+                                  ))}
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-white group-hover:text-blue-400 transition-colors">{type.name}</span>
-                                    {type.badge && (
-                                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/5", type.badgeColor)}>
-                                        ({type.badge})
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-white/50 leading-relaxed line-clamp-2">
-                                    {type.description}
-                                  </p>
-                                </div>
-                              </button>
+                              </div>
                             ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  /* Version Selection (Current UI) */
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setSelectedServerType(null)}
-                          className="p-2 hover:bg-white/5 rounded-lg text-white/50 hover:text-white transition-colors"
-                        >
-                          <ChevronRight size={18} className="rotate-180" />
-                        </button>
-                        <div>
-                          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                            {SERVER_TYPES.find(t => t.id === selectedServerType)?.name}
-                            <span className="text-white/30 font-normal">/</span>
-                            Select Version
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="relative w-64">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={14} />
-                          <input
-                            type="text"
-                            placeholder="Search versions..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                          />
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-white/70">
-                          <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={showSnapshots}
-                              onChange={e => setShowSnapshots(e.target.checked)}
-                              className="rounded border-white/10 bg-white/5 text-blue-500 focus:ring-0"
-                            />
-                            Snapshots
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto p-2">
-                      {loading ? (
-                        <div className="h-full flex flex-col items-center justify-center gap-3 text-white/30">
-                          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-sm">Fetching versions...</span>
                         </div>
                       ) : (
-                        <table className="w-full text-left text-sm">
-                          <thead className="sticky top-0 bg-[#121214] z-10 text-white/40 font-medium">
-                            <tr>
-                              <th className="px-4 py-2">Version</th>
-                              <th className="px-4 py-2">Type</th>
-                              <th className="px-4 py-2">Release Date</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                            {filteredVersions.map(v => (
-                              <tr
-                                key={v.id}
-                                onClick={() => setSelectedVersion(v.id)}
-                                className={cn(
-                                  "cursor-pointer transition-colors",
-                                  selectedVersion === v.id ? "bg-blue-500/20 text-white" : "text-white/70 hover:bg-white/5"
-                                )}
+                        /* Version Selection */
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                          <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-black/[0.01] dark:bg-white/[0.01]">
+                            <div className="flex items-center gap-4">
+                              <motion.button
+                                whileHover={{ scale: 1.1, x: -2 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => setSelectedServerType(null)}
+                                className="p-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-all border border-black/5 dark:border-white/5"
                               >
-                                <td className="px-4 py-3 font-medium flex items-center gap-2">
-                                  {selectedVersion === v.id && <Check size={14} className="text-blue-400" />}
-                                  {v.id}
-                                </td>
-                                <td className="px-4 py-3 capitalize">{v.type.replace('_', ' ')}</td>
-                                <td className="px-4 py-3 text-white/40">
-                                  {new Date(v.releaseTime).toLocaleDateString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
+                                <ChevronRight size={20} className="rotate-180" />
+                              </motion.button>
+                              <div>
+                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1">Software</div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                  {SERVER_TYPES.find(t => t.id === selectedServerType)?.name}
+                                </h3>
+                              </div>
+                            </div>
 
-                    {/* Mod Loader Version Selection (if applicable) */}
-                    {['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
-                      <div className="p-4 border-t border-white/10 bg-white/[0.02]">
-                        <div className="flex items-center gap-4">
-                          <div className="text-sm font-medium text-white/70">
-                            {SERVER_TYPES.find(t => t.id === selectedServerType)?.name} Version:
+                            <div className="flex items-center gap-4">
+                              <div className="relative w-72 group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-primary transition-colors" size={16} />
+                                <input
+                                  type="text"
+                                  placeholder="Search versions..."
+                                  value={search}
+                                  onChange={e => setSearch(e.target.value)}
+                                  className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl pl-12 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-medium"
+                                />
+                              </div>
+                              <div className="flex items-center gap-4 text-[11px] font-bold text-gray-500 dark:text-white/40">
+                                <label className="flex items-center gap-2.5 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors group">
+                                  <div className={cn(
+                                    "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+                                    showSnapshots ? "bg-primary border-primary shadow-glow-primary" : "border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5"
+                                  )}>
+                                    {showSnapshots && <Check size={12} className="text-white" />}
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={showSnapshots}
+                                    onChange={e => setShowSnapshots(e.target.checked)}
+                                    className="hidden"
+                                  />
+                                  Snapshots
+                                </label>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 flex items-center gap-2">
-                            <select
-                              value={selectedLoaderVersion || ''}
-                              onChange={e => setSelectedLoaderVersion(e.target.value)}
-                              className="bg-[#1a1b1e] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+
+                          <div className="flex-1 overflow-auto custom-scrollbar">
+                            {loading ? (
+                              <div className="h-full flex flex-col items-center justify-center gap-4 text-gray-400 dark:text-white/20">
+                                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                <span className="text-sm font-bold tracking-widest uppercase">Fetching versions...</span>
+                              </div>
+                            ) : (
+                              <table className="w-full text-left text-sm border-separate border-spacing-y-2 px-6">
+                                <thead className="sticky top-0 bg-background/80 backdrop-blur-md z-10 transition-colors duration-300">
+                                  <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20">
+                                    <th className="px-6 py-4">Version</th>
+                                    <th className="px-6 py-4">Type</th>
+                                    <th className="px-6 py-4">Release Date</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filteredVersions.map(v => (
+                                    <motion.tr
+                                      key={v.id}
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      onClick={() => setSelectedVersion(v.id)}
+                                      className={cn(
+                                        "cursor-pointer transition-all group",
+                                        selectedVersion === v.id
+                                          ? "bg-primary/10 text-gray-900 dark:text-white"
+                                          : "text-gray-600 dark:text-white/50 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
+                                      )}
+                                    >
+                                      <td className="px-6 py-4 first:rounded-l-2xl border-y border-l border-black/5 dark:border-white/5 group-hover:border-primary/20 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                          <div className={cn(
+                                            "w-6 h-6 rounded-full flex items-center justify-center transition-all",
+                                            selectedVersion === v.id ? "bg-primary text-white scale-110 shadow-glow-primary" : "bg-black/5 dark:bg-white/5 text-transparent border border-black/10 dark:border-white/10"
+                                          )}>
+                                            <Check size={14} />
+                                          </div>
+                                          <span className="font-bold font-mono tracking-tight">{v.id}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 border-y border-black/5 dark:border-white/5 group-hover:border-primary/20 transition-colors">
+                                        <span className={cn(
+                                          "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider",
+                                          v.type === 'release' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                        )}>
+                                          {v.type.replace('_', ' ')}
+                                        </span>
+                                      </td>
+                                      <td className="px-6 py-4 last:rounded-r-2xl border-y border-r border-black/5 dark:border-white/5 group-hover:border-primary/20 transition-colors">
+                                        <span className="text-gray-400 dark:text-white/20 font-medium group-hover:text-gray-900 dark:group-hover:text-white/40 transition-colors">
+                                          {new Date(v.releaseTime).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                        </span>
+                                      </td>
+                                    </motion.tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+
+                          {/* Mod Loader Selection */}
+                          {['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
+                            <motion.div
+                              initial={{ y: 20, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              className="p-6 border-t border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.02] flex items-center justify-between transition-colors duration-300"
                             >
-                              {modLoaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase()))?.versions.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                              ))}
-                              {!modLoaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase())) && (
-                                <option disabled>No versions available</option>
-                              )}
-                            </select>
-                          </div>
+                              <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                                  <Terminal size={20} />
+                                </div>
+                                <div>
+                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-0.5">Software Build</div>
+                                  <div className="text-sm font-bold text-gray-600 dark:text-white/70">
+                                    Select {SERVER_TYPES.find(t => t.id === selectedServerType)?.name} version
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 min-w-[200px]">
+                                <Select
+                                  value={selectedLoaderVersion || ''}
+                                  onChange={newValue => setSelectedLoaderVersion(newValue)}
+                                  options={
+                                    modLoaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase()))?.versions.map(v => ({
+                                      value: v,
+                                      label: v
+                                    })) || []
+                                  }
+                                  placeholder="Select version"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="soon"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="flex-1 flex flex-col items-center justify-center text-gray-400 dark:text-white/10 gap-6 p-12 text-center"
+                    >
+                      <div className="w-24 h-24 rounded-full bg-black/5 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center justify-center">
+                        <Box size={48} strokeWidth={1} />
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="max-w-xs space-y-2">
+                        <h3 className="text-lg font-black text-gray-400 dark:text-white/30 uppercase tracking-[0.2em]">Coming Soon</h3>
+                        <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-white/40">We're working hard to bring {activeTab === 'import' ? 'ZIP imports' : activeTab} to the wrapper!</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
+            </div>
 
-            {activeTab !== 'custom' && (
-              <div className="flex-1 flex flex-col items-center justify-center text-white/20 gap-4">
-                <Box size={48} strokeWidth={1} />
-                <p className="text-sm">This source is coming soon!</p>
+            {/* Footer */}
+            <div className="p-6 border-t border-black/5 dark:border-white/5 flex items-center justify-between bg-black/5 dark:bg-black/40 backdrop-blur-xl transition-colors duration-300">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20 flex items-center gap-3">
+                <Info size={16} className="text-primary" />
+                <span>{selectedVersion ? `Ready to install Minecraft ${selectedVersion}` : 'Select a software and version to continue'}</span>
               </div>
-            )}
-          </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={onClose}
+                  className="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  whileHover={(!name || !selectedVersion || creating) ? {} : { scale: 1.02, translateY: -2 }}
+                  whileTap={(!name || !selectedVersion || creating) ? {} : { scale: 0.98 }}
+                  onClick={handleCreate}
+                  disabled={!name || !selectedVersion || creating}
+                  className={cn(
+                    "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-2xl",
+                    !name || !selectedVersion || creating
+                      ? "bg-black/5 dark:bg-white/5 text-gray-400 dark:text-white/10 cursor-not-allowed"
+                      : "bg-primary hover:bg-primary-hover text-white shadow-glow-primary"
+                  )}
+                >
+                  {creating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={18} />
+                      Create Instance
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-white/10 flex items-center justify-between bg-black/40">
-          <div className="text-xs text-white/30 flex items-center gap-2">
-            <Info size={14} />
-            <span>Select a version and name your instance to continue</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 rounded-lg text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={!name || !selectedVersion || creating}
-              className={cn(
-                "px-8 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-lg",
-                !name || !selectedVersion || creating
-                  ? "bg-white/5 text-white/20 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20"
-              )}
-            >
-              {creating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Download size={16} />
-                  Create Instance
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+      )}
+    </AnimatePresence>
+  );
 }
 
 function SidebarItem({ icon, label, active, onClick, disabled = false }: {
@@ -518,10 +606,10 @@ function SidebarItem({ icon, label, active, onClick, disabled = false }: {
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all",
         active
-          ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+          ? "bg-primary text-white shadow-lg shadow-primary/20"
           : disabled
-            ? "text-white/10 cursor-not-allowed"
-            : "text-white/50 hover:text-white hover:bg-white/5"
+            ? "text-gray-400 dark:text-white/10 cursor-not-allowed"
+            : "text-gray-500 dark:text-white/50 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
       )}
     >
       {icon}

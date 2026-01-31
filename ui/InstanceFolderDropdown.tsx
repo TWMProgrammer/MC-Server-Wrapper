@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { FolderOpen, ExternalLink } from 'lucide-react'
 import { cn } from './utils'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface InstanceFolderDropdownProps {
   instance: {
@@ -36,29 +37,43 @@ export function InstanceFolderDropdown({ instance }: InstanceFolderDropdownProps
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "hover:text-white transition-colors p-1 rounded-md",
-          isOpen ? "text-white bg-white/10" : "text-gray-500"
+          "transition-all p-2 rounded-xl border border-transparent",
+          isOpen ? "text-primary bg-primary/10 border-primary/20" : "text-white/20 hover:text-white/60 hover:bg-white/5"
         )}
       >
-        <FolderOpen size={20} />
-      </button>
+        <FolderOpen size={18} />
+      </motion.button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-[#242424] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-          <div className="p-1">
-            <button
-              onClick={handleOpenFolder}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white rounded transition-colors"
-            >
-              <ExternalLink size={16} />
-              <span>Open in File Explorer</span>
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 10, x: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10, x: 20 }}
+            className="absolute right-0 mt-3 w-64 bg-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-white/10"
+          >
+            <div className="p-2">
+              <button
+                onClick={handleOpenFolder}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/[0.05] hover:text-white rounded-xl transition-all group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white/[0.03] flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                  <ExternalLink size={16} />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-bold">Reveal in Explorer</span>
+                  <span className="text-[10px] text-white/20 uppercase font-black tracking-widest">Open local files</span>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

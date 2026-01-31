@@ -1,4 +1,5 @@
-import { Database, Plus } from 'lucide-react'
+import { Database, Plus, Sparkles, Settings } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Instance } from '../types'
 import { cn } from '../utils'
 
@@ -7,49 +8,110 @@ interface SidebarProps {
   selectedInstanceId: string | null;
   onSelectInstance: (id: string) => void;
   onCreateNew: () => void;
+  onOpenSettings: () => void;
 }
 
-export function Sidebar({ instances, selectedInstanceId, onSelectInstance, onCreateNew }: SidebarProps) {
+export function Sidebar({ instances, selectedInstanceId, onSelectInstance, onCreateNew, onOpenSettings }: SidebarProps) {
   return (
-    <div className="w-64 bg-[#242424] border-r border-white/10 flex flex-col">
-      <div className="p-4 border-b border-white/10 flex items-center gap-2">
-        <Database className="text-green-500" />
-        <h1 className="font-bold text-lg">MC Wrapper</h1>
+    <div className="w-72 bg-sidebar-bg border-r border-black/5 dark:border-white/5 flex flex-col h-full shadow-2xl z-10 transition-colors duration-300">
+      <div className="p-6 flex items-center gap-3">
+        <div className="p-2 bg-primary/20 rounded-xl">
+          <Database className="text-primary w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 transition-all duration-300">
+            MC Wrapper
+          </h1>
+          <div className="flex items-center gap-1 text-[10px] text-primary font-bold uppercase tracking-widest opacity-80">
+            <Sparkles size={10} />
+            <span>Premium</span>
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Instances
+      <div className="flex-1 overflow-y-auto px-4 space-y-6 custom-scrollbar">
+        <div>
+          <div className="px-3 mb-3 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
+            Server Instances
+          </div>
+          <div className="space-y-1">
+            {instances.map(inst => (
+              <motion.button
+                key={inst.id}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onSelectInstance(inst.id)}
+                className={cn(
+                  "w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center gap-3 group relative overflow-hidden",
+                  selectedInstanceId === inst.id
+                    ? "bg-primary text-white shadow-glow-primary shadow-primary/20"
+                    : "hover:bg-black/5 dark:hover:bg-white/[0.03] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                )}
+              >
+                {selectedInstanceId === inst.id && (
+                  <motion.div
+                    layoutId="active-pill"
+                    className="absolute left-0 w-1 h-6 bg-white rounded-r-full"
+                  />
+                )}
+
+                <div className="relative">
+                  <div className={cn(
+                    "w-2.5 h-2.5 rounded-full shadow-sm",
+                    inst.status === 'Running' ? "bg-accent-emerald animate-pulse" :
+                      inst.status === 'Starting' ? "bg-accent-amber animate-pulse" :
+                        (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-600"
+                  )} />
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium truncate leading-none mb-1">{inst.name}</span>
+                  <span className={cn(
+                    "text-[10px] uppercase font-bold tracking-wider opacity-60",
+                    selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
+                  )}>
+                    {inst.version}
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
         </div>
-        {instances.map(inst => (
-          <button
-            key={inst.id}
-            onClick={() => onSelectInstance(inst.id)}
-            className={cn(
-              "w-full text-left px-3 py-2 rounded transition-colors flex items-center gap-2",
-              selectedInstanceId === inst.id ? "bg-blue-600 text-white shadow-lg" : "hover:bg-white/5 text-gray-300"
-            )}
-          >
-            <div className={cn(
-              "w-2 h-2 rounded-full",
-              inst.status === 'Running' ? "bg-green-500" :
-                inst.status === 'Starting' ? "bg-orange-500" :
-                  (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-red-500" : "bg-gray-500"
-            )} />
-            <span className="truncate">{inst.name}</span>
-          </button>
-        ))}
+
         <button
           onClick={onCreateNew}
-          className="w-full text-left px-3 py-2 rounded hover:bg-white/5 text-green-500 flex items-center gap-2 mt-2"
+          className="w-full group flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-primary"
         >
-          <Plus size={18} />
-          <span>Create New</span>
+          <div className="p-1.5 bg-gray-100 dark:bg-white/5 rounded-lg group-hover:bg-primary/20 transition-colors">
+            <Plus size={18} />
+          </div>
+          <span className="font-medium">Create New Instance</span>
         </button>
       </div>
 
-      <div className="p-4 border-t border-white/10 text-xs text-gray-500">
-        v0.1.0-alpha
+      <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 transition-colors duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-indigo flex items-center justify-center text-white font-bold shadow-lg">
+              AD
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">Administrator</span>
+              <span className="text-[10px] text-gray-500">System Control</span>
+            </div>
+          </div>
+          <button
+            onClick={onOpenSettings}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-gray-900 dark:hover:text-white group"
+            title="App Settings"
+          >
+            <Settings size={18} className="group-hover:rotate-45 transition-transform duration-300" />
+          </button>
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-600 font-mono transition-colors duration-300">
+          <span>v1.0.0-beta</span>
+          <span className="text-accent-emerald">CONNECTED</span>
+        </div>
       </div>
     </div>
   )

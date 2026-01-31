@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Save, RefreshCw, Search } from 'lucide-react'
+import { Save, RefreshCw, Search, Settings2, Info } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from './utils'
+import { Select } from './components/Select'
 
 interface ConfigTabProps {
   instanceId: string
@@ -52,9 +55,14 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <RefreshCw className="animate-spin text-blue-500 mr-2" />
-        <span>Loading properties...</span>
+      <div className="flex flex-col items-center justify-center h-full gap-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <RefreshCw className="text-primary w-12 h-12 opacity-50" />
+        </motion.div>
+        <span className="text-gray-400 dark:text-white/40 font-medium tracking-wider uppercase text-xs">Loading properties...</span>
       </div>
     )
   }
@@ -63,16 +71,18 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
     const isBoolean = value === 'true' || value === 'false'
     const isNumeric = !isNaN(Number(value)) && value.trim() !== ''
 
+    const inputClasses = "w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all hover:bg-black/10 dark:hover:bg-white/[0.05]"
+
     if (isBoolean) {
       return (
-        <select
-          className="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 focus:outline-none focus:border-blue-500 w-full"
+        <Select
           value={value}
-          onChange={(e) => handlePropertyChange(key, e.target.value)}
-        >
-          <option value="true">true</option>
-          <option value="false">false</option>
-        </select>
+          onChange={(newValue) => handlePropertyChange(key, newValue)}
+          options={[
+            { value: 'true', label: 'true' },
+            { value: 'false', label: 'false' },
+          ]}
+        />
       )
     }
 
@@ -80,7 +90,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
       return (
         <input
           type="number"
-          className="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 focus:outline-none focus:border-blue-500 w-full"
+          className={inputClasses}
           value={value}
           onChange={(e) => handlePropertyChange(key, e.target.value)}
         />
@@ -90,7 +100,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
     return (
       <input
         type="text"
-        className="bg-[#1e1e1e] border border-[#333] rounded px-3 py-1.5 focus:outline-none focus:border-blue-500 w-full"
+        className={inputClasses}
         value={value}
         onChange={(e) => handlePropertyChange(key, e.target.value)}
       />
@@ -98,56 +108,97 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+    <div className="space-y-8 pb-8">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="relative flex-1 w-full max-w-xl group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-primary transition-colors" size={20} />
           <input
             type="text"
-            placeholder="Search properties..."
-            className="w-full bg-[#2a2a2a] border border-[#333] rounded-lg py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search server properties (e.g. motd, port, seeds)..."
+            className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-2xl py-3.5 pl-12 pr-6 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-3">
-          <button
+        <div className="flex gap-3 w-full md:w-auto">
+          <motion.button
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={fetchProperties}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2a2a2a] hover:bg-[#333] rounded-lg transition-colors"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-black/5 dark:bg-white/[0.03] hover:bg-black/10 dark:hover:bg-white/[0.08] border border-black/10 dark:border-white/10 rounded-2xl transition-all text-sm font-bold uppercase tracking-widest text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white"
           >
             <RefreshCw size={18} />
             Refresh
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 rounded-lg transition-colors"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3.5 bg-primary hover:bg-primary-hover disabled:bg-black/5 dark:disabled:bg-white/5 disabled:text-gray-400 dark:disabled:text-white/20 disabled:cursor-not-allowed rounded-2xl transition-all text-sm font-bold uppercase tracking-widest text-white shadow-glow-primary"
           >
-            <Save size={18} />
+            {saving ? (
+              <RefreshCw className="animate-spin" size={18} />
+            ) : (
+              <Save size={18} />
+            )}
             {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          </motion.button>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-lg">
-          {error}
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-accent-rose/10 border border-accent-rose/20 text-accent-rose p-5 rounded-2xl flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-full bg-accent-rose/20 flex items-center justify-center shrink-0">
+              <Info size={20} />
+            </div>
+            <p className="text-sm font-medium">{error}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredKeys.map(key => (
-          <div key={key} className="bg-[#2a2a2a] p-4 rounded-lg border border-[#333] flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-400">{key}</label>
-            {renderInput(key, properties[key])}
-          </div>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <AnimatePresence mode="popLayout">
+          {filteredKeys.map((key, index) => (
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: index * 0.01 }}
+              key={key}
+              className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-3 group hover:border-primary/30 transition-all hover:translate-y-[-2px] focus-within:z-20 relative"
+            >
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors">
+                  {key.replace(/-/g, ' ')}
+                </label>
+                <Settings2 size={14} className="text-gray-400 dark:text-white/10 group-hover:text-primary transition-colors" />
+              </div>
+              {renderInput(key, properties[key])}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {filteredKeys.length === 0 && (
-        <div className="text-center py-10 text-gray-500">
-          No properties found matching your search.
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-20"
+        >
+          <div className="w-20 h-20 rounded-full bg-black/5 dark:bg-white/[0.03] flex items-center justify-center mx-auto mb-6">
+            <Search className="text-gray-400 dark:text-white/10" size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-400 dark:text-white/40">No properties found</h3>
+          <p className="text-gray-500 dark:text-white/20 mt-2">Try searching for something else, like 'port' or 'pvp'</p>
+        </motion.div>
       )}
     </div>
   )

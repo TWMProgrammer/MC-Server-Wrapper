@@ -10,6 +10,7 @@ This document provides explicit instructions for AI agents working on the **Mine
 After making any code modifications, you **MUST** verify the integrity of the codebase.
 - Run `cargo check` to ensure there are no compilation errors or linter warnings.
 - Run `cargo test` to execute all unit and integration tests.
+- Run `npm run build` or the appropriate frontend build command to ensure TypeScript/React integrity.
 - **NEVER** leave the project in a broken state. If you introduce errors, fix them immediately before proceeding.
 
 ### **2. Match Existing Coding Style**
