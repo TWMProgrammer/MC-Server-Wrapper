@@ -85,7 +85,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
             initial={{ opacity: 0, scale: 0.95, y: 10, x: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10, x: 20 }}
-            className="absolute right-0 mt-3 w-72 bg-white dark:bg-surface/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5 dark:ring-white/10"
+            className="absolute right-0 mt-3 w-72 bg-white dark:bg-gray-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden ring-1 ring-black/5 dark:ring-white/10"
           >
             <AnimatePresence mode="wait">
               {!showDeleteConfirm && !showCloneForm && (
@@ -97,7 +97,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
                   className="p-2 space-y-1"
                 >
                   <div className="px-3 py-2 mb-1">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/30">Instance Actions</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-white/50">Instance Actions</h4>
                   </div>
                   <button
                     onClick={() => setShowCloneForm(true)}
@@ -108,7 +108,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
                     </div>
                     <div className="flex flex-col items-start">
                       <span className="font-bold">Clone Instance</span>
-                      <span className="text-[10px] text-gray-400 dark:text-white/20 uppercase font-black tracking-widest">Duplicate this server</span>
+                      <span className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-black tracking-widest">Duplicate this server</span>
                     </div>
                   </button>
                   <button
@@ -120,7 +120,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
                     </div>
                     <div className="flex flex-col items-start">
                       <span className="font-bold">Delete Instance</span>
-                      <span className="text-[10px] text-gray-400 dark:text-white/20 uppercase font-black tracking-widest">Permanent removal</span>
+                      <span className="text-[10px] text-gray-400 dark:text-white/40 uppercase font-black tracking-widest">Permanent removal</span>
                     </div>
                   </button>
                 </motion.div>

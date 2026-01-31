@@ -8,12 +8,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: 'var(--background)',
-        surface: 'var(--surface)',
+        background: 'rgb(var(--background) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        foreground: 'rgb(var(--foreground) / <alpha-value>)',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          hover: 'hsl(var(--primary-hover))',
-          active: 'hsl(var(--primary-active))',
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          hover: 'hsl(var(--primary-hover) / <alpha-value>)',
+          active: 'hsl(var(--primary-active) / <alpha-value>)',
         },
         accent: {
           emerald: '#10b981',

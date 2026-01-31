@@ -279,10 +279,14 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                 </div>
               </div>
               <motion.button
-                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileHover={{
+                  scale: 1.1,
+                  rotate: 90,
+                  transition: { duration: 0.2, ease: "easeOut" }
+                }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onClose}
-                className="p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors text-gray-400 dark:text-white/30 hover:text-gray-900 dark:hover:text-white"
+                className="p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-colors duration-200 text-gray-400 dark:text-white/30 hover:text-gray-900 dark:hover:text-white"
               >
                 <X size={24} />
               </motion.button>
@@ -347,11 +351,22 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                                       key={type.id}
                                       initial={{ opacity: 0, y: 20 }}
                                       animate={{ opacity: 1, y: 0 }}
-                                      transition={{ delay: (catIdx * 0.1) + (i * 0.05) }}
-                                      whileHover={{ scale: 1.02, translateY: -4 }}
-                                      whileTap={{ scale: 0.98 }}
+                                      transition={{
+                                        duration: 0.4,
+                                        ease: [0.23, 1, 0.32, 1],
+                                        delay: (catIdx * 0.1) + (i * 0.05)
+                                      }}
+                                      whileHover={{
+                                        scale: 1.02,
+                                        translateY: -4,
+                                        transition: { duration: 0.2, ease: "easeOut" }
+                                      }}
+                                      whileTap={{
+                                        scale: 0.98,
+                                        transition: { duration: 0.1 }
+                                      }}
                                       onClick={() => setSelectedServerType(type.id)}
-                                      className="flex flex-col gap-4 p-5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:border-primary/30 transition-all text-left group relative overflow-hidden"
+                                      className="flex flex-col gap-4 p-5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:border-primary/30 transition-all duration-200 text-left group relative overflow-hidden"
                                     >
                                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors" />
                                       <div className="p-4 rounded-2xl bg-black/10 dark:bg-black/40 w-fit group-hover:bg-primary/20 group-hover:text-primary transition-all shadow-inner-light">
@@ -383,10 +398,14 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-black/[0.01] dark:bg-white/[0.01]">
                             <div className="flex items-center gap-4">
                               <motion.button
-                                whileHover={{ scale: 1.1, x: -2 }}
+                                whileHover={{
+                                  scale: 1.1,
+                                  x: -2,
+                                  transition: { duration: 0.2, ease: "easeOut" }
+                                }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => setSelectedServerType(null)}
-                                className="p-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-all border border-black/5 dark:border-white/5"
+                                className="p-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-all duration-200 border border-black/5 dark:border-white/5"
                               >
                                 <ChevronRight size={20} className="rotate-180" />
                               </motion.button>
@@ -560,12 +579,16 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                   Cancel
                 </button>
                 <motion.button
-                  whileHover={(!name || !selectedVersion || creating) ? {} : { scale: 1.02, translateY: -2 }}
+                  whileHover={(!name || !selectedVersion || creating) ? {} : {
+                    scale: 1.02,
+                    translateY: -2,
+                    transition: { duration: 0.2, ease: "easeOut" }
+                  }}
                   whileTap={(!name || !selectedVersion || creating) ? {} : { scale: 0.98 }}
                   onClick={handleCreate}
                   disabled={!name || !selectedVersion || creating}
                   className={cn(
-                    "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-2xl",
+                    "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-3 shadow-2xl",
                     !name || !selectedVersion || creating
                       ? "bg-black/5 dark:bg-white/5 text-gray-400 dark:text-white/10 cursor-not-allowed"
                       : "bg-primary hover:bg-primary-hover text-white shadow-glow-primary"
@@ -604,7 +627,7 @@ function SidebarItem({ icon, label, active, onClick, disabled = false }: {
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all",
+        "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
         active
           ? "bg-primary text-white shadow-lg shadow-primary/20"
           : disabled

@@ -4,9 +4,9 @@
 
 @layer base {
   :root {
-    --background: #f8f9fa;
-    --surface: #ffffff;
-    --foreground: #1a1a1a;
+    --background: 248, 249, 250;
+    --surface: 255, 255, 255;
+    --foreground: 26, 26, 26;
     --primary: 221.2 83.2% 53.3%;
     --primary-hover: 221.2 83.2% 45.3%;
     --primary-active: 221.2 83.2% 35.3%;
@@ -16,17 +16,17 @@
   }
 
   .dark {
-    --background: #0a0a0c;
-    --surface: #16161a;
-    --foreground: #ffffff;
+    --background: 10, 10, 12;
+    --surface: 22, 22, 26;
+    --foreground: 255, 255, 255;
     --border: rgba(255, 255, 255, 0.05);
     --card-bg: rgba(22, 22, 26, 0.8);
     --sidebar-bg: #0a0a0c;
   }
 
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
     @apply antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
