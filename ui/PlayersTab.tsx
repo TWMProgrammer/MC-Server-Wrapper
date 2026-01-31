@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Trash2, UserPlus, FileText, Shield, Ban, Globe, Activity, Plus, Search, Info, RefreshCw, CheckCircle2, Users } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Trash2, UserPlus, FileText, Shield, Ban, Globe, Activity, Plus, Search, Info, RefreshCw, CheckCircle2, Users, X } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { AllPlayerLists } from './types'
 import { cn } from './utils'
@@ -26,6 +26,18 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
   const [newUsername, setNewUsername] = useState('');
   const [adding, setAdding] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const addModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (addModalRef.current && !addModalRef.current.contains(event.target as Node)) {
+        setIsAddModalOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const addNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -84,6 +96,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
         addNotification(`Added ${newUsername.trim()} to ${activeSubTab}`);
       }
       setNewUsername('');
+      setIsAddModalOpen(false);
       await fetchLists();
     } catch (err) {
       addNotification(`Error: ${err}`, 'error');
@@ -209,15 +222,76 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
           ))}
         </div>
         {activeSubTab !== 'all' && (
-          <motion.button
-            whileHover={{ scale: 1.02, translateY: -2 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary/20 transition-all text-xs font-black uppercase tracking-widest"
-            onClick={() => invoke('open_player_list_file', { instanceId, listType: activeSubTab })}
-          >
-            <FileText size={18} />
-            Edit Raw Configs
-          </motion.button>
+          <div className="flex items-center gap-3 relative" ref={addModalRef}>
+            <motion.button
+              whileHover={{ scale: 1.02, translateY: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className={cn(
+                "flex items-center gap-2 px-6 py-3 border rounded-2xl transition-all text-xs font-black uppercase tracking-widest",
+                isAddModalOpen
+                  ? "bg-primary text-white border-primary shadow-glow-primary"
+                  : "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10"
+              )}
+              onClick={() => setIsAddModalOpen(!isAddModalOpen)}
+            >
+              {isAddModalOpen ? <X size={18} /> : <UserPlus size={18} />}
+              {activeSubTab === 'banned-ips' ? 'Ban IP' : 'Add Player'}
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02, translateY: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary/20 transition-all text-xs font-black uppercase tracking-widest"
+              onClick={() => invoke('open_player_list_file', { instanceId, listType: activeSubTab })}
+            >
+              <FileText size={18} />
+              Edit Raw Configs
+            </motion.button>
+
+            <AnimatePresence>
+              {isAddModalOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full mt-3 right-0 w-80 glass-panel p-5 rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl z-50"
+                >
+                  <form onSubmit={handleAddPlayer} className="space-y-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/30 ml-1">
+                        {activeSubTab === 'banned-ips' ? 'Ban IP Address' : `Add to ${activeSubTab}`}
+                      </label>
+                      <div className="relative group">
+                        <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-primary transition-colors" size={18} />
+                        <input
+                          autoFocus
+                          type="text"
+                          placeholder={activeSubTab === 'banned-ips' ? "Enter IP address..." : "Enter Minecraft username..."}
+                          className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20"
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={adding || !newUsername.trim()}
+                      className="w-full py-3 bg-primary hover:bg-primary-hover disabled:bg-black/5 dark:disabled:bg-white/5 disabled:text-gray-400 dark:disabled:text-white/20 disabled:cursor-not-allowed rounded-xl transition-all text-xs font-black uppercase tracking-widest text-white shadow-glow-primary flex items-center justify-center gap-2"
+                    >
+                      {adding ? (
+                        <RefreshCw size={16} className="animate-spin" />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                      {adding ? 'Adding...' : 'Add Player'}
+                    </motion.button>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
       </div>
 
@@ -391,46 +465,6 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
           </motion.div>
         </AnimatePresence>
       </div>
-
-      {activeSubTab !== 'all' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="pt-6 border-t border-black/5 dark:border-white/5"
-        >
-          <form onSubmit={handleAddPlayer} className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/30 ml-1">
-              {activeSubTab === 'banned-ips' ? 'Ban IP Address' : `Add to ${activeSubTab}`}
-            </label>
-            <div className="flex gap-3">
-              <div className="relative flex-1 group">
-                <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-primary transition-colors" size={20} />
-                <input
-                  type="text"
-                  placeholder={activeSubTab === 'banned-ips' ? "Enter IP address..." : "Enter Minecraft username..."}
-                  className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-2xl py-4 pl-12 pr-6 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                />
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.02, translateY: -2 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={adding || !newUsername.trim()}
-                className="px-8 py-4 bg-primary hover:bg-primary-hover disabled:bg-black/5 dark:disabled:bg-white/5 disabled:text-gray-400 dark:disabled:text-white/20 disabled:cursor-not-allowed rounded-2xl transition-all text-sm font-black uppercase tracking-widest text-white shadow-glow-primary flex items-center gap-2 shrink-0"
-              >
-                {adding ? (
-                  <RefreshCw size={18} className="animate-spin" />
-                ) : (
-                  <Plus size={18} />
-                )}
-                {adding ? 'Adding...' : 'Add Player'}
-              </motion.button>
-            </div>
-          </form>
-        </motion.div>
-      )}
 
       {/* Notifications */}
       <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3 pointer-events-none">
