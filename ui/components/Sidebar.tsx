@@ -6,7 +6,7 @@ import { cn } from '../utils'
 interface SidebarProps {
   instances: Instance[];
   selectedInstanceId: string | null;
-  onSelectInstance: (id: string) => void;
+  onSelectInstance: (id: string | null) => void;
   onCreateNew: () => void;
   onOpenSettings: () => void;
 }
@@ -14,7 +14,10 @@ interface SidebarProps {
 export function Sidebar({ instances, selectedInstanceId, onSelectInstance, onCreateNew, onOpenSettings }: SidebarProps) {
   return (
     <div className="w-72 bg-sidebar-bg border-r border-black/5 dark:border-white/5 flex flex-col h-full shadow-2xl z-10 transition-colors duration-300">
-      <div className="p-6 flex items-center gap-3">
+      <div
+        className="p-6 flex items-center gap-3 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        onClick={() => onSelectInstance(null)}
+      >
         <div className="p-2 bg-primary/20 rounded-xl">
           <Database className="text-primary w-6 h-6" />
         </div>

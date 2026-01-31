@@ -94,10 +94,8 @@ export function useServer() {
       setInstances(enrichedList)
       if (selectId) {
         setSelectedInstanceId(selectId)
-      } else if (enrichedList.length > 0 && !selectedInstanceId) {
-        setSelectedInstanceId(enrichedList[0].id)
       } else if (enrichedList.length > 0 && selectedInstanceId && !enrichedList.find(i => i.id === selectedInstanceId)) {
-        setSelectedInstanceId(enrichedList[0].id)
+        setSelectedInstanceId(null)
       } else if (enrichedList.length === 0) {
         setSelectedInstanceId(null)
       }
