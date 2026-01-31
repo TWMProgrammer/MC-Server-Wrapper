@@ -33,3 +33,4 @@ desktop.ini
 /logs/
 /temp/
 *.log
+CODE_SPLITTING_PLAN.md
