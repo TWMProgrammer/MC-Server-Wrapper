@@ -1,12 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Trash2, Copy, AlertTriangle, Settings, ChevronRight } from 'lucide-react'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { Trash2, Copy, AlertTriangle, Settings } from 'lucide-react'
+import { cn } from './utils'
 
 interface InstanceSettingsDropdownProps {
   instance: {

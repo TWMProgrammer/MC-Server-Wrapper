@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { Download, Loader2 } from 'lucide-react'
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+import { cn } from './utils'
 
 interface ProgressPayload {
   instance_id: string;

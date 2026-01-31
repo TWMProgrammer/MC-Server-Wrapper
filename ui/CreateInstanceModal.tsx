@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { X, Search, Filter, Box, Download, Info, Check, ChevronRight, HardDrive, Globe, Package, Zap, Send, Hammer, Layers, Network, Gamepad2, Blocks } from 'lucide-react'
+import { cn } from './utils'
+import { Instance } from './types'
 
 interface ServerType {
   id: string;
@@ -79,13 +81,6 @@ const SERVER_TYPES: ServerType[] = [
     badgeColor: 'text-orange-400',
   },
 ];
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
 interface MCVersion {
   id: string;
   type: string;
@@ -104,16 +99,6 @@ interface VersionManifest {
 interface ModLoader {
   name: string;
   versions: string[];
-}
-
-interface Instance {
-  id: string;
-  name: string;
-  version: string;
-  path: string;
-  created_at: string;
-  mod_loader?: string;
-  loader_version?: string;
 }
 
 interface CreateInstanceModalProps {
