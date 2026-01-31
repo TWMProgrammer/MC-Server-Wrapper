@@ -52,9 +52,16 @@ export interface BannedIpEntry {
   reason: string;
 }
 
+export interface UserCacheEntry {
+  uuid: string;
+  name: string;
+  expiresOn: string;
+}
+
 export interface AllPlayerLists {
   whitelist: PlayerEntry[];
   ops: OpEntry[];
   banned_players: BannedPlayerEntry[];
   banned_ips: BannedIpEntry[];
+  user_cache: UserCacheEntry[];
 }

@@ -38,11 +38,29 @@ pub struct BannedIpEntry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserCacheEntry {
+    pub uuid: String,
+    pub name: String,
+    #[serde(rename = "expiresOn")]
+    pub expires_on: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AllPlayerLists {
     pub whitelist: Vec<PlayerEntry>,
     pub ops: Vec<OpEntry>,
     pub banned_players: Vec<BannedPlayerEntry>,
     pub banned_ips: Vec<BannedIpEntry>,
+    pub user_cache: Vec<UserCacheEntry>,
+}
+
+pub async fn read_usercache(path: &Path) -> Result<Vec<UserCacheEntry>> {
+    let file_path = path.join("usercache.json");
+    if !file_path.exists() {
+        return Ok(vec![]);
+    }
+    let content = fs::read_to_string(&file_path).await?;
+    serde_json::from_str(&content).context("Failed to parse usercache.json")
 }
 
 pub async fn read_whitelist(path: &Path) -> Result<Vec<PlayerEntry>> {

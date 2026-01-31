@@ -254,12 +254,14 @@ async fn get_players(
     let ops = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
     let banned_players = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
     let banned_ips = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+    let user_cache = players::read_usercache(&instance.path).await.map_err(|e| e.to_string())?;
     
     Ok(players::AllPlayerLists {
         whitelist,
         ops,
         banned_players,
         banned_ips,
+        user_cache,
     })
 }
 

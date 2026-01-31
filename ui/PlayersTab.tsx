@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Trash2, UserPlus, FileText, Shield, Ban, Globe, Activity, Plus, Search, Info, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Trash2, UserPlus, FileText, Shield, Ban, Globe, Activity, Plus, Search, Info, RefreshCw, CheckCircle2, Users } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { AllPlayerLists } from './types'
 import { cn } from './utils'
@@ -9,16 +9,31 @@ interface PlayersTabProps {
   instanceId: string;
 }
 
-type PlayerSubTab = 'live' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
+interface Notification {
+  id: string;
+  message: string;
+  type: 'success' | 'error';
+}
+
+type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
 
 export function PlayersTab({ instanceId }: PlayersTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<PlayerSubTab>('live');
+  const [activeSubTab, setActiveSubTab] = useState<PlayerSubTab>('all');
   const [lists, setLists] = useState<AllPlayerLists | null>(null);
   const [onlinePlayers, setOnlinePlayers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newUsername, setNewUsername] = useState('');
   const [adding, setAdding] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const addNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 3000);
+  };
 
   const fetchLists = async () => {
     try {
@@ -63,13 +78,15 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
       setAdding(true);
       if (activeSubTab === 'banned-ips') {
         await invoke('add_banned_ip', { instanceId, ip: newUsername.trim() });
+        addNotification(`Banned IP: ${newUsername.trim()}`);
       } else {
         await invoke('add_player', { instanceId, listType: activeSubTab, username: newUsername.trim() });
+        addNotification(`Added ${newUsername.trim()} to ${activeSubTab}`);
       }
       setNewUsername('');
       await fetchLists();
     } catch (err) {
-      alert(`Error adding player: ${err}`);
+      addNotification(`Error: ${err}`, 'error');
     } finally {
       setAdding(false);
     }
@@ -78,9 +95,10 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
   const handleRemovePlayer = async (identifier: string) => {
     try {
       await invoke('remove_player', { instanceId, listType: activeSubTab, identifier });
+      addNotification(`Removed from ${activeSubTab}`);
       await fetchLists();
     } catch (err) {
-      alert(`Error removing player: ${err}`);
+      addNotification(`Error: ${err}`, 'error');
     }
   };
 
@@ -88,13 +106,50 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
     try {
       setAdding(true);
       await invoke('add_player', { instanceId, listType, username });
+      addNotification(`Added ${username} to ${listType}`);
       await fetchLists();
     } catch (err) {
-      alert(`Error adding player: ${err}`);
+      addNotification(`Error: ${err}`, 'error');
     } finally {
       setAdding(false);
     }
   };
+
+  const allPlayers = useMemo(() => {
+    if (!lists) return [];
+
+    const playersMap = new Map<string, {
+      name: string;
+      uuid?: string;
+      isOnline: boolean;
+      isWhitelisted: boolean;
+      isOp: boolean;
+      isBanned: boolean;
+    }>();
+
+    const updatePlayer = (name: string, uuid?: string, flags: Partial<{ isOnline: boolean, isWhitelisted: boolean, isOp: boolean, isBanned: boolean }> = {}) => {
+      const existing = playersMap.get(name);
+      playersMap.set(name, {
+        name,
+        uuid: uuid || existing?.uuid,
+        isOnline: flags.isOnline ?? existing?.isOnline ?? false,
+        isWhitelisted: flags.isWhitelisted ?? existing?.isWhitelisted ?? false,
+        isOp: flags.isOp ?? existing?.isOp ?? false,
+        isBanned: flags.isBanned ?? existing?.isBanned ?? false,
+      });
+    };
+
+    onlinePlayers.forEach(name => updatePlayer(name, undefined, { isOnline: true }));
+    lists.user_cache.forEach(p => updatePlayer(p.name, p.uuid));
+    lists.whitelist.forEach(p => updatePlayer(p.name, p.uuid, { isWhitelisted: true }));
+    lists.ops.forEach(p => updatePlayer(p.name, p.uuid, { isOp: true }));
+    lists.banned_players.forEach(p => updatePlayer(p.name, p.uuid, { isBanned: true }));
+
+    return Array.from(playersMap.values()).sort((a, b) => {
+      if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [lists, onlinePlayers]);
 
   if (loading && !lists) {
     return (
@@ -111,8 +166,8 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
   }
 
   const subTabs: { id: PlayerSubTab; label: string; icon: any; color: string }[] = [
-    { id: 'live', label: 'Live', icon: Activity, color: 'text-emerald-500' },
-    { id: 'whitelist', label: 'Whitelist', icon: Shield, color: 'text-primary' },
+    { id: 'all', label: 'All Players', icon: Users, color: 'text-emerald-500' },
+    { id: 'whitelist', label: 'Whitelist', icon: FileText, color: 'text-primary' },
     { id: 'ops', label: 'Operators', icon: Shield, color: 'text-accent-amber' },
     { id: 'banned-players', label: 'Banned', icon: Ban, color: 'text-accent-rose' },
     { id: 'banned-ips', label: 'Banned IPs', icon: Globe, color: 'text-accent-rose' },
@@ -189,56 +244,89 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
             exit={{ opacity: 0, y: -10 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
-            {activeSubTab === 'live' ? (
-              onlinePlayers.map((username, index) => (
+            {activeSubTab === 'all' ? (
+              allPlayers.map((player, index) => (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
-                  key={username}
+                  key={player.name}
                   className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-black/5 dark:border-white/5 group hover:border-primary/30 transition-all hover:translate-y-[-2px]"
                 >
                   <div className="flex items-center gap-4">
                     <div className="relative shrink-0">
                       <img
-                        src={`https://minotar.net/avatar/${username}/48`}
-                        alt={username}
+                        src={`https://minotar.net/avatar/${player.uuid || player.name}/48`}
+                        alt={player.name}
                         className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
                       />
                       <span className={cn(
-                        "absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 shadow-glow-emerald",
-                        "border-white dark:border-[#0a0a0a]"
+                        "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 shadow-sm transition-all duration-500",
+                        player.isOnline
+                          ? "bg-emerald-500 border-white dark:border-[#0a0a0a] shadow-glow-emerald"
+                          : "bg-gray-400 border-white dark:border-[#0a0a0a]"
                       )}></span>
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-gray-900 dark:text-white tracking-tight truncate">{username}</span>
-                      <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1.5">
-                        Live Now
-                      </span>
+                      <span className="font-bold text-gray-900 dark:text-white tracking-tight truncate">{player.name}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {player.isWhitelisted && (
+                          <div title="Whitelisted" className="text-primary">
+                            <FileText size={12} />
+                          </div>
+                        )}
+                        {player.isOp && (
+                          <div title="Operator" className="text-accent-amber">
+                            <Shield size={12} />
+                          </div>
+                        )}
+                        {player.isBanned && (
+                          <div title="Banned" className="text-accent-rose">
+                            <Ban size={12} />
+                          </div>
+                        )}
+                        {!player.isWhitelisted && !player.isOp && !player.isBanned && (
+                          <span className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">
+                            Neutral
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                    <button
-                      onClick={() => handleQuickAdd(username, 'whitelist')}
-                      title="Add to Whitelist"
-                      className="p-2 text-gray-400 dark:text-white/40 hover:text-primary hover:bg-primary/10 rounded-xl transition-colors"
-                    >
-                      <Shield size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleQuickAdd(username, 'ops')}
-                      title="Make Operator"
-                      className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-amber hover:bg-accent-amber/10 rounded-xl transition-colors"
-                    >
-                      <Plus size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleQuickAdd(username, 'banned-players')}
-                      title="Ban Player"
-                      className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-rose hover:bg-accent-rose/10 rounded-xl transition-colors"
-                    >
-                      <Ban size={18} />
-                    </button>
+                    {!player.isWhitelisted && (
+                      <motion.button
+                        whileHover={{ scale: 1.1, translateY: -2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleQuickAdd(player.name, 'whitelist')}
+                        title="Add to Whitelist"
+                        className="p-2 text-gray-400 dark:text-white/40 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                      >
+                        <FileText size={18} />
+                      </motion.button>
+                    )}
+                    {!player.isOp && (
+                      <motion.button
+                        whileHover={{ scale: 1.1, translateY: -2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleQuickAdd(player.name, 'ops')}
+                        title="Make Operator"
+                        className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-amber hover:bg-accent-amber/10 rounded-xl transition-all"
+                      >
+                        <Shield size={18} />
+                      </motion.button>
+                    )}
+                    {!player.isBanned && (
+                      <motion.button
+                        whileHover={{ scale: 1.1, translateY: -2 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleQuickAdd(player.name, 'banned-players')}
+                        title="Ban Player"
+                        className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-rose hover:bg-accent-rose/10 rounded-xl transition-all"
+                      >
+                        <Ban size={18} />
+                      </motion.button>
+                    )}
                   </div>
                 </motion.div>
               ))
@@ -271,7 +359,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
                     </div>
                   </div>
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
+                    whileHover={{ scale: 1.1, translateY: -2 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => handleRemovePlayer('uuid' in player ? player.uuid : player.ip)}
                     className="p-2.5 text-gray-400 dark:text-white/20 hover:text-accent-rose hover:bg-accent-rose/10 rounded-xl transition-all opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0"
@@ -281,20 +369,20 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
                 </motion.div>
               ))
             )}
-            {((activeSubTab === 'live' && onlinePlayers.length === 0) || (activeSubTab !== 'live' && currentList.length === 0)) && !loading && (
+            {((activeSubTab === 'all' && allPlayers.length === 0) || (activeSubTab !== 'all' && currentList.length === 0)) && !loading && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="col-span-full py-20 text-center"
               >
                 <div className="w-20 h-20 rounded-full bg-black/5 dark:bg-white/[0.03] flex items-center justify-center mx-auto mb-6">
-                  {activeSubTab === 'live' ? <Activity size={32} className="text-gray-300 dark:text-white/10" /> : <UserPlus size={32} className="text-gray-300 dark:text-white/10" />}
+                  {activeSubTab === 'all' ? <Users size={32} className="text-gray-300 dark:text-white/10" /> : <UserPlus size={32} className="text-gray-300 dark:text-white/10" />}
                 </div>
                 <h3 className="text-xl font-bold text-gray-400 dark:text-white/40">
-                  {activeSubTab === 'live' ? "No players online" : "List is empty"}
+                  {activeSubTab === 'all' ? "No players found" : "List is empty"}
                 </h3>
                 <p className="text-gray-400 dark:text-white/20 mt-2">
-                  {activeSubTab === 'live' ? "Invite some friends to join the server!" : "Add a player to get started."}
+                  {activeSubTab === 'all' ? "Players who join your server will appear here." : "Add a player to get started."}
                 </p>
               </motion.div>
             )}
@@ -302,7 +390,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
         </AnimatePresence>
       </div>
 
-      {activeSubTab !== 'live' && (
+      {activeSubTab !== 'all' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -341,6 +429,33 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
           </form>
         </motion.div>
       )}
+
+      {/* Notifications */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence mode="popLayout">
+          {notifications.map((notification) => (
+            <motion.div
+              key={notification.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.9, transition: { duration: 0.2 } }}
+              className={cn(
+                "pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border transition-colors duration-300",
+                notification.type === 'success'
+                  ? "bg-emerald-500/90 text-white border-emerald-400/20"
+                  : "bg-accent-rose/90 text-white border-accent-rose/20"
+              )}
+            >
+              {notification.type === 'success' ? (
+                <CheckCircle2 size={20} className="shrink-0" />
+              ) : (
+                <Info size={20} className="shrink-0" />
+              )}
+              <span className="text-sm font-bold tracking-wide">{notification.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
