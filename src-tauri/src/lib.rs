@@ -2,7 +2,7 @@ use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::server::{ServerStatus, ResourceUsage, ServerHandle};
 use mc_server_wrapper_core::players;
-use mc_server_wrapper_core::server_properties;
+use mc_server_wrapper_core::config_files;
 use tauri::{State, Manager, Emitter};
 use std::sync::Arc;
 use uuid::Uuid;
@@ -424,6 +424,47 @@ async fn remove_player(
 }
 
 #[tauri::command]
+async fn get_available_configs(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+) -> Result<Vec<config_files::ConfigFile>, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    Ok(config_files::list_available_configs(&instance.path, instance.mod_loader.as_deref()).await)
+}
+
+#[tauri::command]
+async fn get_config_file(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    rel_path: String,
+    format: config_files::ConfigFormat,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    config_files::read_config_file(&instance.path, &rel_path, format).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn save_config_file(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    rel_path: String,
+    format: config_files::ConfigFormat,
+    properties: std::collections::HashMap<String, String>,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    config_files::save_config_file(&instance.path, &rel_path, format, properties).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn get_server_properties(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
@@ -432,7 +473,7 @@ async fn get_server_properties(
     let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
     
-    server_properties::read_server_properties(&instance.path).await.map_err(|e| e.to_string())
+    config_files::read_config_file(&instance.path, "server.properties", config_files::ConfigFormat::Properties).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -445,7 +486,7 @@ async fn save_server_properties(
     let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
     
-    server_properties::write_server_properties(&instance.path, &properties).await.map_err(|e| e.to_string())
+    config_files::save_config_file(&instance.path, "server.properties", config_files::ConfigFormat::Properties, properties).await.map_err(|e| e.to_string())
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -599,6 +640,9 @@ pub fn run() {
         remove_player,
         get_server_properties,
         save_server_properties,
+        get_available_configs,
+        get_config_file,
+        save_config_file,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
