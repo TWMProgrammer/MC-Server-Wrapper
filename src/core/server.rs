@@ -28,27 +28,42 @@ pub struct ResourceUsage {
     pub memory_usage: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ProgressPayload {
+    pub current: u64,
+    pub total: u64,
+    pub message: String,
+}
+
 #[allow(dead_code)]
 pub struct ServerHandle {
-    config: ServerConfig,
+    config: Arc<Mutex<ServerConfig>>,
     child: Arc<Mutex<Option<Child>>>,
     stdin: Arc<Mutex<Option<ChildStdin>>>,
     status: Arc<Mutex<ServerStatus>>,
     usage: Arc<Mutex<ResourceUsage>>,
     log_sender: broadcast::Sender<String>,
+    progress_sender: broadcast::Sender<ProgressPayload>,
 }
 
 impl ServerHandle {
     pub fn new(config: ServerConfig) -> Self {
         let (log_sender, _) = broadcast::channel(100);
+        let (progress_sender, _) = broadcast::channel(10);
         Self {
-            config,
+            config: Arc::new(Mutex::new(config)),
             child: Arc::new(Mutex::new(None)),
             stdin: Arc::new(Mutex::new(None)),
             status: Arc::new(Mutex::new(ServerStatus::Stopped)),
             usage: Arc::new(Mutex::new(ResourceUsage::default())),
             log_sender,
+            progress_sender,
         }
+    }
+
+    pub async fn update_config(&self, new_config: ServerConfig) {
+        let mut config = self.config.lock().await;
+        *config = new_config;
     }
 
     #[allow(dead_code)]
@@ -59,20 +74,44 @@ impl ServerHandle {
         }
 
         *status = ServerStatus::Starting;
-        info!("Starting server: {}", self.config.name);
+        let config = self.config.lock().await;
+        info!("Starting server: {}", config.name);
 
-        let java_cmd = self.config.java_path.as_ref()
-            .map(|p: &PathBuf| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "java".to_string());
+        let mut cmd = if let Some(script) = &config.run_script {
+            #[cfg(target_os = "windows")]
+            {
+                let mut c = Command::new("cmd");
+                c.arg("/c").arg(script);
+                c
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let mut c = Command::new("sh");
+                c.arg(script);
+                c
+            }
+        } else {
+            let java_cmd = config.java_path.as_ref()
+                .map(|p: &PathBuf| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "java".to_string());
 
-        let mut cmd = Command::new(java_cmd);
-        cmd.current_dir(&self.config.working_dir)
-            .arg(format!("-Xmx{}", self.config.max_memory))
-            .arg(format!("-Xms{}", self.config.min_memory))
-            .arg("-jar")
-            .arg(&self.config.jar_path)
-            .arg("nogui")
-            .stdin(Stdio::piped())
+            let mut c = Command::new(java_cmd);
+            c.arg(format!("-Xmx{}", config.max_memory))
+             .arg(format!("-Xms{}", config.min_memory));
+
+            if let Some(jar_path) = &config.jar_path {
+                c.arg("-jar").arg(jar_path);
+            }
+            c
+        };
+
+        cmd.current_dir(&config.working_dir);
+
+        for arg in &config.args {
+            cmd.arg(arg);
+        }
+
+        cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
@@ -172,7 +211,10 @@ impl ServerHandle {
         }
 
         *status = ServerStatus::Stopping;
-        info!("Stopping server: {}", self.config.name);
+        {
+            let config = self.config.lock().await;
+            info!("Stopping server: {}", config.name);
+        }
 
         // Try graceful shutdown first
         if let Err(e) = self.send_command("stop").await {
@@ -217,5 +259,21 @@ impl ServerHandle {
 
     pub fn subscribe_logs(&self) -> broadcast::Receiver<String> {
         self.log_sender.subscribe()
+    }
+
+    pub fn subscribe_progress(&self) -> broadcast::Receiver<ProgressPayload> {
+        self.progress_sender.subscribe()
+    }
+
+    pub fn emit_log(&self, line: String) {
+        let _ = self.log_sender.send(line);
+    }
+
+    pub fn emit_progress(&self, current: u64, total: u64, message: String) {
+        let _ = self.progress_sender.send(ProgressPayload {
+            current,
+            total,
+            message,
+        });
     }
 }

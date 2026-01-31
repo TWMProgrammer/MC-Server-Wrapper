@@ -96,7 +96,10 @@ impl VersionDownloader {
         Ok(manifest)
     }
 
-    pub async fn download_server(&self, version_id: &str, target_path: impl AsRef<Path>) -> Result<()> {
+    pub async fn download_server<F>(&self, version_id: &str, target_path: impl AsRef<Path>, on_progress: F) -> Result<()> 
+    where 
+        F: Fn(u64, u64) + Send + Sync + 'static 
+    {
         let manifest = self.fetch_manifest().await?;
         let version_info = manifest.versions.iter()
             .find(|v| v.id == version_id)
@@ -110,17 +113,21 @@ impl VersionDownloader {
             .await?;
 
         let server_download = detail.downloads.server;
-        info!("Downloading server JAR for version {}: {} ({} bytes)", version_id, server_download.url, server_download.size);
+        let total_size = server_download.size;
+        info!("Downloading server JAR for version {}: {} ({} bytes)", version_id, server_download.url, total_size);
 
         let response = self.client.get(&server_download.url).send().await?;
         let mut file = fs::File::create(&target_path).await?;
         let mut hasher = Sha1::new();
+        let mut downloaded: u64 = 0;
 
         let mut stream = response.bytes_stream();
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result?;
             file.write_all(&chunk).await?;
             hasher.update(&chunk);
+            downloaded += chunk.len() as u64;
+            on_progress(downloaded, total_size);
         }
 
         file.flush().await?;

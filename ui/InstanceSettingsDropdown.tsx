@@ -13,7 +13,7 @@ interface InstanceSettingsDropdownProps {
     id: string;
     name: string;
   };
-  onUpdated: () => void;
+  onUpdated: (id?: string) => void;
 }
 
 export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettingsDropdownProps) {
@@ -23,7 +23,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
   const [cloneName, setCloneName] = useState(`${instance.name} (Copy)`);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
-  
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,8 +56,8 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
     if (!cloneName.trim()) return;
     try {
       setIsCloning(true);
-      await invoke('clone_instance', { instanceId: instance.id, newName: cloneName });
-      onUpdated();
+      const newInstance = await invoke<{ id: string }>('clone_instance', { instanceId: instance.id, newName: cloneName });
+      onUpdated(newInstance.id);
       setIsOpen(false);
     } catch (e) {
       console.error('Failed to clone instance', e);

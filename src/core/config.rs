@@ -6,7 +6,9 @@ use tokio::fs;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerConfig {
     pub name: String,
-    pub jar_path: PathBuf,
+    pub jar_path: Option<PathBuf>,
+    pub run_script: Option<String>,
+    pub args: Vec<String>,
     pub java_path: Option<PathBuf>,
     pub max_memory: String,
     pub min_memory: String,
@@ -18,7 +20,9 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             name: "Minecraft Server".to_string(),
-            jar_path: PathBuf::from("server.jar"),
+            jar_path: Some(PathBuf::from("server.jar")),
+            run_script: None,
+            args: vec!["nogui".to_string()],
             java_path: None,
             max_memory: "2G".to_string(),
             min_memory: "1G".to_string(),

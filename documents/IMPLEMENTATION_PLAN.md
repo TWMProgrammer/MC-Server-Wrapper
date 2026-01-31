@@ -79,7 +79,7 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] Metadata storage for each instance (version, last run, etc.).
 - **Version Downloader**
     - [x] Integrate with Mojang's Version Manifest API.
-    - [x] Support for Fabric/Paper/Forge (Metadata scraping/APIs).
+    - [x] Support for Fabric/Paper/Forge/NeoForge (Metadata scraping/APIs).
     - [x] Hash verification for downloaded artifacts.
 - **Process Interaction**
     - [x] Implement `send_command` via `stdin`.

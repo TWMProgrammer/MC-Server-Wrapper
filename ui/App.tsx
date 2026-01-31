@@ -27,6 +27,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CreateInstanceModal } from './CreateInstanceModal'
 import { InstanceSettingsDropdown } from './InstanceSettingsDropdown'
 import { InstanceFolderDropdown } from './InstanceFolderDropdown'
+import { DownloadProgressModal } from './DownloadProgressModal'
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -39,11 +40,14 @@ interface Instance {
   path: string;
   created_at: string;
   last_run?: string;
+  mod_loader?: string;
+  loader_version?: string;
   server_type?: string;
   ip?: string;
   port?: number;
   description?: string;
   max_players?: number;
+  status?: string;
 }
 
 interface ResourceUsage {
@@ -63,6 +67,7 @@ function App() {
   const [history, setHistory] = useState<ResourceUsage[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [downloadingInstance, setDownloadingInstance] = useState<{ id: string, name: string } | null>(null)
   const [logs, setLogs] = useState<Record<string, string[]>>({})
   const [command, setCommand] = useState('')
   const historyRef = useRef<ResourceUsage[]>([])
@@ -95,14 +100,25 @@ function App() {
 
   useEffect(() => {
     let interval: number;
-    if (selectedInstance && (window as any).__TAURI_INTERNALS__) {
-      setHistory([])
-      historyRef.current = []
-      interval = window.setInterval(async () => {
-        try {
-          const s = await invoke<string>('get_server_status', { instanceId: selectedInstance })
-          setStatus(s)
-          if (s === 'Running') {
+    interval = window.setInterval(async () => {
+      if (!(window as any).__TAURI_INTERNALS__) return;
+      try {
+        const updatedInstances = await Promise.all(instances.map(async (inst) => {
+          const s = await invoke<string>('get_server_status', { instanceId: inst.id })
+          return { ...inst, status: s }
+        }))
+
+        // Only update if statuses actually changed to avoid unnecessary re-renders
+        const hasChanged = updatedInstances.some((inst, idx) => inst.status !== instances[idx].status)
+        if (hasChanged) {
+          setInstances(updatedInstances)
+        }
+
+        if (selectedInstance) {
+          const currentStatus = updatedInstances.find(i => i.id === selectedInstance)?.status || 'Stopped'
+          setStatus(currentStatus)
+
+          if (currentStatus === 'Running') {
             const u = await invoke<ResourceUsage>('get_server_usage', { instanceId: selectedInstance })
             const usageWithTime = { ...u, timestamp: Date.now() }
             setUsage(u)
@@ -113,28 +129,40 @@ function App() {
           } else {
             setUsage(null)
           }
-        } catch (e) {
-          console.error(e)
         }
-      }, 2000)
-    }
+      } catch (e) {
+        console.error(e)
+      }
+    }, 2000)
     return () => clearInterval(interval)
-  }, [selectedInstance])
+  }, [selectedInstance, instances])
 
-  async function loadInstances() {
+  async function loadInstances(selectId?: string) {
     if (!(window as any).__TAURI_INTERNALS__) return;
     try {
       const list = await invoke<Instance[]>('list_instances')
-      const enrichedList = list.map(inst => ({
-        ...inst,
-        server_type: inst.server_type || 'Paper',
-        ip: inst.ip || '127.0.0.1',
-        port: inst.port || 25565,
-        description: inst.description || 'There is no description for this server.',
-        max_players: inst.max_players || 20
-      }))
+      const enrichedList = list.map(inst => {
+        let server_type = 'Vanilla';
+        if (inst.mod_loader) {
+          // Capitalize first letter (e.g., paper -> Paper, forge -> Forge)
+          server_type = inst.mod_loader.charAt(0).toUpperCase() + inst.mod_loader.slice(1);
+          // Special cases if needed
+          if (inst.mod_loader.toLowerCase() === 'neoforge') server_type = 'NeoForge';
+        }
+
+        return {
+          ...inst,
+          server_type: inst.server_type || server_type,
+          ip: inst.ip || '127.0.0.1',
+          port: inst.port || 25565,
+          description: inst.description || 'There is no description for this server.',
+          max_players: inst.max_players || 20
+        }
+      })
       setInstances(enrichedList)
-      if (enrichedList.length > 0 && !selectedInstance) {
+      if (selectId) {
+        setSelectedInstance(selectId)
+      } else if (enrichedList.length > 0 && !selectedInstance) {
         setSelectedInstance(enrichedList[0].id)
       } else if (enrichedList.length > 0 && selectedInstance && !enrichedList.find(i => i.id === selectedInstance)) {
         setSelectedInstance(enrichedList[0].id)
@@ -208,10 +236,15 @@ function App() {
               onClick={() => setSelectedInstance(inst.id)}
               className={cn(
                 "w-full text-left px-3 py-2 rounded transition-colors flex items-center gap-2",
-                selectedInstance === inst.id ? "bg-green-600 text-white" : "hover:bg-white/5 text-gray-300"
+                selectedInstance === inst.id ? "bg-blue-600 text-white shadow-lg" : "hover:bg-white/5 text-gray-300"
               )}
             >
-              <div className={cn("w-2 h-2 rounded-full", selectedInstance === inst.id ? "bg-white" : "bg-gray-500")} />
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                inst.status === 'Running' ? "bg-green-500" :
+                  inst.status === 'Starting' ? "bg-orange-500" :
+                    (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-red-500" : "bg-gray-500"
+              )} />
               <span className="truncate">{inst.name}</span>
             </button>
           ))}
@@ -237,7 +270,7 @@ function App() {
             <div className="px-6 pt-6 pb-2 bg-[#242424]">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
                     <Database size={24} />
                   </div>
                   <div>
@@ -247,12 +280,14 @@ function App() {
                         <div className={cn(
                           "w-2 h-2 rounded-full",
                           status === 'Running' ? "bg-green-500" :
-                            status === 'Starting' ? "bg-yellow-500" : "bg-red-500"
+                            status === 'Starting' ? "bg-orange-500" :
+                              (status === 'Stopping' || status === 'Crashed') ? "bg-red-500" : "bg-gray-500"
                         )} />
                         <span className={cn(
                           "text-sm font-medium",
                           status === 'Running' ? "text-green-400" :
-                            status === 'Starting' ? "text-yellow-400" : "text-red-400"
+                            status === 'Starting' ? "text-orange-400" :
+                              (status === 'Stopping' || status === 'Crashed') ? "text-red-400" : "text-gray-400"
                         )}>
                           {status === 'Stopped' ? 'Offline' : status}
                         </span>
@@ -315,7 +350,7 @@ function App() {
                     >
                       {tab.label}
                       {activeTab === tab.id && (
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500" />
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
                       )}
                     </button>
                   ))}
@@ -521,10 +556,19 @@ function App() {
       <CreateInstanceModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onCreated={() => {
-          loadInstances()
+        onCreated={(instance) => {
+          loadInstances(instance.id)
+          setActiveTab('dashboard')
           setShowCreateModal(false)
         }}
+      />
+
+      {/* Download Progress Modal */}
+      <DownloadProgressModal
+        isOpen={!!downloadingInstance}
+        onClose={() => setDownloadingInstance(null)}
+        instanceId={downloadingInstance?.id || null}
+        instanceName={downloadingInstance?.name || ''}
       />
     </div>
   )

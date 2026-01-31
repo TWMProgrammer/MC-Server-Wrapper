@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModLoader {
@@ -23,16 +24,6 @@ struct FabricInstallerVersion {
 }
 
 #[derive(Debug, Deserialize)]
-struct QuiltLoaderVersion {
-    pub loader: QuiltLoader,
-}
-
-#[derive(Debug, Deserialize)]
-struct QuiltLoader {
-    pub version: String,
-}
-
-#[derive(Debug, Deserialize)]
 struct ForgePromotions {
     pub promos: std::collections::HashMap<String, String>,
 }
@@ -49,7 +40,6 @@ struct PaperBuildSummary {
 
 #[derive(Debug, Deserialize)]
 struct PaperBuildDetails {
-    pub build: u32,
     pub downloads: PaperDownloads,
 }
 
@@ -74,6 +64,9 @@ struct PurpurBuilds {
     pub all: Vec<String>,
 }
 
+use futures_util::StreamExt;
+use tokio::io::AsyncWriteExt;
+
 pub struct ModLoaderClient {
     client: reqwest::Client,
 }
@@ -88,12 +81,41 @@ impl ModLoaderClient {
         }
     }
 
+    async fn download_with_progress<F>(&self, url: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()>
+    where
+        F: Fn(u64, u64) + Send + Sync + 'static,
+    {
+        let response = self.client.get(url).send().await?;
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("Failed to download: {}", response.status()));
+        }
+
+        let total_size = response.content_length().unwrap_or(0);
+        let mut file = tokio::fs::File::create(target_path).await?;
+        let mut downloaded: u64 = 0;
+        let mut stream = response.bytes_stream();
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk = chunk_result?;
+            file.write_all(&chunk).await?;
+            downloaded += chunk.len() as u64;
+            on_progress(downloaded, total_size);
+        }
+
+        file.flush().await?;
+        Ok(())
+    }
+
     pub async fn get_fabric_versions(&self, mc_version: &str) -> Result<Vec<String>> {
         let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", mc_version);
         let response = self.client.get(&url).send().await?;
         
         if !response.status().is_success() {
-            return Ok(vec![]);
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                info!("No Fabric versions found for Minecraft version {}", mc_version);
+                return Ok(vec![]);
+            }
+            return Err(anyhow::anyhow!("Fabric Meta API returned error: {}", response.status()));
         }
 
         let loaders: Vec<FabricLoaderVersion> = response.json().await?;
@@ -111,29 +133,17 @@ impl ModLoaderClient {
         Ok(installers.into_iter().map(|i| i.version).collect())
     }
 
-    pub async fn download_fabric(&self, mc_version: &str, loader_version: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
-        // We use the server-jp-launcher from Fabric Meta
-        let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}/{}/server/jar", mc_version, loader_version);
-        let response = self.client.get(url).send().await?;
-        let bytes = response.bytes().await?;
-        tokio::fs::write(target_path, bytes).await?;
-        Ok(())
+    pub async fn download_fabric_installer<F>(&self, installer_version: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
+        let url = format!("https://maven.fabricmc.net/net/fabricmc/fabric-installer/{}/fabric-installer-{}.jar", installer_version, installer_version);
+        self.download_with_progress(&url, target_path, on_progress).await
     }
 
-    pub async fn get_quilt_versions(&self, mc_version: &str) -> Result<Vec<String>> {
-        let url = format!("https://meta.quiltmc.org/v3/versions/loader/{}", mc_version);
-        let response = self.client.get(&url).send().await?;
-        
-        if !response.status().is_success() {
-            return Ok(vec![]);
-        }
-
-        let loaders: Vec<QuiltLoaderVersion> = response.json().await?;
-        let versions = loaders.into_iter()
-            .map(|l| l.loader.version)
-            .collect();
-        
-        Ok(versions)
+    pub async fn download_fabric<F>(&self, mc_version: &str, loader_version: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
+        // We use the server-jp-launcher from Fabric Meta
+        let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}/{}/server/jar", mc_version, loader_version);
+        self.download_with_progress(&url, target_path, on_progress).await
     }
 
     pub async fn get_forge_versions(&self, mc_version: &str) -> Result<Vec<String>> {
@@ -191,25 +201,29 @@ impl ModLoaderClient {
         
         let major = mc_parts[1]; // "20" from "1.20.1"
         
+        // NeoForge versioning: 
+        // 1.20.1 -> versions start with 20.1
+        // 1.21 -> versions start with 21.0
+        // 1.21.1 -> versions start with 21.1
+        let prefix = if mc_parts.len() > 2 {
+            format!("{}.{}", major, mc_parts[2])
+        } else {
+            format!("{}.0", major)
+        };
+
         let re = regex::Regex::new(r"<version>([^<]+)</version>")?;
         for cap in re.captures_iter(&text) {
             let ver = &cap[1];
-            // NeoForge versioning: 1.20.1 -> versions start with 20.1
-            // 1.21 -> versions start with 21.0
-            let prefix = if mc_parts.len() > 2 {
-                format!("{}.{}", major, mc_parts[2])
-            } else {
-                format!("{}.0", major)
-            };
-
             if ver.starts_with(&prefix) {
                 versions.push(ver.to_string());
             }
         }
 
+        // Sort versions numerically (descending)
         versions.sort_by(|a, b| {
-            // Natural sort or just reverse alphabetical since they are numbers
-            b.cmp(a)
+            let a_parts: Vec<u32> = a.split('.').filter_map(|p| p.parse().ok()).collect();
+            let b_parts: Vec<u32> = b.split('.').filter_map(|p| p.parse().ok()).collect();
+            b_parts.cmp(&a_parts)
         });
 
         Ok(versions)
@@ -232,7 +246,8 @@ impl ModLoaderClient {
         Ok(versions)
     }
 
-    pub async fn download_paper(&self, mc_version: &str, build: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+    pub async fn download_paper<F>(&self, mc_version: &str, build: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
         let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds/{}", mc_version, build);
         let response = self.client.get(&url).send().await?;
         let build_info: PaperBuildDetails = response.json().await?;
@@ -240,51 +255,76 @@ impl ModLoaderClient {
         let download_name = build_info.downloads.application.name;
         let download_url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds/{}/downloads/{}", mc_version, build, download_name);
         
-        let response = self.client.get(download_url).send().await?;
-        let bytes = response.bytes().await?;
-        
+        self.download_with_progress(&download_url, &target_path, on_progress).await?;
+
         // Verify SHA256
         use sha2::{Sha256, Digest};
+        let bytes = tokio::fs::read(&target_path).await?;
         let mut hasher = Sha256::new();
         hasher.update(&bytes);
         let actual_sha256 = format!("{:x}", hasher.finalize());
         
         if actual_sha256 != build_info.downloads.application.sha256 {
+            tokio::fs::remove_file(&target_path).await?;
             return Err(anyhow::anyhow!("SHA256 mismatch for Paper download! Expected: {}, Got: {}", build_info.downloads.application.sha256, actual_sha256));
         }
 
-        tokio::fs::write(target_path, bytes).await?;
         Ok(())
     }
 
-    pub async fn download_forge(&self, mc_version: &str, forge_version: &str, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+    pub async fn download_forge<F>(&self, mc_version: &str, forge_version: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
         // Forge download URL pattern: https://maven.minecraftforge.net/net/minecraftforge/forge/{mc_version}-{forge_version}/forge-{mc_version}-{forge_version}-installer.jar
         let version_str = format!("{}-{}", mc_version, forge_version);
         let url = format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{}/forge-{}-installer.jar", version_str, version_str);
-        
-        let response = self.client.get(url).send().await?;
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Failed to download Forge installer: {}", response.status()));
-        }
-
-        let bytes = response.bytes().await?;
-        tokio::fs::write(target_path, bytes).await?;
-        Ok(())
+        self.download_with_progress(&url, target_path, on_progress).await
     }
 
-    pub async fn download_loader(&self, loader_name: &str, mc_version: &str, loader_version: Option<&str>, target_path: impl AsRef<std::path::Path>) -> Result<()> {
+    pub async fn download_purpur<F>(&self, mc_version: &str, build: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
+        let url = format!("https://api.purpurmc.org/v2/purpur/{}/{}/download", mc_version, build);
+        self.download_with_progress(&url, target_path, on_progress).await
+    }
+
+    pub async fn download_neoforge<F>(&self, neoforge_version: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
+        // NeoForge download URL pattern: https://maven.neoforged.net/releases/net/neoforged/neoforge/{version}/neoforge-{version}-installer.jar
+        let url = format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/neoforge-{}-installer.jar", neoforge_version, neoforge_version);
+        self.download_with_progress(&url, target_path, on_progress).await
+    }
+
+    pub fn is_modern_forge(&self, mc_version: &str) -> bool {
+        // Forge 1.17+ is considered modern and uses the run.bat/run.sh system
+        if let Some(version) = mc_version.split('.').nth(1) {
+            if let Ok(minor) = version.parse::<u32>() {
+                return minor >= 17;
+            }
+        }
+        false
+    }
+
+    pub async fn download_loader<F>(&self, loader_name: &str, mc_version: &str, loader_version: Option<&str>, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64) + Send + Sync + 'static {
         match loader_name.to_lowercase().as_str() {
             "paper" => {
                 let build = loader_version.ok_or_else(|| anyhow::anyhow!("Paper requires a build number"))?;
-                self.download_paper(mc_version, build, target_path).await
+                self.download_paper(mc_version, build, target_path, on_progress).await
             },
             "fabric" => {
                 let version = loader_version.ok_or_else(|| anyhow::anyhow!("Fabric requires a loader version"))?;
-                self.download_fabric(mc_version, version, target_path).await
+                self.download_fabric(mc_version, version, target_path, on_progress).await
             },
             "forge" => {
                 let version = loader_version.ok_or_else(|| anyhow::anyhow!("Forge requires a version"))?;
-                self.download_forge(mc_version, version, target_path).await
+                self.download_forge(mc_version, version, target_path, on_progress).await
+            },
+            "purpur" => {
+                let build = loader_version.ok_or_else(|| anyhow::anyhow!("Purpur requires a build number"))?;
+                self.download_purpur(mc_version, build, target_path, on_progress).await
+            },
+            "neoforge" => {
+                let version = loader_version.ok_or_else(|| anyhow::anyhow!("NeoForge requires a version"))?;
+                self.download_neoforge(version, target_path, on_progress).await
             },
             _ => Err(anyhow::anyhow!("Unsupported mod loader: {}", loader_name)),
         }
@@ -312,16 +352,6 @@ impl ModLoaderClient {
             if !versions.is_empty() {
                 loaders.push(ModLoader {
                     name: "Fabric".to_string(),
-                    versions,
-                });
-            }
-        }
-
-        // Quilt
-        if let Ok(versions) = self.get_quilt_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "Quilt".to_string(),
                     versions,
                 });
             }

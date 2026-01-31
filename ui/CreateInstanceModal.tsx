@@ -56,13 +56,6 @@ const SERVER_TYPES: ServerType[] = [
     icon: <Layers className="text-orange-200" size={24} />,
   },
   {
-    id: 'quilt',
-    name: 'Quilt',
-    description: 'The Quilt Project is an open-source, community-driven modding toolchain.',
-    category: 'Playable Server',
-    icon: <Layers className="text-purple-400" size={24} />,
-  },
-  {
     id: 'bungeecord',
     name: 'BungeeCord',
     description: 'Efficiently proxies, maintains connections and transport between multiple servers.',
@@ -113,10 +106,20 @@ interface ModLoader {
   versions: string[];
 }
 
+interface Instance {
+  id: string;
+  name: string;
+  version: string;
+  path: string;
+  created_at: string;
+  mod_loader?: string;
+  loader_version?: string;
+}
+
 interface CreateInstanceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (instance: Instance) => void;
 }
 
 type Tab = 'custom' | 'import' | 'modrinth' | 'curseforge';
@@ -144,9 +147,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     setName('');
     setShowSnapshots(false);
     setShowBetas(false);
-    if (manifest?.latest?.release) {
-      setSelectedVersion(manifest.latest.release);
-    }
+    setSelectedVersion(null);
     setSelectedLoader('none');
     setSelectedLoaderVersion(null);
   };
@@ -188,9 +189,6 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
       setLoading(true);
       const m = await invoke<VersionManifest>('get_minecraft_versions');
       setManifest(m);
-      if (m.latest.release) {
-        setSelectedVersion(m.latest.release);
-      }
     } catch (e) {
       console.error('Failed to load versions', e);
     } finally {
@@ -199,7 +197,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
   }
 
   async function loadModLoaders(version: string) {
-    const isModded = ['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '');
+    const isModded = ['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '');
     if (!isModded) {
       setModLoaders([]);
       return;
@@ -237,13 +235,13 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
 
     try {
       setCreating(true);
-      await invoke('create_instance_full', {
+      const instance = await invoke<Instance>('create_instance_full', {
         name,
         version: selectedVersion,
         modLoader: selectedLoader === 'none' ? null : selectedLoader,
         loaderVersion: selectedLoaderVersion,
       });
-      onCreated();
+      onCreated(instance);
       resetForm();
       onClose();
     } catch (e) {
@@ -442,7 +440,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                     </div>
 
                     {/* Mod Loader Version Selection (if applicable) */}
-                    {['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
+                    {['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
                       <div className="p-4 border-t border-white/10 bg-white/[0.02]">
                         <div className="flex items-center gap-4">
                           <div className="text-sm font-medium text-white/70">
