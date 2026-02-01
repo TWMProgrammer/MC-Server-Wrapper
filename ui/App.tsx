@@ -118,6 +118,7 @@ function App() {
                       onCommandChange={setCommand}
                       onSendCommand={handleSendCommand}
                       onSetActiveTab={setActiveTab}
+                      onInstancesUpdated={loadInstances}
                       settings={settings}
                     />
                   </motion.div>

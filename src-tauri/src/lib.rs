@@ -5,7 +5,7 @@ use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::backup::BackupManager;
 use mc_server_wrapper_core::scheduler::SchedulerManager;
 use mc_server_wrapper_core::app_config::{GlobalConfigManager, CloseBehavior};
-use tauri::{Manager, Wry};
+use tauri::Manager;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use std::sync::Arc;
@@ -71,6 +71,8 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      app.handle().plugin(tauri_plugin_dialog::init())?;
 
       // Initialize Directories next to the executable
       let exe_path = std::env::current_exe()
@@ -155,6 +157,10 @@ pub fn run() {
         commands::instance::get_minecraft_versions,
         commands::instance::get_mod_loaders,
         commands::instance::create_instance_full,
+        commands::instance::update_instance_settings,
+        commands::instance::update_instance_jar,
+        commands::instance::get_startup_preview,
+        commands::instance::list_bat_files,
         commands::server::start_server,
         commands::server::stop_server,
         commands::server::get_server_status,

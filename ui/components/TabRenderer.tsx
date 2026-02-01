@@ -16,6 +16,8 @@ import { SchedulesTab } from '../SchedulesTab'
 import { TabId, Instance, ResourceUsage } from '../types'
 import { AppSettings } from '../hooks/useAppSettings'
 
+import { InstanceSettingsTab } from '../InstanceSettingsTab'
+
 interface TabRendererProps {
   activeTab: TabId;
   selectedInstanceId: string;
@@ -28,6 +30,7 @@ interface TabRendererProps {
   onCommandChange: (val: string) => void;
   onSendCommand: (e: React.FormEvent) => void;
   onSetActiveTab: (tab: TabId) => void;
+  onInstancesUpdated?: () => void;
   settings: AppSettings;
 }
 
@@ -43,6 +46,7 @@ export function TabRenderer({
   onCommandChange,
   onSendCommand,
   onSetActiveTab,
+  onInstancesUpdated,
   settings
 }: TabRendererProps) {
   if (activeTab === 'dashboard') {
@@ -99,6 +103,10 @@ export function TabRenderer({
     return <BackupsTab instanceId={selectedInstanceId} />;
   }
 
+  if (activeTab === 'settings') {
+    return <InstanceSettingsTab instance={currentInstance} onUpdate={onInstancesUpdated} />;
+  }
+
   if (activeTab === 'scheduler') {
     return <SchedulesTab instanceId={selectedInstanceId} />;
   }
@@ -113,7 +121,6 @@ export function TabRenderer({
       >
         {activeTab === 'plugins' && <Puzzle size={64} className="mb-4 text-primary opacity-40" />}
         {activeTab === 'mods' && <Layers size={64} className="mb-4 text-primary opacity-40" />}
-        {activeTab === 'settings' && <Settings size={64} className="mb-4 text-primary opacity-40" />}
       </motion.div>
       <h3 className="text-2xl font-semibold capitalize mb-2">{activeTab}</h3>
       <p className="text-gray-500">This feature is currently under development.</p>

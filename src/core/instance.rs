@@ -7,6 +7,66 @@ use chrono::{DateTime, Utc};
 use tracing::info;
 use super::scheduler::ScheduledTask;
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum LaunchMethod {
+    StartupLine,
+    BatFile,
+}
+
+impl Default for LaunchMethod {
+    fn default() -> Self {
+        Self::StartupLine
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum CrashHandlingMode {
+    Nothing,
+    Elevated,
+    Aggressive,
+}
+
+impl Default for CrashHandlingMode {
+    fn default() -> Self {
+        Self::Nothing
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstanceSettings {
+    pub description: Option<String>,
+    pub ram: u32,
+    pub ram_unit: String, // "GB" or "MB"
+    pub port: u16,
+    pub force_save_all: bool,
+    pub autostart: bool,
+    pub java_path_override: Option<String>,
+    pub launch_method: LaunchMethod,
+    pub startup_line: String,
+    pub bat_file: Option<String>,
+    pub crash_handling: CrashHandlingMode,
+    pub icon_path: Option<String>,
+}
+
+impl Default for InstanceSettings {
+    fn default() -> Self {
+        Self {
+            description: None,
+            ram: 2,
+            ram_unit: "GB".to_string(),
+            port: 25565,
+            force_save_all: false,
+            autostart: false,
+            java_path_override: None,
+            launch_method: LaunchMethod::StartupLine,
+            startup_line: "java -Xmx{ram}{unit} -jar server.jar nogui".to_string(),
+            bat_file: None,
+            crash_handling: CrashHandlingMode::Nothing,
+            icon_path: None,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstanceMetadata {
     pub id: Uuid,
@@ -19,6 +79,8 @@ pub struct InstanceMetadata {
     pub path: PathBuf,
     #[serde(default)]
     pub schedules: Vec<ScheduledTask>,
+    #[serde(default)]
+    pub settings: InstanceSettings,
 }
 
 pub struct InstanceManager {
@@ -55,6 +117,7 @@ impl InstanceManager {
             last_run: None,
             path: instance_path,
             schedules: vec![],
+            settings: InstanceSettings::default(),
         };
 
         let mut instances = self.list_instances().await?;
@@ -113,6 +176,7 @@ impl InstanceManager {
             last_run: None,
             path: new_path,
             schedules: instance.schedules.clone(),
+            settings: instance.settings.clone(),
         };
 
         let mut instances = self.list_instances().await?;
@@ -167,6 +231,27 @@ impl InstanceManager {
         if let Some(instance) = instances.iter_mut().find(|i| i.id == instance_id) {
             instance.schedules.retain(|t| t.id != task_id);
             self.save_registry(&instances).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn update_settings(&self, id: Uuid, name: Option<String>, settings: InstanceSettings) -> Result<()> {
+        let mut instances = self.list_instances().await?;
+        let updated = {
+            if let Some(instance) = instances.iter_mut().find(|i| i.id == id) {
+                if let Some(new_name) = name {
+                    instance.name = new_name;
+                }
+                instance.settings = settings;
+                Some(instance.name.clone())
+            } else {
+                None
+            }
+        };
+
+        if let Some(instance_name) = updated {
+            self.save_registry(&instances).await?;
+            info!("Updated settings for instance: {} (ID: {})", instance_name, id);
         }
         Ok(())
     }

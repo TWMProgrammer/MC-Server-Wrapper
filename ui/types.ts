@@ -13,7 +13,27 @@ export interface Instance {
   description?: string;
   max_players?: number;
   status?: string;
+  settings: InstanceSettings;
 }
+
+export interface InstanceSettings {
+  description?: string;
+  ram: number;
+  ram_unit: string;
+  port: number;
+  force_save_all: boolean;
+  autostart: boolean;
+  java_path_override?: string;
+  launch_method: LaunchMethod;
+  startup_line: string;
+  bat_file?: string;
+  crash_handling: CrashHandlingMode;
+  icon_path?: string;
+}
+
+export type LaunchMethod = 'StartupLine' | 'BatFile';
+
+export type CrashHandlingMode = 'Nothing' | 'Elevated' | 'Aggressive';
 
 export interface ResourceUsage {
   cpu_usage: number;
