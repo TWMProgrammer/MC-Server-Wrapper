@@ -8,6 +8,7 @@ import { MainActions } from './instance-settings/MainActions'
 import { CloneForm } from './instance-settings/CloneForm'
 import { DeleteConfirm } from './instance-settings/DeleteConfirm'
 import { useToast } from './hooks/useToast'
+import { useAppSettings } from './hooks/useAppSettings'
 
 interface InstanceSettingsDropdownProps {
   instance: {
@@ -20,10 +21,10 @@ interface InstanceSettingsDropdownProps {
   side?: 'left' | 'right';
 }
 
-export function InstanceSettingsDropdown({ 
-  instance, 
-  onUpdated, 
-  size = 18, 
+export function InstanceSettingsDropdown({
+  instance,
+  onUpdated,
+  size = 18,
   className,
   side = 'right'
 }: InstanceSettingsDropdownProps) {
@@ -35,6 +36,7 @@ export function InstanceSettingsDropdown({
   const [isCloning, setIsCloning] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const { showToast } = useToast();
+  const { settings } = useAppSettings();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -112,47 +114,52 @@ export function InstanceSettingsDropdown({
   const dropdownContent = (
     <AnimatePresence mode="wait">
       {isOpen && (
-        <motion.div
-          ref={dropdownRef}
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        <div
           style={{
             position: 'fixed',
             top: `${coords.top + 12}px`,
             left: side === 'right' ? `${coords.left - 288}px` : `${coords.left}px`, // 288px is w-72
             zIndex: 9999,
+            transform: `scale(${settings.scaling})`,
+            transformOrigin: side === 'right' ? 'top right' : 'top left',
           }}
-          className="w-72 bg-white dark:bg-gray-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10"
         >
-          <AnimatePresence mode="wait">
-            {!showDeleteConfirm && !showCloneForm && (
-              <MainActions
-                onShowClone={() => setShowCloneForm(true)}
-                onShowDelete={() => setShowDeleteConfirm(true)}
-              />
-            )}
+          <motion.div
+            ref={dropdownRef}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="w-72 bg-white dark:bg-gray-900 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10"
+          >
+            <AnimatePresence mode="wait">
+              {!showDeleteConfirm && !showCloneForm && (
+                <MainActions
+                  onShowClone={() => setShowCloneForm(true)}
+                  onShowDelete={() => setShowDeleteConfirm(true)}
+                />
+              )}
 
-            {showCloneForm && (
-              <CloneForm
-                cloneName={cloneName}
-                setCloneName={setCloneName}
-                onClone={handleClone}
-                onBack={() => setShowCloneForm(false)}
-                isCloning={isCloning}
-              />
-            )}
+              {showCloneForm && (
+                <CloneForm
+                  cloneName={cloneName}
+                  setCloneName={setCloneName}
+                  onClone={handleClone}
+                  onBack={() => setShowCloneForm(false)}
+                  isCloning={isCloning}
+                />
+              )}
 
-            {showDeleteConfirm && (
-              <DeleteConfirm
-                instanceName={instance.name}
-                onDelete={handleDelete}
-                onCancel={() => setShowDeleteConfirm(false)}
-                isDeleting={isDeleting}
-              />
-            )}
-          </AnimatePresence>
-        </motion.div>
+              {showDeleteConfirm && (
+                <DeleteConfirm
+                  instanceName={instance.name}
+                  onDelete={handleDelete}
+                  onCancel={() => setShowDeleteConfirm(false)}
+                  isDeleting={isDeleting}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

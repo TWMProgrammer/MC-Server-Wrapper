@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 import { useToast } from './hooks/useToast'
 import { Instance, InstanceSettings, LaunchMethod, CrashHandlingMode } from './types'
+import { Select } from './components/Select'
 
 interface InstanceSettingsTabProps {
   instance: Instance;
@@ -322,14 +323,16 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
                           onChange={(e) => updateSetting('ram', parseInt(e.target.value) || 0)}
                           className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                         />
-                        <select
+                        <Select
                           value={settings.ram_unit}
-                          onChange={(e) => updateSetting('ram_unit', e.target.value)}
-                          className="bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-2 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        >
-                          <option value="GB">GB</option>
-                          <option value="MB">MB</option>
-                        </select>
+                          onChange={(value) => updateSetting('ram_unit', value)}
+                          options={[
+                            { value: 'GB', label: 'GB' },
+                            { value: 'MB', label: 'MB' }
+                          ]}
+                          className="w-24"
+                          size="sm"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">

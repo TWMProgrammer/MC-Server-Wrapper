@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ScheduledTask, ScheduleType } from './types'
 import { useToast } from './hooks/useToast'
 import { ConfirmDropdown } from './components/ConfirmDropdown'
+import { Select } from './components/Select'
 
 interface SchedulesTabProps {
     instanceId: string;
@@ -112,14 +113,14 @@ export function SchedulesTab({ instanceId }: SchedulesTabProps) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-400">Task Type</label>
-                                <select
+                                <Select
                                     value={newTask.task_type}
-                                    onChange={(e) => setNewTask({ ...newTask, task_type: e.target.value as ScheduleType })}
-                                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:border-primary transition-colors"
-                                >
-                                    <option value="Backup">Backup</option>
-                                    <option value="Restart">Restart</option>
-                                </select>
+                                    onChange={(value) => setNewTask({ ...newTask, task_type: value as ScheduleType })}
+                                    options={[
+                                        { value: 'Backup', label: 'Backup' },
+                                        { value: 'Restart', label: 'Restart' }
+                                    ]}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-400">Cron Expression</label>
