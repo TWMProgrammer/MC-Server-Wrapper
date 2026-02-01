@@ -36,6 +36,15 @@ export function useAppSettings() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  const [scaling, setScaling] = useState<number>(() => {
+    const saved = localStorage.getItem('app-scaling');
+    if (saved) {
+      const parsed = parseFloat(saved);
+      return isNaN(parsed) ? 1.0 : parsed;
+    }
+    return 1.0;
+  });
+
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--primary', accentColor.value);
@@ -60,10 +69,16 @@ export function useAppSettings() {
     localStorage.setItem('app-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem('app-scaling', scaling.toString());
+  }, [scaling]);
+
   return {
     accentColor,
     setAccentColor,
     theme,
     setTheme,
+    scaling,
+    setScaling,
   };
 }

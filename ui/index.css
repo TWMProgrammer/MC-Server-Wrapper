@@ -24,6 +24,14 @@
     --sidebar-bg: #0a0a0c;
   }
 
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
   body {
     background-color: rgb(var(--background));
     color: rgb(var(--foreground));

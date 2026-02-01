@@ -1,4 +1,4 @@
-import { X, Settings, Palette, Check, Moon, Sun } from 'lucide-react'
+import { X, Settings, Palette, Check, Moon, Sun, Maximize } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils'
 import { ACCENT_COLORS, AccentColor, Theme } from '../hooks/useAppSettings'
@@ -10,6 +10,8 @@ interface AppSettingsModalProps {
   onAccentColorChange: (color: AccentColor) => void;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
+  scaling: number;
+  onScalingChange: (scaling: number) => void;
 }
 
 export function AppSettingsModal({
@@ -18,8 +20,11 @@ export function AppSettingsModal({
   accentColor,
   onAccentColorChange,
   theme,
-  onThemeChange
+  onThemeChange,
+  scaling,
+  onScalingChange
 }: AppSettingsModalProps) {
+  const scalingOptions = [0.8, 0.9, 1.0, 1.1, 1.2];
   return (
     <AnimatePresence>
       {isOpen && (
@@ -132,6 +137,30 @@ export function AppSettingsModal({
                       </button>
                     ))}
                   </div>
+                </div>
+              </section>
+
+              {/* Scaling Section */}
+              <section>
+                <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                  <Maximize size={16} />
+                  <span>App Scaling</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2 p-1 bg-black/10 dark:bg-white/5 rounded-xl">
+                  {scalingOptions.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => onScalingChange(option)}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200",
+                        scaling === option
+                          ? "bg-white dark:bg-gray-800 text-primary shadow-sm"
+                          : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      )}
+                    >
+                      <span className="text-sm font-bold">{Math.round(option * 100)}%</span>
+                    </button>
+                  ))}
                 </div>
               </section>
             </div>
