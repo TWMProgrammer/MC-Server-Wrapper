@@ -18,6 +18,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [selectedLoader, setSelectedLoader] = useState<string>('none');
   const [selectedLoaderVersion, setSelectedLoaderVersion] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [startAfterCreation, setStartAfterCreation] = useState(true);
 
   const [importSourcePath, setImportSourcePath] = useState<string | null>(null);
   const [importServerType, setImportServerType] = useState<string>('vanilla');
@@ -36,6 +37,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setSelectedVersion(null);
     setSelectedLoader('none');
     setSelectedLoaderVersion(null);
+    setStartAfterCreation(true);
     setImportSourcePath(null);
     setImportServerType('vanilla');
     setAvailableJars([]);
@@ -152,6 +154,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
         version: selectedVersion,
         modLoader: selectedLoader === 'none' ? null : selectedLoader,
         loaderVersion: selectedLoaderVersion,
+        startAfterCreation,
       });
       onCreated(instance);
       resetForm();
@@ -203,6 +206,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     modLoaders,
     selectedLoaderVersion,
     setSelectedLoaderVersion,
+    startAfterCreation,
+    setStartAfterCreation,
     creating,
     handleCreate,
     filteredVersions,

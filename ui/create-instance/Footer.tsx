@@ -1,4 +1,4 @@
-import { Info, Plus } from 'lucide-react'
+import { Info, Plus, Power } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '../utils'
 import { Tab } from './types'
@@ -15,6 +15,8 @@ interface FooterProps {
   importSourcePath: string | null;
   selectedJar: string | null;
   serverPropertiesExists: boolean;
+  startAfterCreation: boolean;
+  setStartAfterCreation: (val: boolean) => void;
 }
 
 export function Footer({
@@ -27,7 +29,9 @@ export function Footer({
   activeTab,
   importSourcePath,
   selectedJar,
-  serverPropertiesExists
+  serverPropertiesExists,
+  startAfterCreation,
+  setStartAfterCreation
 }: FooterProps) {
   const isImport = activeTab === 'import';
   const isDisabled = isImport
@@ -71,14 +75,40 @@ export function Footer({
         <Info size={16} className="text-primary" />
         <span>{getReadyMessage()}</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-6">
+        {!isImport && (
+          <button
+            onClick={() => setStartAfterCreation(!startAfterCreation)}
+            className={cn(
+              "flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 group",
+              startAfterCreation
+                ? "bg-primary/10 text-primary border border-primary/20"
+                : "bg-black/5 dark:bg-white/5 text-gray-400 border border-transparent"
+            )}
+          >
+            <div className={cn(
+              "w-8 h-4 rounded-full relative transition-colors duration-300",
+              startAfterCreation ? "bg-primary" : "bg-gray-300 dark:bg-white/10"
+            )}>
+              <motion.div
+                animate={{ x: startAfterCreation ? 18 : 2 }}
+                className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm"
+              />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none">Start Server</span>
+              <span className="text-[8px] font-bold opacity-50 uppercase tracking-tighter">After Creation</span>
+            </div>
+          </button>
+        )}
+
         <button
           onClick={onClose}
           className="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
         >
           Cancel
         </button>
-        
+
         {showWarning ? (
           <ConfirmDropdown
             title="Standard Server Not Detected"

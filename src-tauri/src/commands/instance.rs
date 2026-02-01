@@ -479,14 +479,15 @@ pub async fn create_instance_full(
     version: String,
     mod_loader: Option<String>,
     loader_version: Option<String>,
+    start_after_creation: bool,
 ) -> Result<mc_server_wrapper_core::instance::InstanceMetadata, String> {
     let instance = server_manager.create_instance_full(&name, &version, mod_loader, loader_version).await.map_err(|e| e.to_string())?;
     
-    // Auto-start the server
+    // Auto-start or prepare the server
     let instance_id = instance.id.to_string();
     let id = instance.id;
     
-    // We run start_server in a separate task so we can return the instance metadata immediately
+    // We run start_server/prepare_server in a separate task so we can return the instance metadata immediately
     // while the server starts (which might involve downloading)
     let server_manager_clone = server_manager.inner().clone();
     let app_state_clone = app_state.inner().clone();
@@ -514,11 +515,20 @@ pub async fn create_instance_full(
             });
         }
 
-        if let Err(e) = server_manager_clone.start_server(id).await {
-            let _ = app_handle_clone.emit("server-log", LogPayload {
-                instance_id: instance_id_clone,
-                line: format!("Error starting server: {}", e),
-            });
+        if start_after_creation {
+            if let Err(e) = server_manager_clone.start_server(id).await {
+                let _ = app_handle_clone.emit("server-log", LogPayload {
+                    instance_id: instance_id_clone,
+                    line: format!("Error starting server: {}", e),
+                });
+            }
+        } else {
+            if let Err(e) = server_manager_clone.prepare_server(id).await {
+                let _ = app_handle_clone.emit("server-log", LogPayload {
+                    instance_id: instance_id_clone,
+                    line: format!("Error preparing server: {}", e),
+                });
+            }
         }
     });
 

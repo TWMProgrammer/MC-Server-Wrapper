@@ -66,3 +66,15 @@ impl ServerHandle {
         });
     }
 }
+
+pub fn generate_ascii_bar(current: u64, total: u64) -> String {
+    if total == 0 {
+        return "[--------------------] 0%".to_string();
+    }
+    let width = 20;
+    let percentage = (current as f64 / total as f64 * 100.0) as u32;
+    let progress = (current as f64 / total as f64 * width as f64).round() as usize;
+    let progress = progress.min(width);
+    let bar = "#".repeat(progress) + &"-".repeat(width - progress);
+    format!("[{}] {}%", bar, percentage)
+}

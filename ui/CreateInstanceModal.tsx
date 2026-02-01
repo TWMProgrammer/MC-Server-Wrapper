@@ -42,7 +42,9 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     setServerPropertiesExists,
     rootWithinZip,
     setRootWithinZip,
-    importProgress
+    importProgress,
+    startAfterCreation,
+    setStartAfterCreation
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
@@ -114,7 +116,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                           <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-[progress-stripe_1s_linear_infinite]" />
                         </motion.div>
                       </div>
-                      
+
                       <div className="flex justify-between items-center px-1">
                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
                           <span className="text-primary/40">{importProgress?.current || 0}</span>
@@ -249,6 +251,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             importSourcePath={importSourcePath}
             selectedJar={selectedJar}
             serverPropertiesExists={serverPropertiesExists}
+            startAfterCreation={startAfterCreation}
+            setStartAfterCreation={setStartAfterCreation}
           />
         </motion.div>
       </div>
