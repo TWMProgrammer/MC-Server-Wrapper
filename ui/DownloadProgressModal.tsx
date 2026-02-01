@@ -69,7 +69,7 @@ export function DownloadProgressModal({ isOpen, onClose, instanceId, instanceNam
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="w-full max-w-md bg-surface border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5"
+            className="w-full max-w-md bg-white dark:bg-gray-950 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5"
           >
             <div className="p-8">
               <div className="flex items-center gap-6 mb-8">

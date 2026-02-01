@@ -24,7 +24,6 @@ export function AppSettingsModal({
   scaling,
   onScalingChange
 }: AppSettingsModalProps) {
-  const scalingOptions = [0.8, 0.9, 1.0, 1.1, 1.2];
   return (
     <AnimatePresence>
       {isOpen && (
@@ -34,14 +33,14 @@ export function AppSettingsModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
           />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-surface border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-white dark:bg-gray-950 border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
@@ -70,14 +69,14 @@ export function AppSettingsModal({
                   <Sun size={16} />
                   <span>Theme</span>
                 </div>
-                <div className="flex gap-4 p-1 bg-black/10 dark:bg-white/5 rounded-xl">
+                <div className="flex gap-4 p-1 bg-black/5 dark:bg-white/10 rounded-xl">
                   <button
                     onClick={() => onThemeChange('light')}
                     className={cn(
                       "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200",
                       theme === 'light'
                         ? "bg-white dark:bg-gray-800 text-primary shadow-sm"
-                        : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     )}
                   >
                     <Sun size={18} />
@@ -89,7 +88,7 @@ export function AppSettingsModal({
                       "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all duration-200",
                       theme === 'dark'
                         ? "bg-white dark:bg-gray-800 text-primary shadow-sm"
-                        : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     )}
                   >
                     <Moon size={18} />
@@ -115,7 +114,7 @@ export function AppSettingsModal({
                           "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 group relative overflow-hidden",
                           accentColor.name === color.name
                             ? "bg-primary/10 border-primary shadow-glow-primary/20"
-                            : "bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.04]"
+                            : "bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 hover:border-primary/50"
                         )}
                       >
                         <div
@@ -142,25 +141,31 @@ export function AppSettingsModal({
 
               {/* Scaling Section */}
               <section>
-                <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-400 uppercase tracking-wider">
-                  <Maximize size={16} />
-                  <span>App Scaling</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                    <Maximize size={16} />
+                    <span>App Scaling</span>
+                  </div>
+                  <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                    {Math.round((scaling + 0.2) * 100)}%
+                  </span>
                 </div>
-                <div className="grid grid-cols-5 gap-2 p-1 bg-black/10 dark:bg-white/5 rounded-xl">
-                  {scalingOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => onScalingChange(option)}
-                      className={cn(
-                        "flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200",
-                        scaling === option
-                          ? "bg-white dark:bg-gray-800 text-primary shadow-sm"
-                          : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                      )}
-                    >
-                      <span className="text-sm font-bold">{Math.round(option * 100)}%</span>
-                    </button>
-                  ))}
+                
+                <div className="px-2 py-6 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="1.1"
+                    step="0.05"
+                    value={scaling}
+                    onChange={(e) => onScalingChange(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary hover:accent-primary/80 transition-all"
+                  />
+                  <div className="flex justify-between mt-4 px-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    <span>70%</span>
+                    <span>100%</span>
+                    <span>130%</span>
+                  </div>
                 </div>
               </section>
             </div>

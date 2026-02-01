@@ -40,9 +40,9 @@ export function useAppSettings() {
     const saved = localStorage.getItem('app-scaling');
     if (saved) {
       const parsed = parseFloat(saved);
-      return isNaN(parsed) ? 1.0 : parsed;
+      return isNaN(parsed) ? 0.8 : parsed;
     }
-    return 1.0;
+    return 0.8;
   });
 
   useEffect(() => {
