@@ -14,6 +14,7 @@ import { ConfigTab } from '../ConfigTab'
 import { BackupsTab } from '../BackupsTab'
 import { SchedulesTab } from '../SchedulesTab'
 import { TabId, Instance, ResourceUsage } from '../types'
+import { AppSettings } from '../hooks/useAppSettings'
 
 interface TabRendererProps {
   activeTab: TabId;
@@ -27,6 +28,7 @@ interface TabRendererProps {
   onCommandChange: (val: string) => void;
   onSendCommand: (e: React.FormEvent) => void;
   onSetActiveTab: (tab: TabId) => void;
+  settings: AppSettings;
 }
 
 export function TabRenderer({
@@ -40,7 +42,8 @@ export function TabRenderer({
   command,
   onCommandChange,
   onSendCommand,
-  onSetActiveTab
+  onSetActiveTab,
+  settings
 }: TabRendererProps) {
   if (activeTab === 'dashboard') {
     return (
@@ -49,6 +52,7 @@ export function TabRenderer({
           currentInstance={currentInstance}
           usage={usage}
           history={history}
+          settings={settings}
         />
 
         {/* Dashboard Console Preview */}
@@ -84,7 +88,7 @@ export function TabRenderer({
   }
 
   if (activeTab === 'players') {
-    return <PlayersTab instanceId={selectedInstanceId} />;
+    return <PlayersTab instanceId={selectedInstanceId} settings={settings} />;
   }
 
   if (activeTab === 'config') {

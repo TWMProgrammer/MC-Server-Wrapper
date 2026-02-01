@@ -1,8 +1,24 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::config_files;
+use mc_server_wrapper_core::app_config::{AppSettings, GlobalConfigManager};
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+
+#[tauri::command]
+pub async fn get_app_settings(
+    config_manager: State<'_, Arc<GlobalConfigManager>>,
+) -> Result<AppSettings, String> {
+    config_manager.load().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_app_settings(
+    config_manager: State<'_, Arc<GlobalConfigManager>>,
+    settings: AppSettings,
+) -> Result<(), String> {
+    config_manager.save(&settings).await.map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn get_config_value(

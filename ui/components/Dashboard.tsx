@@ -2,17 +2,20 @@ import { Activity, Cpu, HardDrive, Users, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Instance, ResourceUsage } from '../types'
+import { AppSettings } from '../hooks/useAppSettings'
 
 interface DashboardProps {
   currentInstance: Instance;
   usage: ResourceUsage | null;
   history: ResourceUsage[];
+  settings: AppSettings;
 }
 
 export function Dashboard({
   currentInstance,
   usage,
-  history
+  history,
+  settings
 }: DashboardProps) {
   const stats = [
     {
@@ -109,7 +112,7 @@ export function Dashboard({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                 <XAxis dataKey="timestamp" hide />
-                <YAxis domain={[0, 100]} hide />
+                <YAxis domain={settings.dynamic_graph_scaling ? ['auto', 'auto'] : [0, 100]} hide />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--surface)',
@@ -162,7 +165,7 @@ export function Dashboard({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                 <XAxis dataKey="timestamp" hide />
-                <YAxis hide />
+                <YAxis domain={settings.dynamic_graph_scaling ? ['auto', 'auto'] : [0, 'auto']} hide />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--surface)',

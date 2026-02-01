@@ -1,5 +1,6 @@
 pub mod players;
 pub mod config;
+pub mod app_config;
 pub mod server;
 pub mod instance;
 pub mod downloader;

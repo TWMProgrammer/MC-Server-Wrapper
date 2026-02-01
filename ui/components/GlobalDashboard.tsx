@@ -2,19 +2,22 @@ import { motion } from 'framer-motion'
 import { Database, Play, Square, Network, Beaker, Users, Activity } from 'lucide-react'
 import { Instance } from '../types'
 import { cn } from '../utils'
+import { AppSettings } from '../hooks/useAppSettings'
 
 interface GlobalDashboardProps {
   instances: Instance[];
   onSelectInstance: (id: string) => void;
   onStartServer: (id: string) => void;
   onStopServer: (id: string) => void;
+  settings: AppSettings;
 }
 
 export function GlobalDashboard({
   instances,
   onSelectInstance,
   onStartServer,
-  onStopServer
+  onStopServer,
+  settings
 }: GlobalDashboardProps) {
   return (
     <div className="space-y-8 animate-fade-in">
@@ -94,7 +97,22 @@ export function GlobalDashboard({
             <div className="space-y-3 flex-1">
               <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 font-medium">
                 <Network size={16} className="text-primary/60" />
-                <span>{instance.ip}:{instance.port}</span>
+                <span>
+                  {settings.hide_ip_address ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+                      <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+                      <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
+                      <span className="ml-1 text-[10px] uppercase font-bold tracking-widest opacity-40">Hidden</span>
+                    </span>
+                  ) : (
+                    <>
+                      {settings.display_ipv6 ? (
+                        instance.ip === '127.0.0.1' || instance.ip === 'localhost' ? '::1' : `::ffff:${instance.ip}`
+                      ) : instance.ip}:{instance.port}
+                    </>
+                  )}
+                </span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 font-medium">
                 <Beaker size={16} className="text-primary/60" />

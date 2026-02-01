@@ -1,7 +1,9 @@
-import { Database, Plus, Sparkles, Settings } from 'lucide-react'
+import { Database, Plus, Sparkles, Settings, Server as ServerIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Instance } from '../types'
 import { cn } from '../utils'
+import { AppSettings } from '../hooks/useAppSettings'
+import { InstanceSettingsDropdown } from '../InstanceSettingsDropdown'
 
 interface SidebarProps {
   instances: Instance[];
@@ -9,9 +11,19 @@ interface SidebarProps {
   onSelectInstance: (id: string | null) => void;
   onCreateNew: () => void;
   onOpenSettings: () => void;
+  onInstancesUpdated: (id?: string) => void;
+  settings: AppSettings;
 }
 
-export function Sidebar({ instances, selectedInstanceId, onSelectInstance, onCreateNew, onOpenSettings }: SidebarProps) {
+export function Sidebar({ 
+  instances, 
+  selectedInstanceId, 
+  onSelectInstance, 
+  onCreateNew, 
+  onOpenSettings, 
+  onInstancesUpdated,
+  settings 
+}: SidebarProps) {
   return (
     <div className="w-72 bg-sidebar-bg border-r border-black/5 dark:border-white/5 flex flex-col h-full shadow-2xl z-10 transition-colors duration-300">
       <div
@@ -58,24 +70,70 @@ export function Sidebar({ instances, selectedInstanceId, onSelectInstance, onCre
                   />
                 )}
 
-                <div className="relative">
-                  <div className={cn(
-                    "w-2.5 h-2.5 rounded-full shadow-sm",
-                    inst.status === 'Running' ? "bg-accent-emerald animate-pulse" :
-                      inst.status === 'Starting' ? "bg-accent-amber animate-pulse" :
-                        (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-600"
-                  )} />
-                </div>
+                {settings.display_server_icon && (
+                  <div className="relative">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400",
+                      selectedInstanceId === inst.id && "bg-white/20 text-white"
+                    )}>
+                      <ServerIcon size={16} />
+                    </div>
+                  </div>
+                )}
+
+                {settings.display_server_status && (
+                  <div className="relative">
+                    <div className={cn(
+                      "w-2.5 h-2.5 rounded-full shadow-sm",
+                      inst.status === 'Running' ? "bg-accent-emerald animate-pulse" :
+                        inst.status === 'Starting' ? "bg-accent-amber animate-pulse" :
+                          (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-600"
+                    )} />
+                  </div>
+                )}
 
                 <div className="flex flex-col min-w-0">
                   <span className="font-medium truncate leading-none mb-1">{inst.name}</span>
-                  <span className={cn(
-                    "text-[10px] uppercase font-bold tracking-wider opacity-60",
-                    selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
-                  )}>
-                    {inst.version}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {settings.display_server_version && (
+                      <span className={cn(
+                        "text-[10px] uppercase font-bold tracking-wider opacity-60",
+                        selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
+                      )}>
+                        {inst.version}
+                      </span>
+                    )}
+                    {settings.display_server_version && settings.display_online_player_count && (
+                      <span className={cn(
+                        "text-[10px] opacity-40",
+                        selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
+                      )}>•</span>
+                    )}
+                    {settings.display_online_player_count && (
+                      <span className={cn(
+                        "text-[10px] font-bold opacity-60",
+                        selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
+                      )}>
+                        0/{inst.max_players}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {settings.display_navigational_buttons && (
+                  <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <InstanceSettingsDropdown
+                      instance={inst}
+                      onUpdated={onInstancesUpdated}
+                      size={12}
+                      side="left"
+                      className={cn(
+                        "p-1.5 rounded-lg transition-colors border-0",
+                        selectedInstanceId === inst.id ? "hover:bg-white/20" : "hover:bg-black/10 dark:hover:bg-white/10"
+                      )}
+                    />
+                  </div>
+                )}
               </motion.button>
             ))}
           </div>

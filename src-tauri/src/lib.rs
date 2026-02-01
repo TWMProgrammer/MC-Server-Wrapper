@@ -4,7 +4,10 @@ use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::backup::BackupManager;
 use mc_server_wrapper_core::scheduler::SchedulerManager;
-use tauri::Manager;
+use mc_server_wrapper_core::app_config::{GlobalConfigManager, CloseBehavior};
+use tauri::{Manager, Wry};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashSet;
@@ -28,6 +31,39 @@ pub fn run() {
           }
       }
 
+      // System Tray
+      let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+      let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
+      let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+      let _tray = TrayIconBuilder::new()
+          .icon(app.default_window_icon().unwrap().clone())
+          .menu(&menu)
+          .on_menu_event(|app, event| {
+              match event.id.as_ref() {
+                  "quit" => {
+                      app.exit(0);
+                  }
+                  "show" => {
+                      if let Some(window) = app.get_webview_window("main") {
+                          let _ = window.show();
+                          let _ = window.set_focus();
+                      }
+                  }
+                  _ => {}
+              }
+          })
+          .on_tray_icon_event(|tray, event| {
+              if let TrayIconEvent::Click { .. } = event {
+                  let app = tray.app_handle();
+                  if let Some(window) = app.get_webview_window("main") {
+                      let _ = window.show();
+                      let _ = window.set_focus();
+                  }
+              }
+          })
+          .build(app)?;
+
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -43,6 +79,9 @@ pub fn run() {
       let app_dirs = tauri::async_runtime::block_on(async {
           mc_server_wrapper_core::init::init_directories(&exe_path).await.expect("failed to initialize directories")
       });
+      
+      // Initialize GlobalConfigManager
+      let config_manager = Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
       
       // Initialize InstanceManager using the 'server' directory
       let instance_manager = Arc::new(tauri::async_runtime::block_on(async {
@@ -70,13 +109,41 @@ pub fn run() {
       app.manage(server_manager);
       app.manage(backup_manager);
       app.manage(scheduler_manager);
+      app.manage(config_manager);
       app.manage(AppState {
           subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
       });
       
       Ok(())
     })
+    .on_window_event(|window, event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            let app_handle = window.app_handle();
+            let config_manager = app_handle.state::<Arc<GlobalConfigManager>>();
+            
+            // We need to block on this because on_window_event is sync
+            let settings = tauri::async_runtime::block_on(async {
+                config_manager.load().await.unwrap_or_default()
+            });
+
+            match settings.close_behavior {
+                CloseBehavior::HideToSystemTray => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                CloseBehavior::HideToTaskbar => {
+                    api.prevent_close();
+                    let _ = window.minimize();
+                }
+                CloseBehavior::Exit => {
+                    // Let the window close
+                }
+            }
+        }
+    })
     .invoke_handler(tauri::generate_handler![
+        commands::config::get_app_settings,
+        commands::config::update_app_settings,
         commands::files::read_text_file,
         commands::files::save_text_file,
         commands::files::open_file_in_editor,

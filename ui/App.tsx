@@ -30,7 +30,7 @@ function App() {
     sendCommand
   } = useServer()
 
-  const { accentColor, setAccentColor, theme, setTheme, scaling, setScaling } = useAppSettings()
+  const { settings, updateSettings } = useAppSettings()
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -64,20 +64,22 @@ function App() {
     <div
       className="fixed inset-0 overflow-hidden bg-background"
       style={{
-        width: `${100 / scaling}%`,
-        height: `${100 / scaling}%`,
-        transform: `scale(${scaling})`,
+        width: `${100 / settings.scaling}%`,
+        height: `${100 / settings.scaling}%`,
+        transform: `scale(${settings.scaling})`,
         transformOrigin: 'top left',
       }}
     >
       <div className="flex h-full text-gray-900 dark:text-white selection:bg-primary/30">
         <Sidebar
-          instances={instances}
-          selectedInstanceId={selectedInstanceId}
-          onSelectInstance={setSelectedInstanceId}
-          onCreateNew={() => setShowCreateModal(true)}
-          onOpenSettings={() => setShowSettingsModal(true)}
-        />
+        instances={instances}
+        selectedInstanceId={selectedInstanceId}
+        onSelectInstance={setSelectedInstanceId}
+        onCreateNew={() => setShowCreateModal(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onInstancesUpdated={loadInstances}
+        settings={settings}
+      />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-surface/30 backdrop-blur-sm">
@@ -116,6 +118,7 @@ function App() {
                       onCommandChange={setCommand}
                       onSendCommand={handleSendCommand}
                       onSetActiveTab={setActiveTab}
+                      settings={settings}
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -125,12 +128,13 @@ function App() {
             instances.length === 0 ? (
               <EmptyState />
             ) : (
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <GlobalDashboard
                   instances={instances}
                   onSelectInstance={setSelectedInstanceId}
                   onStartServer={startServer}
                   onStopServer={stopServer}
+                  settings={settings}
                 />
               </div>
             )
@@ -165,12 +169,8 @@ function App() {
         <AppSettingsModal
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
-          accentColor={accentColor}
-          onAccentColorChange={setAccentColor}
-          theme={theme}
-          onThemeChange={setTheme}
-          scaling={scaling}
-          onScalingChange={setScaling}
+          settings={settings}
+          updateSettings={updateSettings}
         />
       </div>
     </div>

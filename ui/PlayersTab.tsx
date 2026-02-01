@@ -9,14 +9,16 @@ import { PlayerCard } from './components/players/PlayerCard'
 import { PlayerListTable } from './components/players/PlayerListTable'
 import { PlayerHeader } from './components/players/PlayerHeader'
 import { useToast } from './hooks/useToast'
+import { AppSettings } from './hooks/useAppSettings'
 
 interface PlayersTabProps {
   instanceId: string;
+  settings: AppSettings;
 }
 
 export type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
 
-export function PlayersTab({ instanceId }: PlayersTabProps) {
+export function PlayersTab({ instanceId, settings }: PlayersTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<PlayerSubTab>('all');
   const [lists, setLists] = useState<AllPlayerLists | null>(null);
   const [onlinePlayers, setOnlinePlayers] = useState<string[]>([]);
@@ -310,6 +312,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
                     player={player}
                     index={index}
                     onQuickAdd={handleQuickAdd}
+                    settings={settings}
                   />
                 ))}
               </div>
@@ -317,6 +320,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
               <PlayerListTable
                 list={currentList}
                 onRemove={handleRemovePlayer}
+                settings={settings}
               />
             )}
           </motion.div>
