@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Trash2, UserPlus, FileText, Shield, Ban, Globe, Activity, Plus, Search, Info, RefreshCw, CheckCircle2, Users, X, Edit3 } from 'lucide-react'
+import { FileText, Shield, Ban, Globe, Activity, Info, CheckCircle2, Users, X } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
-import { AllPlayerLists, OpEntry } from './types'
+import { AllPlayerLists } from './types'
 import { cn } from './utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TextEditor } from './components/TextEditor'
+import { PlayerCard } from './components/players/PlayerCard'
+import { PlayerListTable } from './components/players/PlayerListTable'
+import { PlayerHeader } from './components/players/PlayerHeader'
 
 interface PlayersTabProps {
   instanceId: string;
@@ -16,7 +19,7 @@ interface Notification {
   type: 'success' | 'error';
 }
 
-type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
+export type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
 
 export function PlayersTab({ instanceId }: PlayersTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<PlayerSubTab>('all');
@@ -242,115 +245,19 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
 
   return (
     <div className="flex flex-col h-full space-y-6">
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 pb-6 border-b border-black/5 dark:border-white/5">
-        <div className="flex flex-wrap gap-2">
-          {subTabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={cn(
-                "relative px-5 py-2.5 rounded-xl transition-all flex items-center gap-2.5 text-sm font-bold uppercase tracking-wider",
-                activeSubTab === tab.id
-                  ? "bg-black/10 dark:bg-white/10 text-gray-900 dark:text-white shadow-lg"
-                  : "text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
-              )}
-            >
-              <tab.icon size={18} className={cn(activeSubTab === tab.id ? tab.color : "text-current")} />
-              {tab.label}
-              {activeSubTab === tab.id && (
-                <motion.div
-                  layoutId="active-player-tab"
-                  className="absolute inset-0 bg-black/5 dark:bg-white/5 rounded-xl -z-10"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-3 w-full xl:w-auto">
-          <div className="relative flex-1 xl:w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20" size={18} />
-            <input
-              type="text"
-              placeholder="Search players..."
-              className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20"
-            />
-          </div>
-          {activeSubTab !== 'all' && (
-            <div className="flex items-center gap-3 relative" ref={addModalRef}>
-              <motion.button
-                whileHover={{ scale: 1.02, translateY: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  "flex items-center gap-2 px-6 py-3 border rounded-2xl transition-all text-xs font-black uppercase tracking-widest",
-                  isAddModalOpen
-                    ? "bg-primary text-white border-primary shadow-glow-primary"
-                    : "bg-black/5 dark:bg-white/5 text-gray-900 dark:text-white border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10"
-                )}
-                onClick={() => setIsAddModalOpen(!isAddModalOpen)}
-              >
-                {isAddModalOpen ? <X size={18} /> : <UserPlus size={18} />}
-                {activeSubTab === 'banned-ips' ? 'Ban IP' : 'Add Player'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02, translateY: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-2 px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl hover:bg-primary/20 transition-all text-xs font-black uppercase tracking-widest"
-                onClick={handleRawEdit}
-              >
-                <Edit3 size={18} />
-                Edit Raw List
-              </motion.button>
-
-              <AnimatePresence>
-                {isAddModalOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full mt-3 right-0 w-80 glass-panel p-5 rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl z-50"
-                  >
-                    <form onSubmit={handleAddPlayer} className="space-y-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/30 ml-1">
-                          {activeSubTab === 'banned-ips' ? 'Ban IP Address' : `Add to ${activeSubTab}`}
-                        </label>
-                        <div className="relative group">
-                          <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 group-focus-within:text-primary transition-colors" size={18} />
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder={activeSubTab === 'banned-ips' ? "Enter IP address..." : "Enter Minecraft username..."}
-                            className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20"
-                            value={newUsername}
-                            onChange={(e) => setNewUsername(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        disabled={adding || !newUsername.trim()}
-                        className="w-full py-3 bg-primary hover:bg-primary-hover disabled:bg-black/5 dark:disabled:bg-white/5 disabled:text-gray-400 dark:disabled:text-white/20 disabled:cursor-not-allowed rounded-xl transition-all text-xs font-black uppercase tracking-widest text-white shadow-glow-primary flex items-center justify-center gap-2"
-                      >
-                        {adding ? (
-                          <RefreshCw size={16} className="animate-spin" />
-                        ) : (
-                          <Plus size={16} />
-                        )}
-                        {adding ? 'Adding...' : 'Add Player'}
-                      </motion.button>
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-      </div>
+      <PlayerHeader
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
+        subTabs={subTabs}
+        isAddModalOpen={isAddModalOpen}
+        setIsAddModalOpen={setIsAddModalOpen}
+        addModalRef={addModalRef}
+        newUsername={newUsername}
+        setNewUsername={setNewUsername}
+        handleAddPlayer={handleAddPlayer}
+        handleRawEdit={handleRawEdit}
+        adding={adding}
+      />
 
       <AnimatePresence>
         {isRawEditing && (
@@ -386,137 +293,23 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
           >
             {activeSubTab === 'all' ? (
-              allPlayers.map((player, index) => (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  key={player.name}
-                  className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-black/5 dark:border-white/5 group hover:border-primary/30 transition-all hover:translate-y-[-2px]"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative shrink-0">
-                      <img
-                        src={`https://minotar.net/avatar/${player.uuid || player.name}/48`}
-                        alt={player.name}
-                        className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
-                      />
-                      <span className={cn(
-                        "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 shadow-sm transition-all duration-500",
-                        player.isOnline
-                          ? "bg-emerald-500 border-white dark:border-[#0a0a0a] shadow-glow-emerald"
-                          : "bg-gray-400 border-white dark:border-[#0a0a0a]"
-                      )}></span>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-gray-900 dark:text-white tracking-tight truncate">{player.name}</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {player.isWhitelisted && (
-                          <div title="Whitelisted" className="text-primary">
-                            <FileText size={12} />
-                          </div>
-                        )}
-                        {player.isOp && (
-                          <div title="Operator" className="text-accent-amber">
-                            <Shield size={12} />
-                          </div>
-                        )}
-                        {player.isBanned && (
-                          <div title="Banned" className="text-accent-rose">
-                            <Ban size={12} />
-                          </div>
-                        )}
-                        {!player.isWhitelisted && !player.isOp && !player.isBanned && (
-                          <span className="text-[10px] text-gray-400 dark:text-white/20 font-black uppercase tracking-widest">
-                            Neutral
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                    {!player.isWhitelisted && (
-                      <motion.button
-                        whileHover={{ scale: 1.1, translateY: -2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleQuickAdd(player.name, 'whitelist')}
-                        title="Add to Whitelist"
-                        className="p-2 text-gray-400 dark:text-white/40 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                      >
-                        <FileText size={18} />
-                      </motion.button>
-                    )}
-                    {!player.isOp && (
-                      <motion.button
-                        whileHover={{ scale: 1.1, translateY: -2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleQuickAdd(player.name, 'ops')}
-                        title="Make Operator"
-                        className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-amber hover:bg-accent-amber/10 rounded-xl transition-all"
-                      >
-                        <Shield size={18} />
-                      </motion.button>
-                    )}
-                    {!player.isBanned && (
-                      <motion.button
-                        whileHover={{ scale: 1.1, translateY: -2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleQuickAdd(player.name, 'banned-players')}
-                        title="Ban Player"
-                        className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-rose hover:bg-accent-rose/10 rounded-xl transition-all"
-                      >
-                        <Ban size={18} />
-                      </motion.button>
-                    )}
-                  </div>
-                </motion.div>
-              ))
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {allPlayers.map((player, index) => (
+                  <PlayerCard
+                    key={player.name}
+                    player={player}
+                    index={index}
+                    onQuickAdd={handleQuickAdd}
+                  />
+                ))}
+              </div>
             ) : (
-              currentList.map((player, index) => (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  key={'name' in player ? player.name : player.ip}
-                  className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-black/5 dark:border-white/5 group hover:border-primary/30 transition-all hover:translate-y-[-2px]"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative shrink-0">
-                      <img
-                        src={`https://minotar.net/avatar/${'name' in player ? player.name : player.ip}/48`}
-                        alt={'name' in player ? player.name : player.ip}
-                        className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
-                      />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-gray-900 dark:text-white tracking-tight truncate">
-                        {'name' in player ? player.name : player.ip}
-                      </span>
-                      {'level' in player && (
-                        <span className="text-[10px] text-accent-amber font-black uppercase tracking-widest mt-0.5">
-                          Level {(player as OpEntry).level}
-                        </span>
-                      )}
-                      {'reason' in player && (
-                        <span className="text-[10px] text-accent-rose font-black uppercase tracking-widest mt-0.5 truncate max-w-[120px]">
-                          {player.reason}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1, translateY: -2 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleRemovePlayer('name' in player ? player.name : player.ip)}
-                    className="p-2 text-gray-400 dark:text-white/40 hover:text-accent-rose hover:bg-accent-rose/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 size={18} />
-                  </motion.button>
-                </motion.div>
-              ))
+              <PlayerListTable
+                list={currentList}
+                onRemove={handleRemovePlayer}
+              />
             )}
           </motion.div>
         </AnimatePresence>
