@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Search, FileText, Download, RefreshCw, Terminal, History, ChevronRight, Filter } from 'lucide-react'
+import { Search, FileText, Download, RefreshCw, Terminal, History, ChevronRight, Filter, Share } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 
@@ -47,6 +47,17 @@ export function LogsTab({ instanceId }: LogsTabProps) {
     document.body.removeChild(element);
   }
 
+  const openExternal = async () => {
+    try {
+      await invoke('open_file_in_editor', {
+        instanceId,
+        relPath: 'logs/latest.log'
+      })
+    } catch (err) {
+      console.error('Failed to open external editor:', err)
+    }
+  }
+
   const formatLogLine = (line: string) => {
     const timestampMatch = line.match(/^\[\d{2}:\d{2}:\d{2}\]/);
     const timestamp = timestampMatch ? timestampMatch[0] : '';
@@ -88,6 +99,15 @@ export function LogsTab({ instanceId }: LogsTabProps) {
             title="Refresh logs"
           >
             <RefreshCw size={20} className={cn(loading && "animate-spin text-primary")} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={openExternal}
+            className="p-3 bg-black/5 dark:bg-white/[0.03] hover:bg-black/10 dark:hover:bg-white/[0.08] rounded-xl border border-black/10 dark:border-white/5 text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white transition-all shadow-lg"
+            title="Open in external editor"
+          >
+            <Share size={20} />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02, translateY: -2 }}

@@ -41,3 +41,48 @@ pub async fn save_text_file(
 
     tokio::fs::write(file_path, content).await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn open_file_in_editor(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: String,
+    rel_path: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
+        .ok_or_else(|| "Instance not found".to_string())?;
+    
+    let file_path = instance.path.join(&rel_path);
+    if !file_path.exists() {
+        return Err("File does not exist".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // On Windows, 'explorer' opens the parent folder if the path is a file.
+        // We use 'powershell' with 'Start-Process' to correctly open the file with its default application.
+        std::process::Command::new("powershell")
+            .arg("-Command")
+            .arg(format!("Start-Process '{}'", file_path.display()))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(file_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(file_path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}

@@ -177,6 +177,26 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
     }
   };
 
+  const handleOpenExternal = async () => {
+    if (activeSubTab === 'all') return;
+
+    const fileName = activeSubTab === 'whitelist' ? 'whitelist.json' :
+      activeSubTab === 'ops' ? 'ops.json' :
+        activeSubTab === 'banned-players' ? 'banned-players.json' :
+          activeSubTab === 'banned-ips' ? 'banned-ips.json' : '';
+
+    if (!fileName) return;
+
+    try {
+      await invoke('open_file_in_editor', {
+        instanceId,
+        relPath: fileName
+      });
+    } catch (err) {
+      addNotification(`Error: ${err}`, 'error');
+    }
+  };
+
   const allPlayers = useMemo(() => {
     if (!lists) return [];
 
@@ -266,6 +286,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
             initialValue={rawContent}
             onSave={handleRawSave}
             onClose={() => setIsRawEditing(false)}
+            onOpenExternal={handleOpenExternal}
           />
         )}
       </AnimatePresence>

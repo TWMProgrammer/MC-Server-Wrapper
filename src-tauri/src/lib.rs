@@ -60,6 +60,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
         commands::files::read_text_file,
         commands::files::save_text_file,
+        commands::files::open_file_in_editor,
         commands::instance::list_instances,
         commands::instance::create_instance,
         commands::instance::delete_instance,

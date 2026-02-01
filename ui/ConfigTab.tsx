@@ -94,6 +94,18 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
     }
   }
 
+  const handleOpenExternal = async () => {
+    if (!selectedConfig) return
+    try {
+      await invoke('open_file_in_editor', {
+        instanceId,
+        relPath: selectedConfig.path
+      })
+    } catch (err) {
+      setError(err as string)
+    }
+  }
+
   useEffect(() => {
     fetchAvailableConfigs()
   }, [instanceId])
@@ -179,6 +191,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
               initialValue={rawContent}
               onSave={handleRawSave}
               onClose={() => setIsRawEditing(false)}
+              onOpenExternal={handleOpenExternal}
             />
           )}
         </AnimatePresence>

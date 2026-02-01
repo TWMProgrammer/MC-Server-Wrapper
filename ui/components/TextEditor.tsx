@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, X, Maximize2, Minimize2 } from 'lucide-react'
+import { Save, X, Maximize2, Minimize2, Share } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../utils'
 
@@ -7,11 +7,12 @@ interface TextEditorProps {
   initialValue: string
   onSave: (value: string) => Promise<void>
   onClose: () => void
+  onOpenExternal?: () => void
   title: string
   language?: string
 }
 
-export function TextEditor({ initialValue, onSave, onClose, title }: TextEditorProps) {
+export function TextEditor({ initialValue, onSave, onClose, onOpenExternal, title }: TextEditorProps) {
   const [value, setValue] = useState(initialValue)
   const [isSaving, setIsSaving] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -79,6 +80,18 @@ export function TextEditor({ initialValue, onSave, onClose, title }: TextEditorP
             <span className="ml-4 text-sm font-medium text-white/60 tracking-wider uppercase">{title}</span>
           </div>
           <div className="flex items-center gap-2">
+            {onOpenExternal && (
+              <button
+                onClick={onOpenExternal}
+                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-all group relative"
+                title="Open in default editor"
+              >
+                <Share size={18} />
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
+                  Open in External Editor
+                </span>
+              </button>
+            )}
             <button
               onClick={() => setIsMaximized(!isMaximized)}
               className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-all"
