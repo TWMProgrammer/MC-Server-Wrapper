@@ -6,11 +6,12 @@ interface YamlTreeEditorProps {
   value: any
   onChange: (val: any) => void
   label?: string
+  allowedTypes?: ('string' | 'object' | 'array')[]
+  typeLabels?: Partial<Record<'string' | 'object' | 'array', string>>
 }
 
-export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) {
+export function YamlTreeEditor({ value, onChange, label, allowedTypes, typeLabels }: YamlTreeEditorProps) {
   const [isHovered, setIsHovered] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
 
   const isObject = value !== null && typeof value === 'object' && !Array.isArray(value)
   const isArray = Array.isArray(value)
@@ -29,7 +30,24 @@ export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) 
         onChange({ ...value, [key]: newValue })
       }
     }
-    setShowMenu(false)
+  }
+
+  const renderActionButtons = () => {
+    const types = allowedTypes || ['string', 'object', 'array']
+
+    return (
+      <div className="flex items-center gap-1">
+        {types.map((type) => (
+          <button
+            key={type}
+            onClick={() => handleAdd(type)}
+            className="px-2 py-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-all"
+          >
+            <Plus size={10} /> {typeLabels?.[type] || type}
+          </button>
+        ))}
+      </div>
+    )
   }
 
   if (isObject) {
@@ -37,50 +55,13 @@ export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) 
       <div
         className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-4 group hover:border-primary/30 transition-all duration-200 relative"
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false)
-          setShowMenu(false)
-        }}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex items-center justify-between">
           <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors">
             {label || 'Object'}
           </label>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <motion.button
-                initial={false}
-                animate={{ opacity: isHovered ? 1 : 0 }}
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 dark:text-white/20 hover:text-primary transition-all"
-              >
-                <MoreVertical size={16} />
-              </motion.button>
-
-              <AnimatePresence>
-                {showMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                    className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-                  >
-                    <div className="p-1">
-                      <button onClick={() => handleAdd('string')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add String
-                      </button>
-                      <button onClick={() => handleAdd('object')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add Object
-                      </button>
-                      <button onClick={() => handleAdd('array')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add Array
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+          {renderActionButtons()}
         </div>
 
         <div className="space-y-4">
@@ -101,6 +82,8 @@ export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) 
               </div>
               <YamlTreeEditor
                 value={v}
+                allowedTypes={Array.isArray(v) ? ['string'] : allowedTypes}
+                typeLabels={typeLabels}
                 onChange={(newVal) => onChange({ ...value, [k]: newVal })}
               />
             </div>
@@ -120,50 +103,13 @@ export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) 
       <div
         className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-4 group hover:border-primary/30 transition-all duration-200 relative"
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false)
-          setShowMenu(false)
-        }}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex items-center justify-between">
           <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors">
             {label || 'Array'}
           </label>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <motion.button
-                initial={false}
-                animate={{ opacity: isHovered ? 1 : 0 }}
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-gray-400 dark:text-white/20 hover:text-primary transition-all"
-              >
-                <MoreVertical size={16} />
-              </motion.button>
-
-              <AnimatePresence>
-                {showMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                    className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#1a1a1a] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-                  >
-                    <div className="p-1">
-                      <button onClick={() => handleAdd('string')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add String
-                      </button>
-                      <button onClick={() => handleAdd('object')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add Object
-                      </button>
-                      <button onClick={() => handleAdd('array')} className="w-full text-left px-3 py-2 text-sm hover:bg-primary hover:text-white rounded-lg transition-colors flex items-center gap-2">
-                        <Plus size={14} /> Add Array
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+          {renderActionButtons()}
         </div>
 
         <div className="space-y-3">
@@ -172,6 +118,8 @@ export function YamlTreeEditor({ value, onChange, label }: YamlTreeEditorProps) 
               <div className="flex-1">
                 <YamlTreeEditor
                   value={item}
+                  allowedTypes={allowedTypes}
+                  typeLabels={typeLabels}
                   onChange={(newVal) => {
                     const newValue = [...value]
                     newValue[i] = newVal

@@ -67,27 +67,49 @@ export function PropertyGrid({
         <AnimatePresence mode="popLayout">
           {selectedConfig?.name === 'commands.yml' && nestedConfig ? (
             <>
-              {['command-block-overrides', 'ignore-vanilla-permissions'].map((key) => (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  key={key}
-                  className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-3 group hover:border-primary/30 transition-all duration-200 hover:translate-y-[-2px] focus-within:z-20 relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors truncate pr-4">
-                      {key.replace(/-/g, ' ')}
-                    </label>
-                    <Settings2 size={14} className="text-gray-400 dark:text-white/10 group-hover:text-primary transition-colors shrink-0" />
-                  </div>
-                  <YamlTreeEditor
-                    value={nestedConfig[key] ?? (key === 'command-block-overrides' ? [] : false)}
-                    onChange={(newVal) => setNestedConfig({ ...nestedConfig, [key]: newVal })}
-                  />
-                </motion.div>
-              ))}
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-3 group hover:border-primary/30 transition-all duration-200 hover:translate-y-[-2px] focus-within:z-20 relative"
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors truncate pr-4">
+                    Command Block Overrides
+                  </label>
+                  <Settings2 size={14} className="text-gray-400 dark:text-white/10 group-hover:text-primary transition-colors shrink-0" />
+                </div>
+                <YamlTreeEditor
+                  value={nestedConfig['command-block-overrides'] ?? []}
+                  allowedTypes={['string']}
+                  typeLabels={{ string: 'command' }}
+                  onChange={(newVal) => setNestedConfig({ ...nestedConfig, 'command-block-overrides': newVal })}
+                />
+              </motion.div>
+
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="glass-panel p-5 rounded-2xl border border-black/5 dark:border-white/5 flex flex-col gap-3 group hover:border-primary/30 transition-all duration-200 hover:translate-y-[-2px] focus-within:z-20 relative"
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/30 group-hover:text-primary/70 transition-colors truncate pr-4">
+                    Ignore Vanilla Permissions
+                  </label>
+                  <Settings2 size={14} className="text-gray-400 dark:text-white/10 group-hover:text-primary transition-colors shrink-0" />
+                </div>
+                <Select
+                  value={String(nestedConfig['ignore-vanilla-permissions'] ?? false)}
+                  onChange={(newVal) => setNestedConfig({ ...nestedConfig, 'ignore-vanilla-permissions': newVal === 'true' })}
+                  options={[
+                    { value: 'true', label: 'true' },
+                    { value: 'false', label: 'false' },
+                  ]}
+                />
+              </motion.div>
 
               <div className="col-span-full py-4 flex items-center gap-4">
                 <div className="h-px flex-1 bg-black/5 dark:bg-white/5" />
@@ -102,6 +124,8 @@ export function PropertyGrid({
                     <YamlTreeEditor
                       label={k}
                       value={v}
+                      allowedTypes={k === 'aliases' ? ['array'] : undefined}
+                      typeLabels={k === 'aliases' ? { array: 'alias', string: 'command' } : undefined}
                       onChange={(newVal) => setNestedConfig({ ...nestedConfig, [k]: newVal })}
                     />
                   </div>
