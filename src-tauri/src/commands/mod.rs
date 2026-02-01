@@ -3,6 +3,7 @@ pub mod server;
 pub mod players;
 pub mod config;
 pub mod files;
+pub mod backups;
 
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;

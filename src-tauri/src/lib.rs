@@ -2,6 +2,7 @@ mod commands;
 
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
+use mc_server_wrapper_core::backup::BackupManager;
 use tauri::Manager;
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
@@ -48,9 +49,11 @@ pub fn run() {
       }));
 
       let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager)));
+      let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
 
       app.manage(instance_manager);
       app.manage(server_manager);
+      app.manage(backup_manager);
       app.manage(AppState {
           subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
       });
@@ -88,6 +91,10 @@ pub fn run() {
         commands::config::save_config_file,
         commands::config::get_config_value,
         commands::config::save_config_value,
+        commands::backups::list_backups,
+        commands::backups::create_backup,
+        commands::backups::delete_backup,
+        commands::backups::restore_backup,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

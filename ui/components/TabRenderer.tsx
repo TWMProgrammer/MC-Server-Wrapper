@@ -11,6 +11,7 @@ import { Console } from './Console'
 import { LogsTab } from '../LogsTab'
 import { PlayersTab } from '../PlayersTab'
 import { ConfigTab } from '../ConfigTab'
+import { BackupsTab } from '../BackupsTab'
 import { TabId, Instance, ResourceUsage } from '../types'
 
 interface TabRendererProps {
@@ -89,6 +90,10 @@ export function TabRenderer({
     return <ConfigTab instanceId={selectedInstanceId} />;
   }
 
+  if (activeTab === 'backups') {
+    return <BackupsTab instanceId={selectedInstanceId} />;
+  }
+
   // Placeholder for other tabs
   return (
     <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20 bg-surface/50 rounded-2xl border border-black/5 dark:border-white/5">
@@ -99,7 +104,6 @@ export function TabRenderer({
       >
         {activeTab === 'plugins' && <Puzzle size={64} className="mb-4 text-primary opacity-40" />}
         {activeTab === 'mods' && <Layers size={64} className="mb-4 text-primary opacity-40" />}
-        {activeTab === 'backups' && <History size={64} className="mb-4 text-primary opacity-40" />}
         {activeTab === 'scheduler' && <Calendar size={64} className="mb-4 text-primary opacity-40" />}
         {activeTab === 'settings' && <Settings size={64} className="mb-4 text-primary opacity-40" />}
       </motion.div>

@@ -65,3 +65,10 @@ export interface AllPlayerLists {
   banned_ips: BannedIpEntry[];
   user_cache: UserCacheEntry[];
 }
+
+export interface BackupInfo {
+  name: string;
+  path: string;
+  size: number;
+  created_at: string;
+}
