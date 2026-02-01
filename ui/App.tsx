@@ -9,6 +9,7 @@ import { useConsoleScroll } from './hooks/useConsoleScroll'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 import { EmptyState } from './components/EmptyState'
+import { GlobalDashboard } from './components/GlobalDashboard'
 import { TabRenderer } from './components/TabRenderer'
 import { getAvailableTabs } from './utils/tabUtils'
 import { TabId } from './types'
@@ -60,7 +61,7 @@ function App() {
   }, [currentInstance, activeTab, tabs]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 overflow-hidden bg-background"
       style={{
         width: `${100 / scaling}%`,
@@ -87,8 +88,8 @@ function App() {
                 status={status}
                 activeTab={activeTab}
                 tabs={tabs}
-                onStartServer={startServer}
-                onStopServer={stopServer}
+                onStartServer={() => startServer()}
+                onStopServer={() => stopServer()}
                 onSetActiveTab={setActiveTab}
                 onInstancesUpdated={loadInstances}
               />
@@ -121,7 +122,18 @@ function App() {
               </div>
             </>
           ) : (
-            <EmptyState />
+            instances.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                <GlobalDashboard
+                  instances={instances}
+                  onSelectInstance={setSelectedInstanceId}
+                  onStartServer={startServer}
+                  onStopServer={stopServer}
+                />
+              </div>
+            )
           )}
         </div>
 

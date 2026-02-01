@@ -34,10 +34,10 @@ export function EmptyState() {
         </div>
 
         <h2 className="text-4xl font-black text-gray-900 dark:text-white mb-4 tracking-tighter">
-          Ready to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent-rose">Craft?</span>
+          Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent-rose">MC Wrapper</span>
         </h2>
         <p className="text-lg text-gray-500 dark:text-white/40 max-w-md leading-relaxed font-medium">
-          Select a server instance from the sidebar to manage your world, or create a brand new one to start your adventure.
+          You haven't created any server instances yet. Click the "Create New Instance" button in the sidebar to get started with your first Minecraft server!
         </p>
 
         <motion.div

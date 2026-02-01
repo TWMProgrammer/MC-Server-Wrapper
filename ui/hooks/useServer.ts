@@ -106,19 +106,21 @@ export function useServer() {
     }
   }
 
-  async function startServer() {
-    if (!selectedInstanceId || !(window as any).__TAURI_INTERNALS__) return;
+  async function startServer(instanceId?: string) {
+    const id = instanceId || selectedInstanceId;
+    if (!id || !(window as any).__TAURI_INTERNALS__) return;
     try {
-      await invoke('start_server', { instanceId: selectedInstanceId })
+      await invoke('start_server', { instanceId: id })
     } catch (e) {
       console.error(e)
     }
   }
 
-  async function stopServer() {
-    if (!selectedInstanceId || !(window as any).__TAURI_INTERNALS__) return;
+  async function stopServer(instanceId?: string) {
+    const id = instanceId || selectedInstanceId;
+    if (!id || !(window as any).__TAURI_INTERNALS__) return;
     try {
-      await invoke('stop_server', { instanceId: selectedInstanceId })
+      await invoke('stop_server', { instanceId: id })
     } catch (e) {
       console.error(e)
     }
