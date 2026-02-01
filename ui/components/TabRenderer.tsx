@@ -12,6 +12,7 @@ import { LogsTab } from '../LogsTab'
 import { PlayersTab } from '../PlayersTab'
 import { ConfigTab } from '../ConfigTab'
 import { BackupsTab } from '../BackupsTab'
+import { SchedulesTab } from '../SchedulesTab'
 import { TabId, Instance, ResourceUsage } from '../types'
 
 interface TabRendererProps {
@@ -92,6 +93,10 @@ export function TabRenderer({
 
   if (activeTab === 'backups') {
     return <BackupsTab instanceId={selectedInstanceId} />;
+  }
+
+  if (activeTab === 'scheduler') {
+    return <SchedulesTab instanceId={selectedInstanceId} />;
   }
 
   // Placeholder for other tabs

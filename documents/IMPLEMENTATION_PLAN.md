@@ -87,6 +87,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - **Data Safety**
     - [x] Automated backup triggers (on stop/scheduled).
     - [x] Compression support (zip/tar.gz).
+- **Scheduled Tasks**
+    - [x] Cron-style scheduling for restarts and backups.
+    - [x] Persistence of schedules in instance metadata.
+    - [x] UI for managing schedules.
 
 ### Phase 3: Enhancement
 - [x] Tauri-based Desktop UI (React + Tailwind foundation).

@@ -3,6 +3,7 @@ mod commands;
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::backup::BackupManager;
+use mc_server_wrapper_core::scheduler::SchedulerManager;
 use tauri::Manager;
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
@@ -50,10 +51,25 @@ pub fn run() {
 
       let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager)));
       let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
+      let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
+          let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.expect("failed to initialize scheduler manager");
+          
+          // Load existing schedules
+          let instances = instance_manager.list_instances().await.unwrap_or_default();
+          for instance in instances {
+              for task in instance.schedules {
+                  if task.enabled {
+                      let _ = sm.add_task(task).await;
+                  }
+              }
+          }
+          sm
+      }));
 
       app.manage(instance_manager);
       app.manage(server_manager);
       app.manage(backup_manager);
+      app.manage(scheduler_manager);
       app.manage(AppState {
           subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
       });
@@ -95,6 +111,9 @@ pub fn run() {
         commands::backups::create_backup,
         commands::backups::delete_backup,
         commands::backups::restore_backup,
+        commands::scheduler::add_scheduled_task,
+        commands::scheduler::remove_scheduled_task,
+        commands::scheduler::list_scheduled_tasks,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -5,6 +5,7 @@ use anyhow::{Result, Context};
 use tokio::fs;
 use chrono::{DateTime, Utc};
 use tracing::info;
+use super::scheduler::ScheduledTask;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstanceMetadata {
@@ -16,6 +17,8 @@ pub struct InstanceMetadata {
     pub created_at: DateTime<Utc>,
     pub last_run: Option<DateTime<Utc>>,
     pub path: PathBuf,
+    #[serde(default)]
+    pub schedules: Vec<ScheduledTask>,
 }
 
 pub struct InstanceManager {
@@ -51,6 +54,7 @@ impl InstanceManager {
             created_at: Utc::now(),
             last_run: None,
             path: instance_path,
+            schedules: vec![],
         };
 
         let mut instances = self.list_instances().await?;
@@ -108,6 +112,7 @@ impl InstanceManager {
             created_at: Utc::now(),
             last_run: None,
             path: new_path,
+            schedules: instance.schedules.clone(),
         };
 
         let mut instances = self.list_instances().await?;
@@ -143,6 +148,24 @@ impl InstanceManager {
         let mut instances = self.list_instances().await?;
         if let Some(instance) = instances.iter_mut().find(|i| i.id == id) {
             instance.last_run = Some(Utc::now());
+            self.save_registry(&instances).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn add_schedule(&self, instance_id: Uuid, task: ScheduledTask) -> Result<()> {
+        let mut instances = self.list_instances().await?;
+        if let Some(instance) = instances.iter_mut().find(|i| i.id == instance_id) {
+            instance.schedules.push(task);
+            self.save_registry(&instances).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn remove_schedule(&self, instance_id: Uuid, task_id: Uuid) -> Result<()> {
+        let mut instances = self.list_instances().await?;
+        if let Some(instance) = instances.iter_mut().find(|i| i.id == instance_id) {
+            instance.schedules.retain(|t| t.id != task_id);
             self.save_registry(&instances).await?;
         }
         Ok(())

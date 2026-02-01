@@ -72,3 +72,15 @@ export interface BackupInfo {
   size: number;
   created_at: string;
 }
+
+export type ScheduleType = 'Backup' | 'Restart';
+
+export interface ScheduledTask {
+  id: string;
+  instance_id: string;
+  task_type: ScheduleType;
+  cron: string;
+  enabled: boolean;
+  last_run?: string;
+  next_run?: string;
+}

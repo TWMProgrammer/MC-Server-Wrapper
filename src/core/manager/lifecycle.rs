@@ -138,4 +138,10 @@ impl ServerManager {
         }
         Ok(())
     }
+
+    pub async fn restart_server(&self, instance_id: Uuid) -> Result<()> {
+        self.stop_server(instance_id).await?;
+        self.start_server(instance_id).await?;
+        Ok(())
+    }
 }

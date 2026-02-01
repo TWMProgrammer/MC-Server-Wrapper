@@ -28,3 +28,4 @@ strum = { version = "0.26", features = ["derive"] }
 sysinfo = "0.33"
 regex = "1.10"
 serde_yaml = "0.9"
+tokio-cron-scheduler = "0.11"
