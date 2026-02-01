@@ -128,17 +128,26 @@ impl InstanceManager {
         Ok(metadata)
     }
 
-    pub async fn import_instance(&self, name: &str, source_path: PathBuf, jar_name: String, mod_loader: Option<String>, root_within_zip: Option<String>) -> Result<InstanceMetadata> {
+    pub async fn import_instance<F>(&self, name: &str, source_path: PathBuf, jar_name: String, mod_loader: Option<String>, root_within_zip: Option<String>, on_progress: F) -> Result<InstanceMetadata> 
+    where F: Fn(u64, u64, String) + Send + Sync + 'static
+    {
         let id = Uuid::new_v4();
         let instance_path = self.base_dir.join(id.to_string());
         fs::create_dir_all(&instance_path).await?;
 
         if source_path.is_dir() {
-            self.copy_dir_all(&source_path, &instance_path).await?;
-        } else if source_path.is_file() && source_path.extension().map_or(false, |ext| ext == "zip") {
-            self.extract_zip(&source_path, &instance_path, root_within_zip).await?;
+            self.copy_dir_all(&source_path, &instance_path, on_progress).await?;
+        } else if source_path.is_file() {
+            let extension = source_path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+            if extension == "zip" {
+                self.extract_zip(&source_path, &instance_path, root_within_zip, on_progress).await?;
+            } else if extension == "7z" {
+                self.extract_7z(&source_path, &instance_path, root_within_zip, on_progress).await?;
+            } else {
+                return Err(anyhow::anyhow!("Unsupported archive format: .{}", extension));
+            }
         } else {
-            return Err(anyhow::anyhow!("Source path must be a directory or a ZIP file"));
+            return Err(anyhow::anyhow!("Source path must be a directory or a supported archive file (.zip, .7z)"));
         }
 
         let mut settings = InstanceSettings::default();
@@ -165,13 +174,16 @@ impl InstanceManager {
         Ok(metadata)
     }
 
-    async fn extract_zip(&self, zip_path: &Path, dst: &Path, root_within_zip: Option<String>) -> Result<()> {
+    async fn extract_zip<F>(&self, zip_path: &Path, dst: &Path, root_within_zip: Option<String>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64, String) + Send + Sync + 'static
+    {
         let zip_path = zip_path.to_path_buf();
         let dst = dst.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&zip_path)?;
             let mut archive = zip::ZipArchive::new(file)?;
+            let total = archive.len() as u64;
 
             let root = root_within_zip.map(|r| {
                 if r.ends_with('/') { r } else { format!("{}/", r) }
@@ -180,6 +192,8 @@ impl InstanceManager {
             for i in 0..archive.len() {
                 let mut file = archive.by_index(i)?;
                 let name = file.name().to_string();
+                
+                on_progress(i as u64, total, format!("Extracting {}...", name));
 
                 // If a root is specified, only extract files within that root
                 if let Some(ref root_path) = root {
@@ -212,6 +226,69 @@ impl InstanceManager {
                     std::io::copy(&mut file, &mut outfile)?;
                 }
             }
+            Ok::<(), anyhow::Error>(())
+        }).await?
+    }
+
+    async fn extract_7z<F>(&self, sz_path: &Path, dst: &Path, root_within_zip: Option<String>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64, String) + Send + Sync + 'static
+    {
+        let sz_path = sz_path.to_path_buf();
+        let dst = dst.to_path_buf();
+
+        tokio::task::spawn_blocking(move || {
+            let root = root_within_zip.map(|r| {
+                if r.ends_with('/') { r } else { format!("{}/", r) }
+            });
+
+            // For 7z we need to count entries first to have a total
+            let total = {
+                let mut file = std::fs::File::open(&sz_path)?;
+                let len = file.metadata()?.len();
+                let archive = sevenz_rust::Archive::read(&mut file, len, &[])
+                    .map_err(|e| anyhow::anyhow!("7z read error: {}", e))?;
+                archive.files.len() as u64
+            };
+
+            let mut current = 0;
+            sevenz_rust::decompress_file_with_extract_fn(&sz_path, &dst, |entry, reader, out_dir| {
+                let name = entry.name().to_string();
+                current += 1;
+                on_progress(current, total, format!("Extracting {}...", name));
+
+                // If a root is specified, only extract files within that root
+                if let Some(ref root_path) = root {
+                    if !name.starts_with(root_path) {
+                        return Ok(true); // Skip this entry but continue
+                    }
+                }
+
+                let relative_name = if let Some(ref root_path) = root {
+                    name.strip_prefix(root_path).unwrap_or(&name)
+                } else {
+                    &name
+                };
+
+                if relative_name.is_empty() {
+                    return Ok(true);
+                }
+
+                let outpath = out_dir.join(relative_name);
+
+                if entry.is_directory() {
+                    std::fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        if !p.exists() {
+                            std::fs::create_dir_all(p)?;
+                        }
+                    }
+                    let mut outfile = std::fs::File::create(&outpath)?;
+                    std::io::copy(reader, &mut outfile)?;
+                }
+                Ok(true)
+            }).map_err(|e| anyhow::anyhow!("7z decompression error: {}", e))?;
+
             Ok::<(), anyhow::Error>(())
         }).await?
     }
@@ -252,7 +329,7 @@ impl InstanceManager {
         let new_path = self.base_dir.join(new_id.to_string());
         
         // Copy directory recursively
-        self.copy_dir_all(&instance.path, &new_path).await?;
+        self.copy_dir_all(&instance.path, &new_path, |_, _, _| {}).await?;
 
         let new_metadata = InstanceMetadata {
             id: new_id,
@@ -275,17 +352,24 @@ impl InstanceManager {
         Ok(new_metadata)
     }
 
-    async fn copy_dir_all(&self, src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {
-        let src = src.as_ref();
-        let dst = dst.as_ref();
+    async fn copy_dir_all<F>(&self, src: impl AsRef<Path>, dst: impl AsRef<Path>, on_progress: F) -> Result<()> 
+    where F: Fn(u64, u64, String) + Send + Sync + 'static
+    {
+        let src = src.as_ref().to_path_buf();
+        let dst = dst.as_ref().to_path_buf();
         
         if !dst.exists() {
-            fs::create_dir_all(dst).await?;
+            fs::create_dir_all(&dst).await?;
         }
 
-        for entry in walkdir::WalkDir::new(src).into_iter().filter_map(|e| e.ok()) {
-            let relative_path = entry.path().strip_prefix(src)?;
+        let entries: Vec<_> = walkdir::WalkDir::new(&src).into_iter().filter_map(|e| e.ok()).collect();
+        let total = entries.len() as u64;
+
+        for (i, entry) in entries.into_iter().enumerate() {
+            let relative_path = entry.path().strip_prefix(&src)?;
             let target_path = dst.join(relative_path);
+
+            on_progress(i as u64, total, format!("Copying {}...", relative_path.display()));
 
             if entry.file_type().is_dir() {
                 fs::create_dir_all(&target_path).await?;

@@ -41,10 +41,13 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     serverPropertiesExists,
     setServerPropertiesExists,
     rootWithinZip,
-    setRootWithinZip
+    setRootWithinZip,
+    importProgress
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
+
+  const percentage = importProgress?.total ? Math.round((importProgress.current / importProgress.total) * 100) : 0;
 
   return (
     <AnimatePresence>
@@ -63,6 +66,72 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="bg-white dark:bg-gray-950 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5 transition-colors duration-300"
         >
+          {/* Progress Overlay */}
+          <AnimatePresence>
+            {creating && activeTab === 'import' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[60] bg-white/95 dark:bg-gray-950/95 backdrop-blur-md flex items-center justify-center p-8"
+              >
+                <div className="w-full max-w-lg space-y-12">
+                  <div className="flex flex-col items-center text-center gap-6">
+                    <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center shadow-glow-primary border border-primary/20 relative group">
+                      <div className="absolute inset-0 bg-primary/5 rounded-[2rem] animate-ping opacity-20" />
+                      <Box className="text-primary relative z-10" size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Importing Instance</div>
+                      <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Processing Files</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 bg-black/5 dark:bg-white/[0.02] p-8 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-inner">
+                    <div className="flex justify-between items-end gap-8">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20 ml-1">Current Task</span>
+                        <div className="text-sm font-bold text-gray-700 dark:text-white/80 flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+                          <span className="truncate block" title={importProgress?.message}>
+                            {importProgress?.message || 'Starting import...'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-4xl font-black font-mono tracking-tighter text-primary tabular-nums">
+                        {percentage}<span className="text-lg ml-1 opacity-50">%</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="h-4 bg-black/10 dark:bg-white/5 rounded-full overflow-hidden border border-black/5 dark:border-white/5 p-1 relative">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                          className="h-full bg-gradient-to-r from-primary via-primary-light to-primary rounded-full shadow-glow-primary relative min-w-[1rem]"
+                        >
+                          <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-[progress-stripe_1s_linear_infinite]" />
+                        </motion.div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center px-1">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
+                          <span className="text-primary/40">{importProgress?.current || 0}</span>
+                          <span className="opacity-30">/</span>
+                          <span>{importProgress?.total || 0} items</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
+                          {percentage < 100 ? 'In Progress' : 'Finishing up...'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Header */}
           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-6 bg-black/[0.01] dark:bg-white/[0.02]">
             <div className="flex items-center gap-6 flex-1">

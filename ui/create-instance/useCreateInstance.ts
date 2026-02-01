@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { Instance } from '../types'
 import { VersionManifest, ModLoader, Tab } from './types'
 
@@ -24,6 +25,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [selectedJar, setSelectedJar] = useState<string | null>(null);
   const [serverPropertiesExists, setServerPropertiesExists] = useState<boolean>(true);
   const [rootWithinZip, setRootWithinZip] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number, total: number, message: string } | null>(null);
 
   const resetForm = () => {
     setActiveTab('custom');
@@ -40,7 +42,24 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setSelectedJar(null);
     setServerPropertiesExists(true);
     setRootWithinZip(null);
+    setImportProgress(null);
   };
+
+  useEffect(() => {
+    let unlisten: any;
+    
+    const setupListener = async () => {
+      unlisten = await listen<{ current: number, total: number, message: string }>('import-progress', (event) => {
+        setImportProgress(event.payload);
+      });
+    };
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -199,6 +218,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     serverPropertiesExists,
     setServerPropertiesExists,
     rootWithinZip,
-    setRootWithinZip
+    setRootWithinZip,
+    importProgress
   };
 }

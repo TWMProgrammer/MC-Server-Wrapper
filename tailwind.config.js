@@ -44,6 +44,15 @@ export default {
         'glow-primary': '0 0 15px -3px hsl(var(--primary) / 0.5)',
         'glow-emerald': '0 0 15px -3px rgba(16, 185, 129, 0.5)',
         'inner-light': 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+      },
+      keyframes: {
+        'progress-stripe': {
+          '0%': { backgroundPosition: '0 0' },
+          '100%': { backgroundPosition: '24px 0' },
+        }
+      },
+      animation: {
+        'progress-stripe': 'progress-stripe 1s linear infinite',
       }
     },
   },

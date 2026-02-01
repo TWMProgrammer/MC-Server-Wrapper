@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { cn } from '../utils'
 import { useState } from 'react'
 import { Select } from '../components/Select'
-import { ZipFileTree } from './ZipFileTree'
+import { ArchiveFileTree } from './ArchiveFileTree'
 import { useEffect } from 'react'
 
 interface ImportSourceProps {
@@ -84,11 +84,11 @@ export function ImportSource({
     }
   };
 
-  const handlePickZip = async () => {
+  const handlePickArchive = async () => {
     const selected = await open({
       directory: false,
       multiple: false,
-      filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
+      filters: [{ name: 'Archives', extensions: ['zip', '7z'] }]
     });
     if (selected && typeof selected === 'string') {
       setRootWithinZip(null);
@@ -118,18 +118,18 @@ export function ImportSource({
               </div>
             </button>
             <button
-              onClick={handlePickZip}
+              onClick={handlePickArchive}
               className={cn(
                 "flex flex-col items-center gap-4 p-6 rounded-2xl border transition-all",
-                importSourcePath?.endsWith('.zip')
+                (importSourcePath?.endsWith('.zip') || importSourcePath?.endsWith('.7z'))
                   ? "bg-primary/10 border-primary text-primary"
                   : "bg-black/5 dark:bg-white/[0.02] border-black/5 dark:border-white/5 hover:bg-black/10 dark:hover:bg-white/[0.05]"
               )}
             >
               <FileArchive size={32} />
               <div className="text-center">
-                <div className="font-bold text-sm">Select ZIP</div>
-                <div className="text-[10px] opacity-50 uppercase font-black tracking-widest mt-1">Server Backup/Archive</div>
+                <div className="font-bold text-sm">Select Archive</div>
+                <div className="text-[10px] opacity-50 uppercase font-black tracking-widest mt-1">Server Backup/Archive (ZIP, 7z)</div>
               </div>
             </button>
           </div>
@@ -142,7 +142,7 @@ export function ImportSource({
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-black/10 dark:bg-black/40">
-                  {importSourcePath.endsWith('.zip') ? <FileArchive size={16} /> : <Folder size={16} />}
+                  {(importSourcePath.endsWith('.zip') || importSourcePath.endsWith('.7z')) ? <FileArchive size={16} /> : <Folder size={16} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-widest text-gray-500">Selected Source</div>
@@ -159,9 +159,9 @@ export function ImportSource({
                     </div>
                   </div>
 
-                  {importSourcePath.endsWith('.zip') && (
-                    <ZipFileTree
-                      zipPath={importSourcePath}
+                  {(importSourcePath.endsWith('.zip') || importSourcePath.endsWith('.7z')) && (
+                    <ArchiveFileTree
+                      archivePath={importSourcePath}
                       onSelectRoot={setRootWithinZip}
                       selectedRoot={rootWithinZip}
                     />

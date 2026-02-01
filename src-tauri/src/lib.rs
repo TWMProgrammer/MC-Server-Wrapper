@@ -152,7 +152,7 @@ pub fn run() {
         commands::instance::list_instances,
         commands::instance::create_instance,
         commands::instance::import_instance,
-        commands::instance::list_zip_contents,
+        commands::instance::list_archive_contents,
         commands::instance::detect_server_type,
         commands::instance::list_jars_in_source,
         commands::instance::check_server_properties_exists,

@@ -4,8 +4,8 @@ import { Folder, File, ChevronRight, ChevronDown, CheckCircle2 } from 'lucide-re
 import { invoke } from '@tauri-apps/api/core';
 import { ZipEntry } from './types';
 
-interface ZipFileTreeProps {
-  zipPath: string;
+interface ArchiveFileTreeProps {
+  archivePath: string;
   onSelectRoot: (path: string | null) => void;
   selectedRoot: string | null;
 }
@@ -17,19 +17,19 @@ interface TreeNode {
   children: TreeNode[];
 }
 
-export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTreeProps) {
+export function ArchiveFileTree({ archivePath, onSelectRoot, selectedRoot }: ArchiveFileTreeProps) {
   const [nodes, setNodes] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadZipContents();
-  }, [zipPath]);
+    loadArchiveContents();
+  }, [archivePath]);
 
-  const loadZipContents = async () => {
+  const loadArchiveContents = async () => {
     try {
       setLoading(true);
-      const entries = await invoke<ZipEntry[]>('list_zip_contents', { zipPath });
+      const entries = await invoke<ZipEntry[]>('list_archive_contents', { archivePath });
       const tree = buildTree(entries);
       setNodes(tree);
       
@@ -40,7 +40,7 @@ export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTree
       });
       setExpanded(firstLevel);
     } catch (e) {
-      console.error('Failed to load ZIP contents', e);
+      console.error('Failed to load archive contents', e);
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTree
 
       if (parts.length === 1 || (parts.length === 2 && entry.is_dir && entry.path.endsWith('/'))) {
           // It's a top level node
-          // Check if it's already in rootNodes (might happen with some ZIP formats)
+          // Check if it's already in rootNodes (might happen with some formats)
           if (!rootNodes.find(n => n.path === node.path)) {
               rootNodes.push(node);
           }
@@ -76,7 +76,6 @@ export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTree
         // Find parent path
         // For a path like "a/b/c", parent is "a/b/"
         // For a path like "a/b/", parent is "a/"
-        const isDir = entry.path.endsWith('/');
         const pathParts = entry.path.split('/').filter(Boolean);
         pathParts.pop(); // remove last part
         
@@ -172,11 +171,13 @@ export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTree
     );
   }
 
+  const extension = archivePath.split('.').pop()?.toUpperCase() || 'Archive';
+
   return (
     <div className="mt-4 border border-white/10 rounded-lg bg-black/40 overflow-hidden flex flex-col">
       <div className="bg-white/5 px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">ZIP Contents</span>
+          <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{extension} Contents</span>
           <span className="text-xs text-white/70">Select the folder containing server.properties</span>
         </div>
         {selectedRoot && (
@@ -193,7 +194,7 @@ export function ZipFileTree({ zipPath, onSelectRoot, selectedRoot }: ZipFileTree
       </div>
       <div className="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
         {nodes.length === 0 ? (
-          <div className="py-8 text-center text-white/30 text-sm">No folders found in ZIP</div>
+          <div className="py-8 text-center text-white/30 text-sm">No folders found in archive</div>
         ) : (
           nodes.map(node => renderNode(node))
         )}
