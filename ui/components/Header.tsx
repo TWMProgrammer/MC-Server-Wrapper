@@ -1,5 +1,6 @@
 import { Database, Network, Beaker, Users, Tag, Play, Square, Settings2, FolderOpen } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { Instance, TabId } from '../types'
 import { cn } from '../utils'
 import { InstanceFolderDropdown } from '../InstanceFolderDropdown'
@@ -33,9 +34,17 @@ export function Header({
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-gradient-to-br from-primary to-accent-indigo rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 ring-1 ring-white/20"
+            className="w-16 h-16 bg-gradient-to-br from-primary to-accent-indigo rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 ring-1 ring-white/20 overflow-hidden"
           >
-            <Database size={32} className="text-white" />
+            {currentInstance.settings.icon_path ? (
+              <img 
+                src={convertFileSrc(currentInstance.settings.icon_path)} 
+                alt={currentInstance.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Database size={32} className="text-white" />
+            )}
           </motion.div>
 
           <div className="space-y-2">

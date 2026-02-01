@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { Database, Play, Square, Network, Beaker, Users, Activity } from 'lucide-react'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { Instance } from '../types'
 import { cn } from '../utils'
 import { AppSettings } from '../hooks/useAppSettings'
@@ -42,12 +43,20 @@ export function GlobalDashboard({
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className={cn(
-                  "p-3 rounded-2xl bg-gradient-to-br transition-all duration-300 shadow-lg group-hover:shadow-primary/20",
+                  "w-12 h-12 rounded-2xl bg-gradient-to-br transition-all duration-300 shadow-lg group-hover:shadow-primary/20 flex items-center justify-center overflow-hidden",
                   instance.status === 'Running' ? "from-accent-emerald to-emerald-600 text-white" :
-                  instance.status === 'Starting' ? "from-accent-amber to-amber-600 text-white" :
-                  "from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-500 dark:text-gray-400"
+                    instance.status === 'Starting' ? "from-accent-amber to-amber-600 text-white" :
+                      "from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800 text-gray-500 dark:text-gray-400"
                 )}>
-                  <Database size={24} />
+                  {instance.settings.icon_path ? (
+                    <img
+                      src={convertFileSrc(instance.settings.icon_path)}
+                      alt={instance.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Database size={24} />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-gray-900 dark:text-white truncate max-w-[150px]">
@@ -57,8 +66,8 @@ export function GlobalDashboard({
                     <div className={cn(
                       "w-2 h-2 rounded-full",
                       instance.status === 'Running' ? "bg-accent-emerald animate-pulse" :
-                      instance.status === 'Starting' ? "bg-accent-amber animate-pulse" :
-                      "bg-gray-400 dark:bg-gray-500"
+                        instance.status === 'Starting' ? "bg-accent-amber animate-pulse" :
+                          "bg-gray-400 dark:bg-gray-500"
                     )} />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                       {instance.status === 'Stopped' ? 'Offline' : instance.status}

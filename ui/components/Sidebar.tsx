@@ -1,5 +1,6 @@
 import { Database, Plus, Sparkles, Settings, Server as ServerIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { Instance } from '../types'
 import { cn } from '../utils'
 import { AppSettings } from '../hooks/useAppSettings'
@@ -73,10 +74,18 @@ export function Sidebar({
                 {settings.display_server_icon && (
                   <div className="relative">
                     <div className={cn(
-                      "w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400",
+                      "w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400 overflow-hidden",
                       selectedInstanceId === inst.id && "bg-white/20 text-white"
                     )}>
-                      <ServerIcon size={16} />
+                      {inst.settings.icon_path ? (
+                        <img 
+                          src={convertFileSrc(inst.settings.icon_path)} 
+                          alt={inst.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ServerIcon size={16} />
+                      )}
                     </div>
                   </div>
                 )}
