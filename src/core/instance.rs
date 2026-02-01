@@ -128,6 +128,94 @@ impl InstanceManager {
         Ok(metadata)
     }
 
+    pub async fn import_instance(&self, name: &str, source_path: PathBuf, jar_name: String, mod_loader: Option<String>, root_within_zip: Option<String>) -> Result<InstanceMetadata> {
+        let id = Uuid::new_v4();
+        let instance_path = self.base_dir.join(id.to_string());
+        fs::create_dir_all(&instance_path).await?;
+
+        if source_path.is_dir() {
+            self.copy_dir_all(&source_path, &instance_path).await?;
+        } else if source_path.is_file() && source_path.extension().map_or(false, |ext| ext == "zip") {
+            self.extract_zip(&source_path, &instance_path, root_within_zip).await?;
+        } else {
+            return Err(anyhow::anyhow!("Source path must be a directory or a ZIP file"));
+        }
+
+        let mut settings = InstanceSettings::default();
+        settings.startup_line = format!("java -Xmx{{ram}}{{unit}} -jar {} nogui", jar_name);
+
+        let metadata = InstanceMetadata {
+            id,
+            name: name.to_string(),
+            version: "Imported".to_string(),
+            mod_loader,
+            loader_version: None,
+            created_at: Utc::now(),
+            last_run: None,
+            path: instance_path,
+            schedules: vec![],
+            settings,
+        };
+
+        let mut instances = self.list_instances().await?;
+        instances.push(metadata.clone());
+        self.save_registry(&instances).await?;
+
+        info!("Imported instance: {} (ID: {})", name, id);
+        Ok(metadata)
+    }
+
+    async fn extract_zip(&self, zip_path: &Path, dst: &Path, root_within_zip: Option<String>) -> Result<()> {
+        let zip_path = zip_path.to_path_buf();
+        let dst = dst.to_path_buf();
+
+        tokio::task::spawn_blocking(move || {
+            let file = std::fs::File::open(&zip_path)?;
+            let mut archive = zip::ZipArchive::new(file)?;
+
+            let root = root_within_zip.map(|r| {
+                if r.ends_with('/') { r } else { format!("{}/", r) }
+            });
+
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i)?;
+                let name = file.name().to_string();
+
+                // If a root is specified, only extract files within that root
+                if let Some(ref root_path) = root {
+                    if !name.starts_with(root_path) {
+                        continue;
+                    }
+                }
+
+                let relative_name = if let Some(ref root_path) = root {
+                    name.strip_prefix(root_path).unwrap_or(&name)
+                } else {
+                    &name
+                };
+
+                if relative_name.is_empty() {
+                    continue;
+                }
+
+                let outpath = dst.join(relative_name);
+
+                if name.ends_with('/') {
+                    std::fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        if !p.exists() {
+                            std::fs::create_dir_all(p)?;
+                        }
+                    }
+                    let mut outfile = std::fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        }).await?
+    }
+
     pub async fn list_instances(&self) -> Result<Vec<InstanceMetadata>> {
         if !self.registry_path.exists() {
             return Ok(vec![]);

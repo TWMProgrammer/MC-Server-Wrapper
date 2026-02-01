@@ -19,7 +19,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       />
       <SidebarItem
         icon={<HardDrive size={20} />}
-        label="Local ZIP File"
+        label="Import from Local"
         active={activeTab === 'import'}
         onClick={() => setActiveTab('import')}
       />

@@ -42,6 +42,7 @@ After making any code modifications, you **MUST** verify the integrity of the co
 ### **5. UI & UX Standards**
 - **Notifications**: ALWAYS use the `useToast` hook for success, error, or info messages. Toasts slide from the bottom right.
 - **Confirmations**: NEVER use the default browser `confirm()` box. Use the `ConfirmDropdown` component for any action that requires user confirmation.
+- **Dropdowns & Popups**: Use `createPortal` from `react-dom` for all dropdowns, select menus, and popups. This ensures they are not clipped by parent containers with `overflow: hidden/auto` and correctly float above all other UI elements.
 - **Framer Motion**: Use `framer-motion` for smooth transitions and animations where appropriate.
 
 ---

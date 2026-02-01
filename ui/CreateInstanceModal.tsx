@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './create-instance/Sidebar'
 import { SoftwareSelection } from './create-instance/SoftwareSelection'
 import { VersionSelection } from './create-instance/VersionSelection'
+import { ImportSource } from './create-instance/ImportSource'
 import { Footer } from './create-instance/Footer'
 import { useCreateInstance } from './create-instance/useCreateInstance'
 import { CreateInstanceModalProps } from './create-instance/types'
@@ -28,7 +29,19 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     setSelectedLoaderVersion,
     creating,
     handleCreate,
-    filteredVersions
+    filteredVersions,
+    importSourcePath,
+    setImportSourcePath,
+    importServerType,
+    setImportServerType,
+    availableJars,
+    setAvailableJars,
+    selectedJar,
+    setSelectedJar,
+    serverPropertiesExists,
+    setServerPropertiesExists,
+    rootWithinZip,
+    setRootWithinZip
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
@@ -112,6 +125,29 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                       />
                     )}
                   </motion.div>
+                ) : activeTab === 'import' ? (
+                  <motion.div
+                    key="import"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex-1 flex flex-col overflow-hidden"
+                  >
+                    <ImportSource
+                      importSourcePath={importSourcePath}
+                      setImportSourcePath={setImportSourcePath}
+                      importServerType={importServerType}
+                      setImportServerType={setImportServerType}
+                      availableJars={availableJars}
+                      setAvailableJars={setAvailableJars}
+                      selectedJar={selectedJar}
+                      setSelectedJar={setSelectedJar}
+                      serverPropertiesExists={serverPropertiesExists}
+                      setServerPropertiesExists={setServerPropertiesExists}
+                      rootWithinZip={rootWithinZip}
+                      setRootWithinZip={setRootWithinZip}
+                    />
+                  </motion.div>
                 ) : (
                   <motion.div
                     key="soon"
@@ -125,7 +161,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                     </div>
                     <div className="max-w-xs space-y-2">
                       <h3 className="text-lg font-black text-gray-400 dark:text-white/30 uppercase tracking-[0.2em]">Coming Soon</h3>
-                      <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-white/40">We're working hard to bring {activeTab === 'import' ? 'ZIP imports' : activeTab} to the wrapper!</p>
+                      <p className="text-sm font-medium leading-relaxed text-gray-500 dark:text-white/40">We're working hard to bring {activeTab} to the wrapper!</p>
                     </div>
                   </motion.div>
                 )}
@@ -140,6 +176,10 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             loadingModLoaders={loadingModLoaders}
             onClose={onClose}
             onCreate={handleCreate}
+            activeTab={activeTab}
+            importSourcePath={importSourcePath}
+            selectedJar={selectedJar}
+            serverPropertiesExists={serverPropertiesExists}
           />
         </motion.div>
       </div>

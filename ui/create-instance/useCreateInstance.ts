@@ -18,6 +18,13 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [selectedLoaderVersion, setSelectedLoaderVersion] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const [importSourcePath, setImportSourcePath] = useState<string | null>(null);
+  const [importServerType, setImportServerType] = useState<string>('vanilla');
+  const [availableJars, setAvailableJars] = useState<string[]>([]);
+  const [selectedJar, setSelectedJar] = useState<string | null>(null);
+  const [serverPropertiesExists, setServerPropertiesExists] = useState<boolean>(true);
+  const [rootWithinZip, setRootWithinZip] = useState<string | null>(null);
+
   const resetForm = () => {
     setActiveTab('custom');
     setSelectedServerType(null);
@@ -27,6 +34,12 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setSelectedVersion(null);
     setSelectedLoader('none');
     setSelectedLoaderVersion(null);
+    setImportSourcePath(null);
+    setImportServerType('vanilla');
+    setAvailableJars([]);
+    setSelectedJar(null);
+    setServerPropertiesExists(true);
+    setRootWithinZip(null);
   };
 
   useEffect(() => {
@@ -108,6 +121,9 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   }, [manifest, search, showSnapshots]);
 
   async function handleCreate() {
+    if (activeTab === 'import') {
+      return handleImport();
+    }
     if (!name || !selectedVersion) return;
 
     try {
@@ -123,6 +139,28 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       onClose();
     } catch (e) {
       console.error('Failed to create instance', e);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!name || !importSourcePath || !selectedJar) return;
+
+    try {
+      setCreating(true);
+      const instance = await invoke<Instance>('import_instance', {
+        name,
+        sourcePath: importSourcePath,
+        jarName: selectedJar,
+        serverType: importServerType,
+        rootWithinZip,
+      });
+      onCreated(instance);
+      resetForm();
+      onClose();
+    } catch (e) {
+      console.error('Failed to import instance', e);
     } finally {
       setCreating(false);
     }
@@ -149,6 +187,18 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     creating,
     handleCreate,
     filteredVersions,
-    resetForm
+    resetForm,
+    importSourcePath,
+    setImportSourcePath,
+    importServerType,
+    setImportServerType,
+    availableJars,
+    setAvailableJars,
+    selectedJar,
+    setSelectedJar,
+    serverPropertiesExists,
+    setServerPropertiesExists,
+    rootWithinZip,
+    setRootWithinZip
   };
 }

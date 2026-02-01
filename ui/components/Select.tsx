@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '../utils'
@@ -31,26 +32,107 @@ export function Select({
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
 
   const selectedOption = options.find(opt => opt.value === value)
 
+  const updatePosition = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setCoords({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width
+      })
+    }
+  }
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(event.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false)
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    if (isOpen) {
+      updatePosition()
+      document.addEventListener('mousedown', handleClickOutside)
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
+  }, [isOpen])
 
   const isUp = direction === 'up'
   const isDisabled = disabled || loading
 
+  const dropdownContent = (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          ref={dropdownRef}
+          initial={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          style={{
+            position: 'fixed',
+            top: isUp ? `${coords.top - 8}px` : `${coords.top + 42}px`,
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            transform: isUp ? 'translateY(-100%)' : 'none',
+            zIndex: 9999,
+          }}
+          className={cn(
+            "bg-white dark:bg-[#0D0D0F] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl"
+          )}
+        >
+          <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-black/10 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {options.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-white/30 font-medium italic">
+                No options available
+              </div>
+            ) : options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value)
+                  setIsOpen(false)
+                }}
+                className={cn(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all group",
+                  value === option.value
+                    ? "bg-primary/20 text-primary font-medium"
+                    : "text-gray-600 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/[0.08] hover:text-gray-900 dark:hover:text-white"
+                )}
+              >
+                <span className="truncate">{option.label}</span>
+                {value === option.value && (
+                  <Check size={14} className="shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   return (
-    <div className={cn("relative w-full", isOpen && "z-[60]", className)} ref={containerRef}>
+    <div className={cn("relative w-full", className)} ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
         disabled={isDisabled}
@@ -74,48 +156,7 @@ export function Select({
         />
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className={cn(
-              "absolute z-[100] w-full bg-white dark:bg-[#0D0D0F] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl",
-              isUp ? "bottom-full mb-2" : "top-full mt-2"
-            )}
-          >
-            <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-black/10 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {options.length === 0 ? (
-                <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-white/30 font-medium italic">
-                  No options available
-                </div>
-              ) : options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value)
-                    setIsOpen(false)
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all group",
-                    value === option.value
-                      ? "bg-primary/20 text-primary font-medium"
-                      : "text-gray-600 dark:text-white/60 hover:bg-black/10 dark:hover:bg-white/[0.08] hover:text-gray-900 dark:hover:text-white"
-                  )}
-                >
-                  <span className="truncate">{option.label}</span>
-                  {value === option.value && (
-                    <Check size={14} className="shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {createPortal(dropdownContent, document.body)}
     </div>
   )
 }

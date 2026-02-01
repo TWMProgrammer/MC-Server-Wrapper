@@ -30,6 +30,12 @@ export interface ModLoader {
   versions: string[];
 }
 
+export interface ZipEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+}
+
 export interface CreateInstanceModalProps {
   isOpen: boolean;
   onClose: () => void;

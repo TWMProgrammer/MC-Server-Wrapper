@@ -98,13 +98,18 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [x] Resource monitoring (Live CPU/RAM graphs in UI).
 - [ ] **Instance Creation UI Redesign (Prism Launcher Inspired)**
     - [ ] **Frontend: `CreateInstanceModal` Component**
-        - [ ] Header section for instance Name and Group.
-        - [ ] Navigation sidebar for installation methods (Custom, Import, Modrinth, etc.).
-        - [ ] Version selection grid/table with sorting (Version, Release Date, Type).
-        - [ ] Advanced filtering for versions (Snapshots, Betas, Experiments).
-        - [ ] Mod loader selection panel (Fabric, Forge, Quilt, NeoForge).
-        - [ ] Integrated search for both versions and mod loaders.
-    - [ ] **Backend: Metadata & API Integration**
+        - [x] Header section for instance Name and Group.
+        - [x] Navigation sidebar for installation methods (Custom, Import, Modrinth, etc.).
+        - [x] Version selection grid/table with sorting (Version, Release Date, Type).
+        - [x] Advanced filtering for versions (Snapshots, Betas, Experiments).
+        - [x] Mod loader selection panel (Fabric, Forge, Quilt, NeoForge).
+        - [x] Integrated search for both versions and mod loaders.
+        - [x] **Local Import Support (Folders & ZIPs)**
+            - [x] Implement `import_instance` in `InstanceManager`.
+            - [x] Implement recursive directory copy and ZIP extraction.
+            - [x] Add Tauri commands for folder/ZIP inspection and import.
+            - [x] UI: "Import from Local" tab with JAR selection and safety checks.
+    - [x] **Backend: Metadata & API Integration**
         - [ ] Extend `VersionDownloader` to fetch detailed version metadata (release dates).
         - [ ] Implement Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
         - [ ] Add Tauri commands for asynchronous version listing and filtering.
