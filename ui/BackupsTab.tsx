@@ -1,22 +1,32 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { 
-  History, 
-  Plus, 
-  Trash2, 
-  RefreshCw, 
-  Download, 
+import { listen } from '@tauri-apps/api/event'
+import {
+  History,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Download,
   FileArchive,
   Search,
-  AlertTriangle,
-  CheckCircle2,
-  Clock
+  Clock,
+  ExternalLink,
+  Loader2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BackupInfo } from './types'
+import { useToast } from './hooks/useToast'
+import { ConfirmDropdown } from './components/ConfirmDropdown'
 
 interface BackupsTabProps {
   instanceId: string;
+}
+
+interface BackupProgressPayload {
+  instance_id: string;
+  current: number;
+  total: number;
+  message: string;
 }
 
 export function BackupsTab({ instanceId }: BackupsTabProps) {
@@ -24,69 +34,95 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const { showToast } = useToast()
 
   useEffect(() => {
     loadBackups()
   }, [instanceId])
 
+  useEffect(() => {
+    const unlisten = listen<BackupProgressPayload>('backup-progress', (event) => {
+      if (event.payload.instance_id === instanceId) {
+        const progress = Math.round((event.payload.current / event.payload.total) * 100);
+        setBackups(prev => prev.map(b =>
+          b.status === 'creating' ? { ...b, progress } : b
+        ));
+      }
+    });
+
+    return () => {
+      unlisten.then(u => u());
+    };
+  }, [instanceId]);
+
   const loadBackups = async () => {
     setLoading(true)
     try {
       const result = await invoke<BackupInfo[]>('list_backups', { instanceId })
-      setBackups(result)
-      setError(null)
+      setBackups(result.map(b => ({ ...b, status: 'ready' as const })))
     } catch (err) {
       console.error('Failed to load backups:', err)
-      setError('Failed to load backups')
+      showToast('Failed to load backups', 'error')
     } finally {
       setLoading(false)
     }
   }
 
   const handleCreateBackup = async () => {
+    const tempName = `Creating backup...`;
+    const optimisticBackup: BackupInfo = {
+      name: tempName,
+      path: '',
+      size: 0,
+      created_at: new Date().toISOString(),
+      status: 'creating',
+      progress: 0
+    };
+
+    setBackups(prev => [optimisticBackup, ...prev]);
     setCreating(true)
-    setError(null)
     try {
-      const name = `backup_${new Date().toISOString().replace(/[:.]/g, '-')}`
-      await invoke('create_backup', { instanceId, name })
+      // Just send a simple prefix, the backend will add a clean timestamp
+      await invoke('create_backup', { instanceId, name: 'Manual' })
       await loadBackups()
-      setSuccess('Backup created successfully')
-      setTimeout(() => setSuccess(null), 3000)
+      showToast('Backup created successfully')
     } catch (err) {
       console.error('Failed to create backup:', err)
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
+      setBackups(prev => prev.filter(b => b.name !== tempName));
     } finally {
       setCreating(false)
     }
   }
 
+  const handleOpenBackup = async (backupName: string) => {
+    try {
+      await invoke('open_backup', { instanceId, backupName })
+    } catch (err) {
+      console.error('Failed to open backup:', err)
+      showToast(`Error: ${err}`, 'error')
+    }
+  }
+
   const handleDeleteBackup = async (backupName: string) => {
-    if (!confirm(`Are you sure you want to delete backup "${backupName}"?`)) return
-    
     try {
       await invoke('delete_backup', { instanceId, backupName })
       await loadBackups()
-      setSuccess('Backup deleted successfully')
-      setTimeout(() => setSuccess(null), 3000)
+      showToast('Backup deleted successfully')
     } catch (err) {
       console.error('Failed to delete backup:', err)
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     }
   }
 
   const handleRestoreBackup = async (backupName: string) => {
-    if (!confirm(`WARNING: Restoring backup "${backupName}" will overwrite all current server files. Are you sure?`)) return
-    
     setLoading(true)
     try {
       await invoke('restore_backup', { instanceId, backupName })
-      setSuccess('Backup restored successfully')
-      setTimeout(() => setSuccess(null), 3000)
+      showToast('Backup restored successfully')
     } catch (err) {
       console.error('Failed to restore backup:', err)
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -100,7 +136,7 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  const filteredBackups = backups.filter(b => 
+  const filteredBackups = backups.filter(b =>
     b.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -130,32 +166,6 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
           Create Backup
         </button>
       </div>
-
-      {/* Status Messages */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-xl flex items-center gap-3"
-          >
-            <AlertTriangle size={18} />
-            <span className="text-sm font-medium">{error}</span>
-          </motion.div>
-        )}
-        {success && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-green-500/10 border border-green-500/20 text-green-500 px-4 py-3 rounded-xl flex items-center gap-3"
-          >
-            <CheckCircle2 size={18} />
-            <span className="text-sm font-medium">{success}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="bg-surface border border-white/5 rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-white/5 flex items-center gap-4 bg-white/5">
@@ -195,9 +205,30 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                          <FileArchive size={20} />
+                          {backup.status === 'creating' ? (
+                            <Loader2 size={20} className="animate-spin" />
+                          ) : (
+                            <FileArchive size={20} />
+                          )}
                         </div>
-                        <span className="font-medium">{backup.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{backup.name}</span>
+                          {backup.status === 'creating' && (
+                            <div className="mt-2 w-48">
+                              <div className="flex justify-between text-[10px] mb-1">
+                                <span className="text-primary font-bold">CREATING...</span>
+                                <span className="text-gray-400">{backup.progress || 0}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${backup.progress || 0}%` }}
+                                  className="h-full bg-primary"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-400 text-sm">
@@ -207,24 +238,49 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-400 text-sm">
-                      {formatSize(backup.size)}
+                      {backup.status === 'creating' ? 'Calculating...' : formatSize(backup.size)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleRestoreBackup(backup.name)}
-                          className="p-2 hover:bg-green-500/20 text-green-500 rounded-lg transition-colors"
-                          title="Restore this backup"
-                        >
-                          <Download size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteBackup(backup.name)}
-                          className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
-                          title="Delete backup"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {backup.status !== 'creating' && (
+                          <>
+                            <button
+                              onClick={() => handleOpenBackup(backup.name)}
+                              className="p-2 hover:bg-blue-500/20 text-blue-500 rounded-lg transition-all hover:scale-110 active:scale-95"
+                              title="Open backup file"
+                            >
+                              <ExternalLink size={18} />
+                            </button>
+                            <ConfirmDropdown
+                              title="Restore Backup"
+                              message={`Are you sure you want to restore "${backup.name}"? This will overwrite all current server files.`}
+                              onConfirm={() => handleRestoreBackup(backup.name)}
+                              confirmText="Restore"
+                              variant="warning"
+                            >
+                              <button
+                                className="p-2 hover:bg-green-500/20 text-green-500 rounded-lg transition-all hover:scale-110 active:scale-95"
+                                title="Restore this backup"
+                              >
+                                <Download size={18} />
+                              </button>
+                            </ConfirmDropdown>
+                            <ConfirmDropdown
+                              title="Delete Backup"
+                              message={`Are you sure you want to delete "${backup.name}"? This action cannot be undone.`}
+                              onConfirm={() => handleDeleteBackup(backup.name)}
+                              confirmText="Delete"
+                              variant="danger"
+                            >
+                              <button
+                                className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-all hover:scale-110 active:scale-95"
+                                title="Delete backup"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </ConfirmDropdown>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

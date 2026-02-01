@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { FolderOpen, ExternalLink } from 'lucide-react'
 import { cn } from './utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useToast } from './hooks/useToast'
 
 interface InstanceFolderDropdownProps {
   instance: {
@@ -14,6 +15,7 @@ interface InstanceFolderDropdownProps {
 export function InstanceFolderDropdown({ instance }: InstanceFolderDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -31,7 +33,7 @@ export function InstanceFolderDropdown({ instance }: InstanceFolderDropdownProps
       setIsOpen(false);
     } catch (e) {
       console.error('Failed to open folder', e);
-      alert('Failed to open folder: ' + e);
+      showToast('Failed to open folder: ' + e, 'error');
     }
   }
 

@@ -39,6 +39,11 @@ After making any code modifications, you **MUST** verify the integrity of the co
 - Follow a modular design to keep the code manageable and easy to navigate.
 - Keep individual files under **200 lines** of code. If a file exceeds this limit, refactor and split it into smaller modules.
 
+### **5. UI & UX Standards**
+- **Notifications**: ALWAYS use the `useToast` hook for success, error, or info messages. Toasts slide from the bottom right.
+- **Confirmations**: NEVER use the default browser `confirm()` box. Use the `ConfirmDropdown` component for any action that requires user confirmation.
+- **Framer Motion**: Use `framer-motion` for smooth transitions and animations where appropriate.
+
 ---
 
 ## 📝 Workflow Requirements

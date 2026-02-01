@@ -8,10 +8,13 @@ import {
     RefreshCw,
     Save,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    AlertTriangle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScheduledTask, ScheduleType } from './types'
+import { useToast } from './hooks/useToast'
+import { ConfirmDropdown } from './components/ConfirmDropdown'
 
 interface SchedulesTabProps {
     instanceId: string;
@@ -21,6 +24,7 @@ export function SchedulesTab({ instanceId }: SchedulesTabProps) {
     const [tasks, setTasks] = useState<ScheduledTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const { showToast } = useToast();
     const [newTask, setNewTask] = useState<{
         task_type: ScheduleType;
         cron: string;
@@ -55,16 +59,18 @@ export function SchedulesTab({ instanceId }: SchedulesTabProps) {
             fetchTasks();
         } catch (error) {
             console.error('Failed to add task:', error);
-            alert(`Failed to add task: ${error}`);
+            showToast(`Failed to add task: ${error}`, 'error');
         }
     };
 
     const handleDeleteTask = async (taskId: string) => {
         try {
             await invoke('remove_scheduled_task', { instanceId, taskId });
+            showToast('Schedule removed successfully');
             fetchTasks();
         } catch (error) {
             console.error('Failed to remove task:', error);
+            showToast(`Failed to remove task: ${error}`, 'error');
         }
     };
 
@@ -183,12 +189,18 @@ export function SchedulesTab({ instanceId }: SchedulesTabProps) {
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            <ConfirmDropdown
+                                onConfirm={() => handleDeleteTask(task.id)}
+                                title="Delete Schedule"
+                                message={`Are you sure you want to delete this ${task.task_type.toLowerCase()} schedule?`}
+                                variant="danger"
                             >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                                <button
+                                    className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </ConfirmDropdown>
                         </div>
                     ))
                 )}

@@ -9,7 +9,6 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::{info, error};
 use super::manager::ServerManager;
 use super::backup::BackupManager;
-use super::instance::InstanceMetadata;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ScheduleType {
@@ -84,8 +83,14 @@ impl SchedulerManager {
                 
                 let result: Result<()> = match task_type {
                     ScheduleType::Backup => {
-                        if let Some(instance) = server_manager.instance_manager.get_instance(instance_id).await.unwrap_or(None) {
-                            backup_manager.create_backup(instance_id, &instance.path, "scheduled_backup").await.map(|_| ())
+                        let instance_manager = &server_manager.instance_manager;
+                        if let Some(instance) = instance_manager.get_instance(instance_id).await.unwrap_or(None) {
+                            backup_manager.create_backup(
+                                instance_id, 
+                                instance.path, 
+                                "scheduled_backup", 
+                                |_, _| {}
+                            ).await.map(|_| ())
                         } else {
                             Err(anyhow::anyhow!("Instance not found"))
                         }

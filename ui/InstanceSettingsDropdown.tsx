@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MainActions } from './instance-settings/MainActions'
 import { CloneForm } from './instance-settings/CloneForm'
 import { DeleteConfirm } from './instance-settings/DeleteConfirm'
+import { useToast } from './hooks/useToast'
 
 interface InstanceSettingsDropdownProps {
   instance: {
@@ -22,6 +23,7 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
   const [cloneName, setCloneName] = useState(`${instance.name} (Copy)`);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const { showToast } = useToast();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -45,9 +47,10 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
       await invoke('delete_instance', { instanceId: instance.id });
       onUpdated();
       setIsOpen(false);
+      showToast('Instance deleted successfully');
     } catch (e) {
       console.error('Failed to delete instance', e);
-      alert('Failed to delete instance: ' + e);
+      showToast('Failed to delete instance: ' + e, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -60,9 +63,10 @@ export function InstanceSettingsDropdown({ instance, onUpdated }: InstanceSettin
       const newInstance = await invoke<{ id: string }>('clone_instance', { instanceId: instance.id, newName: cloneName });
       onUpdated(newInstance.id);
       setIsOpen(false);
+      showToast('Instance cloned successfully');
     } catch (e) {
       console.error('Failed to clone instance', e);
-      alert('Failed to clone instance: ' + e);
+      showToast('Failed to clone instance: ' + e, 'error');
     } finally {
       setIsCloning(false);
     }

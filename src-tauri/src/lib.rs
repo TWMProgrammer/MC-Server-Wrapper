@@ -111,6 +111,7 @@ pub fn run() {
         commands::backups::create_backup,
         commands::backups::delete_backup,
         commands::backups::restore_backup,
+        commands::backups::open_backup,
         commands::scheduler::add_scheduled_task,
         commands::scheduler::remove_scheduled_task,
         commands::scheduler::list_scheduled_tasks,

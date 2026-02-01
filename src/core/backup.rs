@@ -32,7 +32,10 @@ impl BackupManager {
         self.base_dir.join(instance_id.to_string())
     }
 
-    pub async fn create_backup(&self, instance_id: Uuid, source_dir: impl AsRef<Path>, name: &str) -> Result<BackupInfo> {
+    pub async fn create_backup<F>(&self, instance_id: Uuid, source_dir: impl AsRef<Path>, name: &str, on_progress: F) -> Result<BackupInfo> 
+    where 
+        F: Fn(u64, u64) + Send + Sync + 'static
+    {
         let source_dir = source_dir.as_ref().to_path_buf();
         let backup_dir = self.get_instance_backup_dir(instance_id);
         
@@ -40,11 +43,19 @@ impl BackupManager {
             tokio::fs::create_dir_all(&backup_dir).await?;
         }
 
-        let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
-        let backup_filename = format!("{}_{}.zip", name, timestamp);
+        let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
+        let backup_filename = if name.is_empty() {
+            format!("Backup_{}.zip", timestamp)
+        } else {
+            format!("{}_{}.zip", name, timestamp)
+        };
         let backup_path = backup_dir.join(backup_filename);
 
         info!("Starting backup of {:?} to {:?}", source_dir, backup_path);
+
+        // Count files for progress
+        let total_files = WalkDir::new(&source_dir).into_iter().filter_map(|e| e.ok()).count() as u64;
+        let mut current_file = 0u64;
 
         let backup_path_clone = backup_path.clone();
         tokio::task::spawn_blocking(move || {
@@ -59,19 +70,29 @@ impl BackupManager {
             for entry in WalkDir::new(&source_dir).into_iter().filter_map(|e| e.ok()) {
                 let path = entry.path();
                 let name = path.strip_prefix(&source_dir)
-                    .context("Failed to strip prefix")?
-                    .to_str()
-                    .context("Failed to convert path to string")?;
+                    .context("Failed to strip prefix")?;
+                
+                // Convert to string and replace backslashes with forward slashes for ZIP compatibility
+                let name_str = name.to_string_lossy().replace('\\', "/");
 
                 if path.is_file() {
-                    zip.start_file(name, options).context("Failed to start file in zip")?;
+                    zip.start_file(&name_str, options).context("Failed to start file in zip")?;
                     let mut f = File::open(path).context("Failed to open file for backup")?;
                     f.read_to_end(&mut buffer).context("Failed to read file into buffer")?;
                     zip.write_all(&buffer).context("Failed to write file to zip")?;
                     buffer.clear();
-                } else if !name.is_empty() {
-                    zip.add_directory(name, options).context("Failed to add directory to zip")?;
+                } else if !name_str.is_empty() {
+                    // Ensure directories end with a slash for better compatibility
+                    let dir_name = if name_str.ends_with('/') {
+                        name_str
+                    } else {
+                        format!("{}/", name_str)
+                    };
+                    zip.add_directory(dir_name, options).context("Failed to add directory to zip")?;
                 }
+                
+                current_file += 1;
+                on_progress(current_file, total_files);
             }
 
             zip.finish().context("Failed to finish zip file")?;

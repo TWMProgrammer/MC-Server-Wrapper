@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Search, FileText, Download, RefreshCw, Terminal, History, ChevronRight, Filter, Share } from 'lucide-react'
+import { Search, FileText, Download, RefreshCw, History, Share } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
+import { useToast } from './hooks/useToast'
 
 interface LogsTabProps {
   instanceId: string;
@@ -14,6 +15,7 @@ export function LogsTab({ instanceId }: LogsTabProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
+  const { showToast } = useToast()
 
   const fetchLogs = async () => {
     setLoading(true)
@@ -55,6 +57,7 @@ export function LogsTab({ instanceId }: LogsTabProps) {
       })
     } catch (err) {
       console.error('Failed to open external editor:', err)
+      showToast(`Error: ${err}`, 'error')
     }
   }
 

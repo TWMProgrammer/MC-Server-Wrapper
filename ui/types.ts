@@ -71,6 +71,8 @@ export interface BackupInfo {
   path: string;
   size: number;
   created_at: string;
+  status?: 'creating' | 'ready' | 'error';
+  progress?: number;
 }
 
 export type ScheduleType = 'Backup' | 'Restart';

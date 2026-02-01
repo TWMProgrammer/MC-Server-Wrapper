@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { FileText, Shield, Ban, Globe, Activity, Info, CheckCircle2, Users, X } from 'lucide-react'
+import { FileText, Shield, Ban, Globe, Activity, Info, Users } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { AllPlayerLists } from './types'
 import { cn } from './utils'
@@ -8,15 +8,10 @@ import { TextEditor } from './components/TextEditor'
 import { PlayerCard } from './components/players/PlayerCard'
 import { PlayerListTable } from './components/players/PlayerListTable'
 import { PlayerHeader } from './components/players/PlayerHeader'
+import { useToast } from './hooks/useToast'
 
 interface PlayersTabProps {
   instanceId: string;
-}
-
-interface Notification {
-  id: string;
-  message: string;
-  type: 'success' | 'error';
 }
 
 export type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
@@ -29,11 +24,11 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [newUsername, setNewUsername] = useState('');
   const [adding, setAdding] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRawEditing, setIsRawEditing] = useState(false);
   const [rawContent, setRawContent] = useState('');
   const addModalRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,14 +39,6 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const addNotification = (message: string, type: 'success' | 'error' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setNotifications(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 3000);
-  };
 
   const fetchLists = async () => {
     try {
@@ -96,16 +83,16 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
       setAdding(true);
       if (activeSubTab === 'banned-ips') {
         await invoke('add_banned_ip', { instanceId, ip: newUsername.trim() });
-        addNotification(`Banned IP: ${newUsername.trim()}`);
+        showToast(`Banned IP: ${newUsername.trim()}`);
       } else {
         await invoke('add_player', { instanceId, listType: activeSubTab, username: newUsername.trim() });
-        addNotification(`Added ${newUsername.trim()} to ${activeSubTab}`);
+        showToast(`Added ${newUsername.trim()} to ${activeSubTab}`);
       }
       setNewUsername('');
       setIsAddModalOpen(false);
       await fetchLists();
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     } finally {
       setAdding(false);
     }
@@ -114,10 +101,10 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
   const handleRemovePlayer = async (identifier: string) => {
     try {
       await invoke('remove_player', { instanceId, listType: activeSubTab, identifier });
-      addNotification(`Removed from ${activeSubTab}`);
+      showToast(`Removed from ${activeSubTab}`);
       await fetchLists();
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     }
   };
 
@@ -125,10 +112,10 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
     try {
       setAdding(true);
       await invoke('add_player', { instanceId, listType, username });
-      addNotification(`Added ${username} to ${listType}`);
+      showToast(`Added ${username} to ${listType}`);
       await fetchLists();
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     } finally {
       setAdding(false);
     }
@@ -152,7 +139,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
       setRawContent(content);
       setIsRawEditing(true);
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     }
   };
 
@@ -173,7 +160,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
       setRawContent(content);
       await fetchLists();
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     }
   };
 
@@ -193,7 +180,7 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
         relPath: fileName
       });
     } catch (err) {
-      addNotification(`Error: ${err}`, 'error');
+      showToast(`Error: ${err}`, 'error');
     }
   };
 
@@ -333,29 +320,6 @@ export function PlayersTab({ instanceId }: PlayersTabProps) {
               />
             )}
           </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Notifications */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[100]">
-        <AnimatePresence>
-          {notifications.map((n) => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, x: 20, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.9 }}
-              className={cn(
-                "px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[300px] border",
-                n.type === 'success'
-                  ? "bg-emerald-500 text-white border-emerald-400/20 shadow-glow-emerald"
-                  : "bg-accent-rose text-white border-accent-rose/20 shadow-glow-rose"
-              )}
-            >
-              {n.type === 'success' ? <CheckCircle2 size={20} /> : <X size={20} />}
-              <span className="text-sm font-bold tracking-tight">{n.message}</span>
-            </motion.div>
-          ))}
         </AnimatePresence>
       </div>
     </div>

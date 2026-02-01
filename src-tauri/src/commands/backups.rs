@@ -1,8 +1,17 @@
 use mc_server_wrapper_core::backup::{BackupManager, BackupInfo};
 use mc_server_wrapper_core::instance::InstanceManager;
-use tauri::State;
+use tauri::{State, Window, Emitter};
 use std::sync::Arc;
 use uuid::Uuid;
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
+struct BackupProgress {
+    instance_id: String,
+    current: u64,
+    total: u64,
+    message: String,
+}
 
 #[tauri::command]
 pub async fn list_backups(
@@ -15,6 +24,7 @@ pub async fn list_backups(
 
 #[tauri::command]
 pub async fn create_backup(
+    window: Window,
     backup_manager: State<'_, Arc<BackupManager>>,
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
@@ -25,7 +35,17 @@ pub async fn create_backup(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
 
-    backup_manager.create_backup(id, &instance.path, &name).await.map_err(|e| e.to_string())
+    let instance_id_clone = instance_id.clone();
+    let window_clone = window.clone();
+
+    backup_manager.create_backup(id, &instance.path, &name, move |current, total| {
+        let _ = window_clone.emit("backup-progress", BackupProgress {
+            instance_id: instance_id_clone.clone(),
+            current,
+            total,
+            message: format!("Backing up files ({}/{})", current, total),
+        });
+    }).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -51,4 +71,48 @@ pub async fn restore_backup(
         .ok_or_else(|| "Instance not found".to_string())?;
 
     backup_manager.restore_backup(id, &backup_name, &instance.path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn open_backup(
+    backup_manager: State<'_, Arc<BackupManager>>,
+    instance_id: String,
+    backup_name: String,
+) -> Result<(), String> {
+    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
+    let backups = backup_manager.list_backups(id).await.map_err(|e| e.to_string())?;
+    
+    let backup = backups.into_iter()
+        .find(|b| b.name == backup_name)
+        .ok_or_else(|| "Backup not found".to_string())?;
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        // Use 'start' via 'cmd /c' to open the file with its default associated program
+        Command::new("cmd")
+            .args(["/C", "start", "", &backup.path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        Command::new("open")
+            .arg(&backup.path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(&backup.path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

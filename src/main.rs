@@ -1,8 +1,7 @@
-mod core;
+use mc_server_wrapper_core as core;
 
 use crate::core::config::ConfigManager;
 use crate::core::server::ServerHandle;
-use std::path::PathBuf;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 

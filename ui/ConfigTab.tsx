@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { RefreshCw, Info } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TextEditor } from './components/TextEditor'
 import { ConfigFile } from './config/types'
 import { ConfigSidebar } from './config/ConfigSidebar'
 import { ConfigControls } from './config/ConfigControls'
 import { PropertyGrid } from './config/PropertyGrid'
+import { useToast } from './hooks/useToast'
 
 interface ConfigTabProps {
   instanceId: string
@@ -16,13 +17,13 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
   const [properties, setProperties] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [availableConfigs, setAvailableConfigs] = useState<ConfigFile[]>([])
   const [selectedConfig, setSelectedConfig] = useState<ConfigFile | null>(null)
   const [isRawEditing, setIsRawEditing] = useState(false)
   const [rawContent, setRawContent] = useState('')
   const [nestedConfig, setNestedConfig] = useState<any>(null)
+  const { showToast } = useToast()
 
   const fetchAvailableConfigs = async () => {
     try {
@@ -39,7 +40,6 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
   const fetchProperties = async () => {
     if (!selectedConfig) return
     setLoading(true)
-    setError(null)
     try {
       const props = await invoke<Record<string, string>>('get_config_file', {
         instanceId,
@@ -59,7 +59,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
         setNestedConfig(null)
       }
     } catch (err) {
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -75,7 +75,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
       setRawContent(content)
       setIsRawEditing(true)
     } catch (err) {
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     }
   }
 
@@ -89,8 +89,9 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
       })
       setRawContent(content)
       fetchProperties()
+      showToast('Config saved successfully')
     } catch (err) {
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     }
   }
 
@@ -102,7 +103,7 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
         relPath: selectedConfig.path
       })
     } catch (err) {
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     }
   }
 
@@ -119,7 +120,6 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
   const handleSave = async () => {
     if (!selectedConfig) return
     setSaving(true)
-    setError(null)
     try {
       if (nestedConfig && selectedConfig.name === 'commands.yml') {
         await invoke('save_config_value', {
@@ -136,8 +136,9 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
           properties
         })
       }
+      showToast('Config saved successfully')
     } catch (err) {
-      setError(err as string)
+      showToast(`Error: ${err}`, 'error')
     } finally {
       setSaving(false)
     }
@@ -193,22 +194,6 @@ export function ConfigTab({ instanceId }: ConfigTabProps) {
               onClose={() => setIsRawEditing(false)}
               onOpenExternal={handleOpenExternal}
             />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-accent-rose/10 border border-accent-rose/20 text-accent-rose p-5 rounded-2xl flex items-center gap-4"
-            >
-              <div className="w-10 h-10 rounded-full bg-accent-rose/20 flex items-center justify-center shrink-0">
-                <Info size={20} />
-              </div>
-              <p className="text-sm font-medium">{error}</p>
-            </motion.div>
           )}
         </AnimatePresence>
 
