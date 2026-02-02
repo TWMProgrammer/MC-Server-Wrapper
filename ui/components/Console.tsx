@@ -1,5 +1,6 @@
-import { Terminal, Maximize2, Send, ChevronRight } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useState, useRef, useEffect } from 'react'
+import { Terminal, Maximize2, Send, ChevronRight, Activity } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Ansi from 'ansi-to-react'
 import { cn } from '../utils'
 import { useAppSettings } from '../hooks/useAppSettings'
@@ -24,6 +25,29 @@ export function Console({
   onViewFull
 }: ConsoleProps) {
   const { settings } = useAppSettings();
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+      // Use a small threshold (10px) to determine if we're at the bottom
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsAtBottom(atBottom);
+    }
+  };
+
+  const scrollToBottom = () => {
+    consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setIsAtBottom(true);
+  };
+
+  // Auto-scroll when logs change, but only if we were already at the bottom
+  useEffect(() => {
+    if (isAtBottom) {
+      consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, isAtBottom]);
 
   const formatLogLine = (line: string) => {
     const timestampMatch = line.match(/^\[\d{2}:\d{2}:\d{2}\]/);
@@ -79,10 +103,14 @@ export function Console({
         )}
       </div>
 
-      <div className={cn(
-        "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40",
-        isFull ? "text-sm" : "text-[13px]"
-      )}>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className={cn(
+          "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40",
+          isFull ? "text-sm" : "text-[13px]"
+        )}
+      >
         {logs && logs.length > 0 ? (
           logs.map((line, i) => (
             <div key={i}>{formatLogLine(line)}</div>
@@ -100,17 +128,35 @@ export function Console({
         <div className="text-primary">
           <ChevronRight size={18} />
         </div>
-        <input
-          type="text"
-          value={command}
-          onChange={(e) => onCommandChange(e.target.value)}
-          placeholder="Enter server command..."
-          className={cn(
-            "flex-1 bg-transparent border-none focus:ring-0 focus:outline-none font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20",
-            isFull ? "text-sm" : "text-[13px]"
-          )}
-          autoComplete="off"
-        />
+        <div className="flex-1 relative flex items-center">
+          <input
+            type="text"
+            value={command}
+            onChange={(e) => onCommandChange(e.target.value)}
+            placeholder="Enter server command..."
+            className={cn(
+              "w-full bg-transparent border-none focus:ring-0 focus:outline-none font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 transition-all",
+              isFull ? "text-sm" : "text-[13px]",
+              !isAtBottom && "pr-20"
+            )}
+            autoComplete="off"
+          />
+          <AnimatePresence>
+            {!isAtBottom && (
+              <motion.button
+                initial={{ opacity: 0, x: 10, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 10, scale: 0.9 }}
+                type="button"
+                onClick={scrollToBottom}
+                className="absolute right-0 flex items-center gap-1.5 px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-glow-primary hover:scale-105 active:scale-95 transition-all z-10"
+              >
+                <Activity size={12} className="animate-pulse" />
+                Live
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
         <button
           type="submit"
           disabled={!command.trim()}
