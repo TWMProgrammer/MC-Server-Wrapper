@@ -208,6 +208,7 @@ pub fn run() {
         commands::plugins::update_plugin,
         commands::plugins::check_for_plugin_updates,
         commands::plugins::list_plugin_configs,
+        commands::plugins::get_plugin_dependencies,
         commands::mods::list_installed_mods,
         commands::mods::toggle_mod,
         commands::mods::bulk_toggle_mods,

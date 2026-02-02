@@ -7,17 +7,44 @@ use tokio::fs;
 
 impl ModLoaderClient {
     pub async fn get_bedrock_versions(&self) -> Result<Vec<String>> {
-        // In a real scenario, we might want to scrape the download page or use a community API
-        Ok(vec![
-            "1.21.60.10".to_string(),
-            "1.21.50.07".to_string(),
-            "1.21.44.01".to_string(),
-            "1.21.40.01".to_string(),
-            "1.21.30.03".to_string(),
-            "1.21.20.03".to_string(),
-            "1.21.2.02".to_string(),
-            "1.21.1.03".to_string(),
-        ])
+        // Fetch versions from Bedrock-OSS/BDS-Versions repository
+        let url = "https://api.github.com/repos/Bedrock-OSS/BDS-Versions/contents/linux";
+        
+        #[derive(Debug, serde::Deserialize)]
+        struct GitHubContent {
+            name: String,
+            r#type: String,
+        }
+
+        let response = self.client.get(url)
+            .header("User-Agent", "Minecraft-Server-Wrapper")
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            // Fallback to some hardcoded versions if API fails
+            return Ok(vec![
+                "1.21.60.10".to_string(),
+                "1.21.50.07".to_string(),
+                "1.21.44.01".to_string(),
+                "1.21.40.01".to_string(),
+            ]);
+        }
+
+        let contents: Vec<GitHubContent> = response.json().await?;
+        let mut versions: Vec<String> = contents.into_iter()
+            .filter(|c| c.r#type == "file" && c.name.ends_with(".json") && c.name != "versions.json")
+            .map(|c| c.name.replace(".json", ""))
+            .collect();
+
+        // Sort versions descending
+        versions.sort_by(|a, b| {
+            let a_parts: Vec<u32> = a.split('.').filter_map(|p| p.parse().ok()).collect();
+            let b_parts: Vec<u32> = b.split('.').filter_map(|p| p.parse().ok()).collect();
+            b_parts.cmp(&a_parts)
+        });
+
+        Ok(versions)
     }
 
     pub async fn download_bedrock<F>(&self, version: &str, target_dir: impl AsRef<Path>, on_progress: F) -> Result<()> 
