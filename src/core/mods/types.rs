@@ -11,6 +11,7 @@ pub struct InstalledMod {
     pub description: Option<String>,
     pub loader: Option<String>, // Fabric, Forge, Quilt, NeoForge
     pub source: Option<ModSource>,
+    pub icon_data: Option<String>, // Base64 encoded icon
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -42,6 +43,8 @@ pub struct SearchOptions {
     pub sort: Option<SortOrder>,
     pub offset: Option<u32>,
     pub limit: Option<u32>,
+    pub game_version: Option<String>,
+    pub loader: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -54,6 +57,32 @@ pub struct Project {
     pub icon_url: Option<String>,
     pub author: String,
     pub provider: ModProvider,
+    pub categories: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectVersion {
+    pub id: String,
+    pub project_id: String,
+    pub version_number: String,
+    pub files: Vec<ProjectFile>,
+    pub loaders: Vec<String>,
+    pub game_versions: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectFile {
+    pub url: String,
+    pub filename: String,
+    pub primary: bool,
+    pub size: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModConfig {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -128,7 +128,14 @@ pub async fn install_plugin(
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
-    plugins::install_plugin(&instance.path, &project_id, provider, version_id.as_deref())
+    plugins::install_plugin(
+        &instance.path, 
+        &project_id, 
+        provider, 
+        version_id.as_deref(),
+        Some(&instance.version),
+        instance.mod_loader.as_deref()
+    )
         .await
         .map_err(|e| e.to_string())
 }

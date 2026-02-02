@@ -144,6 +144,8 @@ export interface SearchOptions {
   sort?: SortOrder;
   offset?: number;
   limit?: number;
+  game_version?: string;
+  loader?: string;
 }
 
 export interface Project {
@@ -155,6 +157,7 @@ export interface Project {
   icon_url?: string;
   author: string;
   provider: PluginProvider | ModProvider;
+  categories?: string[];
 }
 
 export interface InstalledMod {
@@ -166,10 +169,17 @@ export interface InstalledMod {
   description?: string;
   loader?: string;
   source?: ModSource;
+  icon_data?: string;
 }
 
 export interface ModSource {
   project_id: string;
   provider: ModProvider;
   current_version_id?: string;
+}
+
+export interface ModConfig {
+  name: string;
+  path: string;
+  is_dir: boolean;
 }

@@ -263,6 +263,8 @@ pub async fn install_plugin(
     project_id: &str,
     provider: PluginProvider,
     version_id: Option<&str>,
+    game_version: Option<&str>,
+    loader: Option<&str>,
 ) -> Result<String> {
     let plugins_dir = instance_path.as_ref().join("plugins");
     
@@ -274,7 +276,18 @@ pub async fn install_plugin(
                 versions.iter().find(|v| v.id == vid)
                     .ok_or_else(|| anyhow::anyhow!("Version not found: {}", vid))?
             } else {
-                versions.first().ok_or_else(|| anyhow::anyhow!("No versions found for project"))?
+                // Filter versions by game version and loader if provided
+                let filtered: Vec<&ProjectVersion> = versions.iter().filter(|v| {
+                    let version_match = game_version.map_or(true, |gv| v.game_versions.contains(&gv.to_string()));
+                    let loader_match = loader.map_or(true, |l| {
+                        let l_lower = l.to_lowercase();
+                        v.loaders.iter().any(|vl| vl.to_lowercase() == l_lower)
+                    });
+                    version_match && loader_match
+                }).collect();
+
+                filtered.first().copied().or_else(|| versions.first())
+                    .ok_or_else(|| anyhow::anyhow!("No versions found for project"))?
             };
             let fname = client.download_version(version, &plugins_dir).await?;
             (fname, Some(version.id.clone()))
@@ -398,7 +411,6 @@ pub async fn check_for_updates(instance_path: impl AsRef<Path>) -> Result<Vec<Pl
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
@@ -424,7 +436,7 @@ pub async fn update_plugin(
     }
 
     // 2. Download new version
-    match install_plugin(&instance_path, &project_id, provider, Some(&latest_version_id)).await {
+    match install_plugin(&instance_path, &project_id, provider, Some(&latest_version_id), None, None).await {
         Ok(new_filename) => {
             let mut final_filename = new_filename.clone();
 

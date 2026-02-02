@@ -14,30 +14,34 @@ import {
   ChevronLeft,
   Check,
   Tag,
-  Layers
+  Layers,
+  Cpu
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Project, PluginProvider, SortOrder, SearchOptions, Instance } from '../types'
+import { Project, ModProvider, SortOrder, SearchOptions, Instance } from '../types'
 import { useToast } from '../hooks/useToast'
-import { PluginDetailsModal } from './PluginDetailsModal'
-import { ReviewModal } from './ReviewModal'
+import { ModDetailsModal } from './ModDetailsModal'
+import { ModReviewModal } from './ModReviewModal'
 import { Select } from '../components/Select'
 
-interface MarketplaceProps {
+interface ModMarketplaceProps {
   instanceId: string;
   onInstallSuccess?: () => void;
 }
 
 const CATEGORIES = [
-  { id: 'administration', name: 'Admin', icon: '🛡️' },
-  { id: 'chat', name: 'Chat', icon: '💬' },
-  { id: 'economy', name: 'Economy', icon: '💰' },
-  { id: 'gameplay', name: 'Gameplay', icon: '🎮' },
+  { id: 'adventure', name: 'Adventure', icon: '🗺️' },
+  { id: 'decoration', name: 'Decoration', icon: '🎨' },
+  { id: 'equipment', name: 'Equipment', icon: '⚔️' },
+  { id: 'food', name: 'Food', icon: '🍕' },
+  { id: 'library', name: 'Library', icon: '📚' },
+  { id: 'magic', name: 'Magic', icon: '🧙' },
   { id: 'management', name: 'Management', icon: '📋' },
   { id: 'optimization', name: 'Optimization', icon: '⚡' },
-  { id: 'protection', name: 'Protection', icon: '🔒' },
+  { id: 'storage', name: 'Storage', icon: '📦' },
+  { id: 'technology', name: 'Technology', icon: '⚙️' },
   { id: 'utility', name: 'Utility', icon: '🛠️' },
-  { id: 'world-management', name: 'World', icon: '🌍' },
+  { id: 'world-gen', name: 'World Gen', icon: '🌍' },
 ]
 
 const SORT_OPTIONS = [
@@ -48,19 +52,19 @@ const SORT_OPTIONS = [
   { value: 'Updated', label: 'Sort by Updated' },
 ]
 
-export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) {
+export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceProps) {
   const [query, setQuery] = useState('')
-  const [provider, setProvider] = useState<PluginProvider>('Modrinth')
+  const [provider, setProvider] = useState<ModProvider>('Modrinth')
   const [results, setResults] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [selectedPlugins, setSelectedPlugins] = useState<Map<string, Project>>(new Map())
+  const [selectedMods, setSelectedMods] = useState<Map<string, Project>>(new Map())
   const [showReview, setShowReview] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
   const [isResolvingDeps, setIsResolvingDeps] = useState(false)
   const [resolvedDeps, setResolvedDeps] = useState<Project[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('Downloads')
   const [page, setPage] = useState(1)
   const [instance, setInstance] = useState<Instance | null>(null)
   const PAGE_SIZE = 16
@@ -100,10 +104,10 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
         offset: (page - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
         game_version: instance?.version,
-        loader: instance?.server_type,
+        loader: instance?.mod_loader,
       }
 
-      const searchResults = await invoke<Project[]>('search_plugins', {
+      const searchResults = await invoke<Project[]>('search_mods', {
         options: searchOptions,
         provider
       })
@@ -121,41 +125,41 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     handleSearch()
   }, [provider, activeCategory, sortOrder, page, instance])
 
-  // Reset page when provider, category or sort changes
+  // Reset page when filters change
   useEffect(() => {
     setPage(1)
   }, [provider, activeCategory, sortOrder, query])
 
-  const togglePluginSelection = (project: Project) => {
-    const newSelection = new Map(selectedPlugins)
+  const toggleModSelection = (project: Project) => {
+    const newSelection = new Map(selectedMods)
     if (newSelection.has(project.id)) {
       newSelection.delete(project.id)
     } else {
       newSelection.set(project.id, project)
     }
-    setSelectedPlugins(newSelection)
+    setSelectedMods(newSelection)
   }
 
   const handleReview = async () => {
     setIsResolvingDeps(true)
     const allDeps: Map<string, Project> = new Map()
-    const seenIds = new Set(Array.from(selectedPlugins.keys()))
-    const queue = Array.from(selectedPlugins.values())
+    const seenIds = new Set(Array.from(selectedMods.keys()))
+    const queue = Array.from(selectedMods.values())
 
     try {
       while (queue.length > 0) {
-        const plugin = queue.shift()!
-        if (plugin.provider === 'Modrinth') {
-          const deps = await invoke<Project[]>('get_plugin_dependencies', {
-            projectId: plugin.id,
-            provider: plugin.provider
-          })
-          for (const dep of deps) {
-            if (!seenIds.has(dep.id)) {
-              allDeps.set(dep.id, dep)
-              seenIds.add(dep.id)
-              queue.push(dep) // Add to queue to find its dependencies
-            }
+        const mod = queue.shift()!
+
+        const deps = await invoke<Project[]>('get_mod_dependencies', {
+          projectId: mod.id,
+          provider: mod.provider
+        })
+
+        for (const dep of deps) {
+          if (!seenIds.has(dep.id)) {
+            allDeps.set(dep.id, dep)
+            seenIds.add(dep.id)
+            queue.push(dep)
           }
         }
       }
@@ -170,19 +174,19 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     }
   }
 
-  const handleConfirmInstall = async (plugins: Project[]) => {
+  const handleConfirmInstall = async (mods: Project[]) => {
     setIsInstalling(true)
     try {
-      for (const plugin of plugins) {
-        await invoke('install_plugin', {
+      for (const mod of mods) {
+        await invoke('install_mod', {
           instanceId,
-          projectId: plugin.id,
-          provider: plugin.provider,
-          versionId: null // Latest
+          projectId: mod.id,
+          provider: mod.provider,
+          versionId: null // Latest compatible
         })
       }
-      showToast(`Successfully installed ${plugins.length} plugins!`, 'success')
-      setSelectedPlugins(new Map())
+      showToast(`Successfully installed ${mods.length} mods!`, 'success')
+      setSelectedMods(new Map())
       setShowReview(false)
       onInstallSuccess?.()
     } catch (err) {
@@ -199,11 +203,11 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
       <div className="w-64 flex flex-col gap-6 shrink-0 overflow-y-auto custom-scrollbar pr-2">
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-bold text-gray-400 uppercase tracking-widest px-2">
-            <Layers size={16} />
+            <Globe size={16} />
             Providers
           </div>
           <div className="space-y-1">
-            {(['Modrinth', 'Spiget'] as const).map((p) => (
+            {(['Modrinth', 'CurseForge'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setProvider(p)}
@@ -258,7 +262,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
             <input
               type="text"
-              placeholder={`Search ${provider} plugins...`}
+              placeholder="Search mods..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-black/20 border border-white/5 rounded-2xl focus:outline-none focus:border-primary/50 transition-colors"
@@ -281,7 +285,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
               ))
             ) : results.length > 0 ? (
               results.map((project) => {
-                const isSelected = selectedPlugins.has(project.id)
+                const isSelected = selectedMods.has(project.id)
                 return (
                   <motion.div
                     key={`${project.provider}-${project.id}`}
@@ -334,7 +338,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                         <ChevronRight size={16} />
                       </button>
                       <button
-                        onClick={() => togglePluginSelection(project)}
+                        onClick={() => toggleModSelection(project)}
                         className={`px-4 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${isSelected
                           ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
                           : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]'
@@ -351,8 +355,8 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                 <div className="p-8 bg-white/5 rounded-[2.5rem] mb-6">
                   <Search size={64} className="text-gray-600" />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2 tracking-tight">No results found</h3>
-                <p className="text-gray-500 font-medium">Try a different search term or category.</p>
+                <h3 className="text-2xl font-black text-white mb-2 tracking-tight">No mods found</h3>
+                <p className="text-gray-500 font-medium">Try a different search term or filters.</p>
               </div>
             ) : null}
           </div>
@@ -399,7 +403,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
         {/* Floating Bottom Bar for Review */}
         <AnimatePresence>
-          {selectedPlugins.size > 0 && (
+          {selectedMods.size > 0 && (
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -409,10 +413,10 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
               <div className="bg-surface/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-6">
                 <div className="flex items-center gap-4 pl-2">
                   <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center font-black text-xl">
-                    {selectedPlugins.size}
+                    {selectedMods.size}
                   </div>
                   <div>
-                    <div className="text-white font-bold">Plugins selected</div>
+                    <div className="text-white font-bold">Mods selected</div>
                     <div className="text-xs text-gray-500 font-medium">Ready to review and install</div>
                   </div>
                 </div>
@@ -447,20 +451,20 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
       <AnimatePresence>
         {selectedProject && (
-          <PluginDetailsModal
+          <ModDetailsModal
             project={selectedProject}
             instanceId={instanceId}
             onClose={() => setSelectedProject(null)}
             onInstall={() => {
-              togglePluginSelection(selectedProject)
+              toggleModSelection(selectedProject)
               setSelectedProject(null)
             }}
-            isSelected={selectedPlugins.has(selectedProject.id)}
+            isSelected={selectedMods.has(selectedProject.id)}
           />
         )}
         {showReview && (
-          <ReviewModal
-            selectedPlugins={Array.from(selectedPlugins.values())}
+          <ModReviewModal
+            selectedMods={Array.from(selectedMods.values())}
             preFetchedDependencies={resolvedDeps}
             instanceId={instanceId}
             onClose={() => setShowReview(false)}

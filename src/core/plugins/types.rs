@@ -22,6 +22,8 @@ pub struct SearchOptions {
     pub sort: Option<SortOrder>,
     pub offset: Option<u32>,
     pub limit: Option<u32>,
+    pub game_version: Option<String>,
+    pub loader: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

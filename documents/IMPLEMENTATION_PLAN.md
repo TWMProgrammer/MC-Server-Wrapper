@@ -113,10 +113,14 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
         - [x] Basic listing of `.jar` files in `plugins/` directory.
         - [x] Enable/Disable plugins via file renaming (`.jar.disabled`).
         - [x] Safe uninstallation with confirmation and optional config cleanup.
-    - [ ] **Mods Management (Phase 1)**
+    - [x] **Mods Management (Phase 1)**
         - [x] Basic listing of `.jar` files in `mods/` directory.
         - [x] Enable/Disable mods via file renaming (`.jar.disabled`).
         - [x] Safe uninstallation with optional config cleanup.
+        - [x] Marketplace integration (Modrinth & CurseForge).
+        - [x] Dependency resolution (Modrinth & CurseForge).
+        - [x] Scoped configuration editor with Monaco integration.
+        - [x] Bulk actions for mod management.
 - [x] **Instance Creation UI Redesign**
     - [x] **Frontend: `CreateInstanceModal` Component**
         - [x] Header section for instance Name and Group.
@@ -129,11 +133,11 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] **Backend: Metadata & API Integration**
         - [x] Fetch detailed version metadata and release dates.
         - [x] Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
-- [ ] **Plugin/Mod Downloader**
+- [x] **Plugin/Mod Downloader**
     - [x] Modrinth API integration for mods and plugins.
     - [x] Spigot (Spiget) API integration.
-    - [ ] CurseForge API support (requires API key).
-    - [ ] Dependency resolution for complex modpacks.
+    - [x] CurseForge API support.
+    - [x] Dependency resolution for complex mods.
 - [ ] **Resource Monitoring**
     - [x] Live CPU/RAM usage tracking.
     - [ ] Disk I/O monitoring.

@@ -4,7 +4,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use tracing::info;
-use super::types::{Project, ProjectVersion, PluginProvider};
+use super::types::{Project, ProjectVersion, ModProvider, SearchOptions, SortOrder};
 
 pub struct ModrinthClient {
     client: reqwest::Client,
@@ -26,7 +26,7 @@ impl ModrinthClient {
         }
     }
 
-    pub async fn search(&self, options: &super::types::SearchOptions) -> Result<Vec<Project>> {
+    pub async fn search(&self, options: &SearchOptions) -> Result<Vec<Project>> {
         let mut url = format!("https://api.modrinth.com/v2/search?query={}", urlencoding::encode(&options.query));
 
         let mut and_groups: Vec<Vec<String>> = Vec::new();
@@ -39,7 +39,7 @@ impl ModrinthClient {
             }
         }
 
-        // Add project_type filter if not present
+        // Add project_type:mod if not already present
         let mut has_type = false;
         for group in &and_groups {
             if group.iter().any(|f| f.starts_with("project_type:")) {
@@ -47,10 +47,8 @@ impl ModrinthClient {
                 break;
             }
         }
-        
         if !has_type {
-            // Strictly restrict to plugin type as requested
-            and_groups.push(vec!["project_type:plugin".to_string()]);
+            and_groups.push(vec!["project_type:mod".to_string()]);
         }
 
         if let Some(version) = &options.game_version {
@@ -61,7 +59,6 @@ impl ModrinthClient {
 
         if let Some(loader) = &options.loader {
             if !loader.is_empty() {
-                // For plugins, loaders might be 'paper', 'purpur', 'spigot', 'velocity', 'bungeecord'
                 and_groups.push(vec![format!("categories:{}", loader.to_lowercase())]);
             }
         }
@@ -73,11 +70,11 @@ impl ModrinthClient {
 
         if let Some(sort) = options.sort {
             let index = match sort {
-                super::types::SortOrder::Relevance => "relevance",
-                super::types::SortOrder::Downloads => "downloads",
-                super::types::SortOrder::Follows => "follows",
-                super::types::SortOrder::Newest => "newest",
-                super::types::SortOrder::Updated => "updated",
+                SortOrder::Relevance => "relevance",
+                SortOrder::Downloads => "downloads",
+                SortOrder::Follows => "follows",
+                SortOrder::Newest => "newest",
+                SortOrder::Updated => "updated",
             };
             url.push_str(&format!("&index={}", index));
         }
@@ -104,7 +101,10 @@ impl ModrinthClient {
             downloads: h["downloads"].as_u64().unwrap_or(0),
             icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
             author: h["author"].as_str().unwrap_or_default().to_string(),
-            provider: PluginProvider::Modrinth,
+            provider: ModProvider::Modrinth,
+            categories: h["categories"].as_array().map(|cats| {
+                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+            }),
         }).collect();
 
         Ok(projects)
@@ -121,8 +121,11 @@ impl ModrinthClient {
             description: h["description"].as_str().unwrap_or_default().to_string(),
             downloads: h["downloads"].as_u64().unwrap_or(0),
             icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
-            author: String::new(), // Author is in a separate field in project API
-            provider: PluginProvider::Modrinth,
+            author: String::new(), // Author is in a separate field
+            provider: ModProvider::Modrinth,
+            categories: h["categories"].as_array().map(|cats| {
+                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+            }),
         })
     }
 
@@ -140,7 +143,10 @@ impl ModrinthClient {
             downloads: h["downloads"].as_u64().unwrap_or(0),
             icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
             author: String::new(),
-            provider: PluginProvider::Modrinth,
+            provider: ModProvider::Modrinth,
+            categories: h["categories"].as_array().map(|cats| {
+                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+            }),
         }).collect();
 
         Ok(projects)

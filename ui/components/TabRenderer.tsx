@@ -14,6 +14,7 @@ import { ConfigTab } from '../ConfigTab'
 import { BackupsTab } from '../BackupsTab'
 import { SchedulesTab } from '../SchedulesTab'
 import { PluginsTab } from '../PluginsTab'
+import { ModsTab } from '../ModsTab'
 import { TabId, Instance, ResourceUsage } from '../types'
 import { AppSettings } from '../hooks/useAppSettings'
 
@@ -116,6 +117,10 @@ export function TabRenderer({
     return <PluginsTab instanceId={selectedInstanceId} />;
   }
 
+  if (activeTab === 'mods') {
+    return <ModsTab instanceId={selectedInstanceId} />;
+  }
+
   // Placeholder for other tabs
   return (
     <div className="flex flex-col items-center justify-center h-full text-gray-400 py-20 bg-surface/50 rounded-2xl border border-black/5 dark:border-white/5">
@@ -124,7 +129,6 @@ export function TabRenderer({
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
-        {activeTab === 'mods' && <Layers size={64} className="mb-4 text-primary opacity-40" />}
       </motion.div>
       <h3 className="text-2xl font-semibold capitalize mb-2">{activeTab}</h3>
       <p className="text-gray-500">This feature is currently under development.</p>
