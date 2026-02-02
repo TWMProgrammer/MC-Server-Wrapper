@@ -23,8 +23,8 @@ impl ServerManager {
         let cache_dir = instance_manager.get_base_dir().join("cache");
         Self {
             instance_manager,
-            downloader: VersionDownloader::new(Some(cache_dir)),
-            mod_loader_client: ModLoaderClient::new(),
+            downloader: VersionDownloader::new(Some(cache_dir.clone())),
+            mod_loader_client: ModLoaderClient::new(Some(cache_dir)),
             servers: Arc::new(Mutex::new(HashMap::new())),
         }
     }

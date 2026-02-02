@@ -7,6 +7,24 @@ use tokio::fs;
 
 impl ModLoaderClient {
     pub async fn get_bedrock_versions(&self) -> Result<Vec<String>> {
+        // Check cache first (TTL 1 hour)
+        if let Some(cache_dir) = &self.cache_dir {
+            let cache_file = cache_dir.join("bedrock_versions.json");
+            if cache_file.exists() {
+                if let Ok(metadata) = std::fs::metadata(&cache_file) {
+                    if let Ok(modified) = metadata.modified() {
+                        if modified.elapsed().map(|e| e.as_secs() < 3600).unwrap_or(false) {
+                            if let Ok(content) = std::fs::read_to_string(&cache_file) {
+                                if let Ok(versions) = serde_json::from_str::<Vec<String>>(&content) {
+                                    return Ok(versions);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Fetch versions from Bedrock-OSS/BDS-Versions repository
         let url = "https://api.github.com/repos/Bedrock-OSS/BDS-Versions/contents/linux";
         
@@ -43,6 +61,15 @@ impl ModLoaderClient {
             let b_parts: Vec<u32> = b.split('.').filter_map(|p| p.parse().ok()).collect();
             b_parts.cmp(&a_parts)
         });
+
+        // Save to cache
+        if let Some(cache_dir) = &self.cache_dir {
+            let _ = std::fs::create_dir_all(cache_dir);
+            let cache_file = cache_dir.join("bedrock_versions.json");
+            if let Ok(content) = serde_json::to_string_pretty(&versions) {
+                let _ = std::fs::write(cache_file, content);
+            }
+        }
 
         Ok(versions)
     }

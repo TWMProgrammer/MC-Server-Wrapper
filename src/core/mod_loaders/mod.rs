@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use anyhow::Result;
 use futures_util::StreamExt;
 use tokio::io::AsyncWriteExt;
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModLoader {
@@ -19,15 +20,17 @@ pub struct ModLoader {
 
 pub struct ModLoaderClient {
     pub(crate) client: reqwest::Client,
+    pub(crate) cache_dir: Option<PathBuf>,
 }
 
 impl ModLoaderClient {
-    pub fn new() -> Self {
+    pub fn new(cache_dir: Option<PathBuf>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper")
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
+            cache_dir,
         }
     }
 
