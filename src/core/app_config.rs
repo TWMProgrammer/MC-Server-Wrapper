@@ -6,7 +6,6 @@ use tokio::fs;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     // Interface
-    pub dynamic_graph_scaling: bool,
     pub display_ipv6: bool,
     pub hide_ip_address: bool,
     
@@ -44,7 +43,6 @@ pub enum CloseBehavior {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            dynamic_graph_scaling: true,
             display_ipv6: false,
             hide_ip_address: false,
             start_page: "Dashboard".to_string(),

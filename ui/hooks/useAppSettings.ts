@@ -20,7 +20,6 @@ export type CloseBehavior = 'HideToSystemTray' | 'HideToTaskbar' | 'Exit';
 
 export interface AppSettings {
   // Interface
-  dynamic_graph_scaling: boolean;
   display_ipv6: boolean;
   hide_ip_address: boolean;
   
@@ -49,7 +48,6 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  dynamic_graph_scaling: true,
   display_ipv6: false,
   hide_ip_address: false,
   start_page: "Dashboard",

@@ -17,6 +17,13 @@ export function Dashboard({
   history,
   settings
 }: DashboardProps) {
+  const totalRamBytes = currentInstance.settings.ram * (currentInstance.settings.ram_unit === 'GB' ? 1024 * 1024 * 1024 : 1024 * 1024);
+
+  const formatMemory = (bytes: number) => {
+    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}GB`;
+    return `${(bytes / 1024 / 1024).toFixed(0)}MB`;
+  };
+
   const stats = [
     {
       label: 'CPU Usage',
@@ -72,11 +79,17 @@ export function Dashboard({
               </div>
             </div>
             <div className="mt-4 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden transition-colors duration-300">
+              <div className="flex-1 h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden transition-colors duration-300">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: stat.label.includes('Usage') ? (stat.label === 'CPU Usage' ? `${usage?.cpu_usage || 0}%` : '45%') : '0%' }}
-                  className={`h-full ${stat.color.replace('text-', 'bg-')} opacity-60`}
+                  animate={{
+                    width: stat.label === 'CPU Usage'
+                      ? `${usage?.cpu_usage || 0}%`
+                      : stat.label === 'Memory Usage'
+                        ? `${((usage?.memory_usage || 0) / totalRamBytes) * 100}%`
+                        : '0%'
+                  }}
+                  className={`h-full ${stat.color.replace('text-', 'bg-')} opacity-80 shadow-[0_0_10px_rgba(0,0,0,0.2)]`}
                 />
               </div>
             </div>
@@ -101,38 +114,55 @@ export function Dashboard({
             </div>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest transition-colors duration-300">Live Updates</div>
           </div>
-          <div className="h-64 w-full">
+          <div className="h-64 w-full pr-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history}>
+              <AreaChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                <XAxis dataKey="timestamp" hide />
-                <YAxis domain={settings.dynamic_graph_scaling ? ['auto', 'auto'] : [0, 100]} hide />
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                <XAxis
+                  dataKey="timestamp"
+                  hide
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 600 }}
+                  tickFormatter={(val) => `${val}%`}
+                  axisLine={false}
+                  tickLine={false}
+                  width={40}
+                />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '12px',
-                    color: 'var(--foreground)'
+                  cursor={{ stroke: '#10b98120', strokeWidth: 2 }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-surface/90 backdrop-blur-md border border-white/10 p-2 px-3 rounded-lg shadow-2xl">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+                            <p className="text-sm font-bold text-white">
+                              {Number(payload[0].value).toFixed(1)}%
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
-                  itemStyle={{ color: '#10b981' }}
-                  labelStyle={{ display: 'none' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="cpu_usage"
                   stroke="#10b981"
-                  strokeWidth={3}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorCpu)"
-                  isAnimationActive={true}
-                  animationDuration={1000}
+                  isAnimationActive={false}
+                  activeDot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -154,42 +184,55 @@ export function Dashboard({
             </div>
             <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Real-time</div>
           </div>
-          <div className="h-64 w-full">
+          <div className="h-64 w-full pr-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history}>
+              <AreaChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                <XAxis dataKey="timestamp" hide />
-                <YAxis domain={settings.dynamic_graph_scaling ? ['auto', 'auto'] : [0, 'auto']} hide />
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                <XAxis
+                  dataKey="timestamp"
+                  hide
+                />
+                <YAxis
+                  domain={[0, totalRamBytes]}
+                  tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 600 }}
+                  tickFormatter={(val) => formatMemory(val)}
+                  axisLine={false}
+                  tickLine={false}
+                  width={50}
+                />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--surface)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '12px',
-                    color: 'var(--foreground)'
-                  }}
-                  itemStyle={{ color: '#3b82f6' }}
-                  labelStyle={{ display: 'none' }}
-                  formatter={(value: number | undefined) => {
-                    if (value === undefined) return ['0 MB', 'Memory'];
-                    return [`${(value / 1024 / 1024).toFixed(0)} MB`, 'Memory'];
+                  cursor={{ stroke: '#3b82f620', strokeWidth: 2 }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-surface/90 backdrop-blur-md border border-white/10 p-2 px-3 rounded-lg shadow-2xl">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                            <p className="text-sm font-bold text-white">
+                              {formatMemory(Number(payload[0].value))}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="memory_usage"
                   stroke="#3b82f6"
-                  strokeWidth={3}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorMem)"
-                  isAnimationActive={true}
-                  animationDuration={1000}
+                  isAnimationActive={false}
+                  activeDot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>

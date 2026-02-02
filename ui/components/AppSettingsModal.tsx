@@ -385,12 +385,6 @@ export function AppSettingsModal({
                           <Section title="Display Options" icon={Monitor}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <Checkbox
-                                label="Dynamic graph scaling"
-                                description="Automatically adjust graph Y-axis based on current data"
-                                checked={settings.dynamic_graph_scaling}
-                                onChange={(val) => updateSettings({ dynamic_graph_scaling: val })}
-                              />
-                              <Checkbox
                                 label="Display IPv6"
                                 description="Use IPv6 addresses instead of IPv4 where available"
                                 checked={settings.display_ipv6}
