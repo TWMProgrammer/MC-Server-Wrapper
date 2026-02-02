@@ -486,8 +486,8 @@ pub async fn get_minecraft_versions(server_manager: State<'_, Arc<ServerManager>
 }
 
 #[tauri::command]
-pub async fn get_mod_loaders(server_manager: State<'_, Arc<ServerManager>>, mc_version: String) -> Result<Vec<mc_server_wrapper_core::mod_loaders::ModLoader>, String> {
-    server_manager.get_mod_loader_client().get_available_loaders(&mc_version).await.map_err(|e| e.to_string())
+pub async fn get_mod_loaders(server_manager: State<'_, Arc<ServerManager>>, mc_version: String, server_type: Option<String>) -> Result<Vec<mc_server_wrapper_core::mod_loaders::ModLoader>, String> {
+    server_manager.get_mod_loader_client().get_available_loaders(&mc_version, server_type.as_deref()).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

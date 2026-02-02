@@ -106,13 +106,18 @@ impl ModLoaderClient {
         }
     }
 
-    pub async fn get_available_loaders(&self, mc_version: &str) -> Result<Vec<ModLoader>> {
+    pub async fn get_available_loaders(&self, mc_version: &str, server_type: Option<&str>) -> Result<Vec<ModLoader>> {
         let mut loaders = Vec::new();
 
-        // Only return Java loaders if mc_version looks like a Java version
-        // (Simplified check: if it doesn't look like a Bedrock version from our list)
-        let bedrock_versions = self.get_bedrock_versions().await.unwrap_or_default();
-        if bedrock_versions.contains(&mc_version.to_string()) {
+        // If we know the server type, we can skip the bedrock check if it's not bedrock
+        let is_bedrock = if let Some(t) = server_type {
+            t.to_lowercase() == "bedrock"
+        } else {
+            let bedrock_versions = self.get_bedrock_versions().await.unwrap_or_default();
+            bedrock_versions.contains(&mc_version.to_string())
+        };
+
+        if is_bedrock {
             // This is a Bedrock version, don't return Java loaders
             return Ok(vec![]);
         }

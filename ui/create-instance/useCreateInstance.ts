@@ -154,7 +154,10 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
 
     try {
       setLoadingModLoaders(true);
-      const loaders = await invoke<ModLoader[]>('get_mod_loaders', { mcVersion: version });
+      const loaders = await invoke<ModLoader[]>('get_mod_loaders', { 
+        mcVersion: version,
+        serverType: selectedServerType 
+      });
       setModLoaders(loaders);
       const currentLoader = loaders.find(l => l.name.toLowerCase() === (selectedServerType?.toLowerCase()));
       if (currentLoader && currentLoader.versions.length > 0) {

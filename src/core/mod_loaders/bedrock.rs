@@ -8,16 +8,15 @@ use tokio::fs;
 impl ModLoaderClient {
     pub async fn get_bedrock_versions(&self) -> Result<Vec<String>> {
         // In a real scenario, we might want to scrape the download page or use a community API
-        // For now, returning versions shown in the UI screenshot
         Ok(vec![
-            "1.21.11".to_string(),
-            "1.21.10".to_string(),
-            "1.21.9".to_string(),
-            "1.21.8".to_string(),
-            "1.21.7".to_string(),
             "1.21.60.10".to_string(),
             "1.21.50.07".to_string(),
             "1.21.44.01".to_string(),
+            "1.21.40.01".to_string(),
+            "1.21.30.03".to_string(),
+            "1.21.20.03".to_string(),
+            "1.21.2.02".to_string(),
+            "1.21.1.03".to_string(),
         ])
     }
 
