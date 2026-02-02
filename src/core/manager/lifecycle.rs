@@ -41,16 +41,23 @@ impl ServerManager {
         let instance = self.instance_manager.get_instance(instance_id).await?
             .ok_or_else(|| anyhow!("Instance not found"))?;
 
+        let is_bedrock = instance.mod_loader.as_deref().map(|l| l.to_lowercase() == "bedrock").unwrap_or(false);
+        let bedrock_exe = if cfg!(windows) { "bedrock_server.exe" } else { "bedrock_server" };
+        let bedrock_path = instance.path.join(bedrock_exe);
         let jar_path = instance.path.join("server.jar");
         
-        // Download jar if missing
-        if !jar_path.exists() {
+        let exists = if is_bedrock { bedrock_path.exists() } else { jar_path.exists() };
+
+        // Download jar/binary if missing
+        if !exists {
             if let Some(loader) = &instance.mod_loader {
-                let is_forge = loader.to_lowercase() == "forge";
-                let is_neoforge = loader.to_lowercase() == "neoforge";
-                let is_fabric = loader.to_lowercase() == "fabric";
-                let is_paper = loader.to_lowercase() == "paper";
-                let is_purpur = loader.to_lowercase() == "purpur";
+                let loader_lower = loader.to_lowercase();
+                let is_fabric = loader_lower == "fabric";
+                let is_forge = loader_lower == "forge";
+                let is_neoforge = loader_lower == "neoforge";
+                let _is_paper = loader_lower == "paper";
+                let _is_purpur = loader_lower == "purpur";
+                let _is_bedrock = loader_lower == "bedrock";
 
                 if is_fabric {
                     self.install_fabric(Arc::clone(&server), &instance).await?;
@@ -60,12 +67,13 @@ impl ServerManager {
                     self.install_neoforge(Arc::clone(&server), &instance).await?;
                 } else {
                     let server_clone = Arc::clone(&server);
-                    let display_name = if is_paper { 
-                        "Paper".to_string() 
-                    } else if is_purpur { 
-                        "Purpur".to_string() 
-                    } else { 
-                        loader.clone() 
+                    let display_name = match loader_lower.as_str() {
+                        "paper" => "Paper".to_string(),
+                        "purpur" => "Purpur".to_string(),
+                        "velocity" => "Velocity".to_string(),
+                        "bungeecord" => "BungeeCord".to_string(),
+                        "bedrock" => "Bedrock".to_string(),
+                        _ => loader.clone(),
                     };
                     
                     let msg = format!("Starting download of {} for version {}", display_name, instance.version);
@@ -111,32 +119,49 @@ impl ServerManager {
                 server.emit_log("Download complete!".to_string());
             }
 
-            // Also create eula.txt if it doesn't exist
-            let eula_path = instance.path.join("eula.txt");
-            if !eula_path.exists() {
-                tokio::fs::write(eula_path, "eula=true").await?;
+            // Also create eula.txt if it doesn't exist (Java only)
+            if !is_bedrock {
+                let eula_path = instance.path.join("eula.txt");
+                if !eula_path.exists() {
+                    tokio::fs::write(eula_path, "eula=true").await?;
+                }
             }
         }
 
         // Basic config for now, in a real app this would be loaded from instance directory
-        let mut final_jar_path = jar_path.clone();
+        let mut final_jar_path = if is_bedrock { Some(bedrock_path) } else { Some(jar_path.clone()) };
+        let run_script = None;
+        let mut args = vec!["nogui".to_string()];
+
+        let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
         
         // Special case for Fabric: we want to run fabric-server.jar which then loads server.jar
-        let is_fabric = instance.mod_loader.as_deref().map(|l| l.to_lowercase() == "fabric").unwrap_or(false);
-        if is_fabric && instance.path.join("fabric-server.jar").exists() {
-            final_jar_path = instance.path.join("fabric-server.jar");
+        if loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists() {
+            final_jar_path = Some(instance.path.join("fabric-server.jar"));
+        }
+
+        // Special case for Proxies: they don't need nogui
+        if let Some(loader) = &loader_lower {
+            if loader == "velocity" || loader == "bungeecord" {
+                args.clear();
+            }
+        }
+
+        // Special case for Bedrock: it's not a jar and doesn't need nogui
+        if is_bedrock {
+            args.clear();
         }
 
         let mut config = ServerConfig {
             name: instance.name.clone(),
             max_memory: "2G".to_string(),
             min_memory: "1G".to_string(),
-            jar_path: Some(final_jar_path),
-            args: vec!["nogui".to_string()],
+            jar_path: final_jar_path,
+            run_script,
+            args,
             working_dir: instance.path.clone(),
             java_path: None,
             auto_restart: true,
-            run_script: None,
         };
 
         // Check for run scripts (modern Forge/NeoForge)

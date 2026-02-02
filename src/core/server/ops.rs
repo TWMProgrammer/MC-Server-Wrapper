@@ -43,18 +43,32 @@ impl ServerHandle {
                 c
             }
         } else {
-            let java_cmd = config.java_path.as_ref()
-                .map(|p: &PathBuf| p.to_string_lossy().to_string())
-                .unwrap_or_else(|| "java".to_string());
-
-            let mut c = Command::new(java_cmd);
-            c.arg(format!("-Xmx{}", config.max_memory))
-             .arg(format!("-Xms{}", config.min_memory));
-
+            let mut is_jar = true;
             if let Some(jar_path) = &config.jar_path {
-                c.arg("-jar").arg(jar_path);
+                let path_str = jar_path.to_string_lossy().to_lowercase();
+                if !path_str.ends_with(".jar") {
+                    is_jar = false;
+                }
             }
-            c
+
+            if is_jar {
+                let java_cmd = config.java_path.as_ref()
+                    .map(|p: &PathBuf| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "java".to_string());
+
+                let mut c = Command::new(java_cmd);
+                c.arg(format!("-Xmx{}", config.max_memory))
+                 .arg(format!("-Xms{}", config.min_memory));
+
+                if let Some(jar_path) = &config.jar_path {
+                    c.arg("-jar").arg(jar_path);
+                }
+                c
+            } else {
+                // Non-jar executable (e.g. Bedrock)
+                let exe_path = config.jar_path.as_ref().unwrap();
+                Command::new(exe_path)
+            }
         };
 
         cmd.current_dir(&config.working_dir);

@@ -67,7 +67,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     if (isOpen) {
       loadVersions();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedServerType]);
 
   useEffect(() => {
     if (selectedVersion) {
@@ -96,8 +96,48 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   async function loadVersions() {
     try {
       setLoading(true);
-      const m = await invoke<VersionManifest>('get_minecraft_versions');
-      setManifest(m);
+      if (selectedServerType === 'bedrock') {
+        const versions = await invoke<string[]>('get_bedrock_versions');
+        setManifest({
+          latest: { release: versions[0], snapshot: versions[0] },
+          versions: versions.map(v => ({
+            id: v,
+            type: 'release',
+            url: '',
+            releaseTime: new Date().toISOString(),
+          }))
+        });
+      } else if (selectedServerType === 'velocity') {
+        // For Velocity, we first get the versions, then we'll show builds for the latest version
+        // Actually, the user wants to see builds directly in the list.
+        // Let's fetch the builds for the latest stable velocity version.
+        const versions = await invoke<string[]>('get_velocity_versions');
+        const latestVersion = versions[0];
+        const builds = await invoke<string[]>('get_velocity_builds', { version: latestVersion });
+        setManifest({
+          latest: { release: builds[0], snapshot: builds[0] },
+          versions: builds.map(b => ({
+            id: b,
+            type: 'release',
+            url: '',
+            releaseTime: new Date().toISOString(),
+          }))
+        });
+      } else if (selectedServerType === 'bungeecord') {
+        const versions = await invoke<string[]>('get_bungeecord_versions');
+        setManifest({
+          latest: { release: versions[0], snapshot: versions[0] },
+          versions: versions.map(v => ({
+            id: v,
+            type: 'release',
+            url: '',
+            releaseTime: new Date().toISOString(),
+          }))
+        });
+      } else {
+        const m = await invoke<VersionManifest>('get_minecraft_versions');
+        setManifest(m);
+      }
     } catch (e) {
       console.error('Failed to load versions', e);
     } finally {
@@ -106,7 +146,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   }
 
   async function loadModLoaders(version: string) {
-    const isModded = ['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '');
+    const isModded = ['forge', 'fabric', 'neoforge', 'paper', 'purpur', 'velocity', 'bungeecord'].includes(selectedServerType || '');
     if (!isModded) {
       setModLoaders([]);
       return;
@@ -141,6 +181,12 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     });
   }, [manifest, search, showSnapshots]);
 
+  useEffect(() => {
+    if (filteredVersions.length === 1 && !selectedVersion) {
+      setSelectedVersion(filteredVersions[0].id);
+    }
+  }, [filteredVersions, selectedVersion]);
+
   async function handleCreate() {
     if (activeTab === 'import') {
       return handleImport();
@@ -149,11 +195,29 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
 
     try {
       setCreating(true);
+      
+      let version = selectedVersion;
+      let modLoader = selectedLoader === 'none' ? null : selectedLoader;
+      let loaderVersion = selectedLoaderVersion;
+
+      // Special handling for Velocity/BungeeCord where "version" in UI is actually the build
+      if (selectedServerType === 'velocity') {
+        // We need the MC version (velocity version) and the build
+        const versions = await invoke<string[]>('get_velocity_versions');
+        version = versions[0]; // Use latest velocity version
+        modLoader = 'velocity';
+        loaderVersion = selectedVersion; // The selected build number
+      } else if (selectedServerType === 'bungeecord') {
+        version = 'latest';
+        modLoader = 'bungeecord';
+        loaderVersion = selectedVersion; // The selected build (though usually just 'latest')
+      }
+
       const instance = await invoke<Instance>('create_instance_full', {
         name,
-        version: selectedVersion,
-        modLoader: selectedLoader === 'none' ? null : selectedLoader,
-        loaderVersion: selectedLoaderVersion,
+        version,
+        modLoader,
+        loaderVersion,
         startAfterCreation,
       });
       onCreated(instance);

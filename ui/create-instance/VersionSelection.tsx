@@ -105,7 +105,7 @@ export function VersionSelection({
           <table className="w-full text-left text-sm border-separate border-spacing-y-2 px-6">
             <thead className="sticky top-0 bg-background/80 backdrop-blur-md z-10 transition-colors duration-300">
               <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20">
-                <th className="px-6 py-4">Version</th>
+                <th className="px-6 py-4">{['velocity', 'bungeecord'].includes(selectedServerType || '') ? 'Build' : 'Version'}</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Release Date</th>
               </tr>
@@ -132,7 +132,14 @@ export function VersionSelection({
                       )}>
                         <Check size={14} />
                       </div>
-                      <span className="font-bold font-mono tracking-tight">{v.id}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold font-mono tracking-tight">{v.id}</span>
+                        {['velocity', 'bungeecord'].includes(selectedServerType || '') && (
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-white/20 uppercase tracking-wider">
+                            Build Number
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 border-y border-black/5 dark:border-white/5 group-hover:border-primary/20 transition-colors">

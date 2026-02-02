@@ -461,6 +461,26 @@ pub async fn open_instance_folder(
 }
 
 #[tauri::command]
+pub async fn get_bedrock_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<Vec<String>, String> {
+    server_manager.get_bedrock_versions().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_velocity_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<Vec<String>, String> {
+    server_manager.get_velocity_versions().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_velocity_builds(server_manager: State<'_, Arc<ServerManager>>, version: String) -> Result<Vec<String>, String> {
+    server_manager.get_velocity_builds(&version).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_bungeecord_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<Vec<String>, String> {
+    server_manager.get_bungeecord_versions().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn get_minecraft_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<mc_server_wrapper_core::downloader::VersionManifest, String> {
     server_manager.get_downloader().fetch_manifest().await.map_err(|e| e.to_string())
 }

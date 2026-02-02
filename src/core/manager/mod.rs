@@ -46,4 +46,20 @@ impl ServerManager {
         let instance = self.instance_manager.create_instance_full(name, version, mod_loader, loader_version).await?;
         Ok(instance)
     }
+
+    pub async fn get_bedrock_versions(&self) -> Result<Vec<String>> {
+        self.mod_loader_client.get_bedrock_versions().await
+    }
+
+    pub async fn get_velocity_versions(&self) -> Result<Vec<String>> {
+        self.mod_loader_client.get_velocity_versions().await
+    }
+
+    pub async fn get_velocity_builds(&self, version: &str) -> Result<Vec<String>> {
+        self.mod_loader_client.get_velocity_builds(version).await
+    }
+
+    pub async fn get_bungeecord_versions(&self) -> Result<Vec<String>> {
+        self.mod_loader_client.get_bungeecord_versions().await
+    }
 }

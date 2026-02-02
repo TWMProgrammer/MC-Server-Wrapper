@@ -66,7 +66,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="bg-white dark:bg-gray-950 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5 transition-colors duration-300"
+          className="bg-white dark:bg-gray-950 border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl w-[80vw] h-[110vh] flex flex-col overflow-hidden relative z-10 ring-1 ring-black/5 dark:ring-white/5 transition-colors duration-300"
         >
           {/* Progress Overlay */}
           <AnimatePresence>

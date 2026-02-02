@@ -3,6 +3,8 @@ pub mod forge;
 pub mod neoforge;
 pub mod paper;
 pub mod purpur;
+pub mod proxy;
+pub mod bedrock;
 
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
@@ -77,12 +79,43 @@ impl ModLoaderClient {
                 let version = loader_version.ok_or_else(|| anyhow::anyhow!("NeoForge requires a version"))?;
                 self.download_neoforge(version, target_path, on_progress).await
             },
+            "velocity" => {
+                let version = mc_version;
+                let build = match loader_version {
+                    Some(v) => v.to_string(),
+                    None => {
+                        let builds = self.get_velocity_builds(version).await?;
+                        builds.first()
+                            .ok_or_else(|| anyhow::anyhow!("No builds found for Velocity version {}", version))?
+                            .clone()
+                    }
+                };
+                self.download_velocity(version, &build, target_path, on_progress).await
+            },
+            "bungeecord" => {
+                let version = loader_version.unwrap_or("latest");
+                self.download_bungeecord(version, target_path, on_progress).await
+            },
+            "bedrock" => {
+                let version = mc_version;
+                // For Bedrock, target_path is the directory where it should be extracted
+                let target_dir = target_path.as_ref().parent().ok_or_else(|| anyhow::anyhow!("Invalid target path for Bedrock"))?;
+                self.download_bedrock(version, target_dir, on_progress).await
+            },
             _ => Err(anyhow::anyhow!("Unsupported mod loader: {}", loader_name)),
         }
     }
 
     pub async fn get_available_loaders(&self, mc_version: &str) -> Result<Vec<ModLoader>> {
         let mut loaders = Vec::new();
+
+        // Only return Java loaders if mc_version looks like a Java version
+        // (Simplified check: if it doesn't look like a Bedrock version from our list)
+        let bedrock_versions = self.get_bedrock_versions().await.unwrap_or_default();
+        if bedrock_versions.contains(&mc_version.to_string()) {
+            // This is a Bedrock version, don't return Java loaders
+            return Ok(vec![]);
+        }
 
         // Fabric
         if let Ok(versions) = self.get_fabric_versions(mc_version).await {
@@ -132,6 +165,21 @@ impl ModLoaderClient {
                     versions,
                 });
             }
+        }
+
+        // Proxies (Velocity/BungeeCord)
+        if let Ok(versions) = self.get_velocity_versions().await {
+            loaders.push(ModLoader {
+                name: "Velocity".to_string(),
+                versions,
+            });
+        }
+
+        if let Ok(versions) = self.get_bungeecord_versions().await {
+            loaders.push(ModLoader {
+                name: "BungeeCord".to_string(),
+                versions,
+            });
         }
 
         Ok(loaders)
