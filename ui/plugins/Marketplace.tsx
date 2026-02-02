@@ -57,6 +57,8 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [selectedPlugins, setSelectedPlugins] = useState<Map<string, Project>>(new Map())
   const [showReview, setShowReview] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
+  const [isResolvingDeps, setIsResolvingDeps] = useState(false)
+  const [resolvedDeps, setResolvedDeps] = useState<Project[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
   const [page, setPage] = useState(1)
@@ -118,6 +120,40 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
       newSelection.set(project.id, project)
     }
     setSelectedPlugins(newSelection)
+  }
+
+  const handleReview = async () => {
+    setIsResolvingDeps(true)
+    const allDeps: Map<string, Project> = new Map()
+    const seenIds = new Set(Array.from(selectedPlugins.keys()))
+    const queue = Array.from(selectedPlugins.values())
+
+    try {
+      while (queue.length > 0) {
+        const plugin = queue.shift()!
+        if (plugin.provider === 'Modrinth') {
+          const deps = await invoke<Project[]>('get_plugin_dependencies', {
+            projectId: plugin.id,
+            provider: plugin.provider
+          })
+          for (const dep of deps) {
+            if (!seenIds.has(dep.id)) {
+              allDeps.set(dep.id, dep)
+              seenIds.add(dep.id)
+              queue.push(dep) // Add to queue to find its dependencies
+            }
+          }
+        }
+      }
+      setResolvedDeps(Array.from(allDeps.values()))
+      setShowReview(true)
+    } catch (err) {
+      console.error('Failed to fetch dependencies:', err)
+      showToast('Failed to resolve dependencies: ' + err, 'error')
+      setShowReview(true)
+    } finally {
+      setIsResolvingDeps(false)
+    }
   }
 
   const handleConfirmInstall = async (plugins: Project[]) => {
@@ -367,10 +403,27 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowReview(true)}
-                  className="px-8 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                  onClick={handleReview}
+                  disabled={isResolvingDeps}
+                  className="px-8 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-105 transition-all relative overflow-hidden disabled:opacity-80 disabled:hover:scale-100"
                 >
-                  Review and Confirm
+                  <span className={isResolvingDeps ? 'opacity-0' : 'opacity-100'}>
+                    Review and Confirm
+                  </span>
+                  
+                  {isResolvingDeps && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-[10px] uppercase tracking-tighter mb-1">Finding Dependencies...</span>
+                      <div className="w-24 h-1 bg-white/20 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-white"
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -394,6 +447,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
         {showReview && (
           <ReviewModal
             selectedPlugins={Array.from(selectedPlugins.values())}
+            preFetchedDependencies={resolvedDeps}
             instanceId={instanceId}
             onClose={() => setShowReview(false)}
             onConfirm={handleConfirmInstall}

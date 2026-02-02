@@ -7,54 +7,33 @@ import { invoke } from '@tauri-apps/api/core'
 
 interface ReviewModalProps {
   selectedPlugins: Project[];
+  preFetchedDependencies?: Project[];
   instanceId: string;
   onClose: () => void;
   onConfirm: (plugins: Project[]) => Promise<void>;
   isInstalling: boolean;
 }
 
-export function ReviewModal({ selectedPlugins, instanceId, onClose, onConfirm, isInstalling }: ReviewModalProps) {
-  const [dependencies, setDependencies] = useState<Project[]>([])
-  const [loadingDeps, setLoadingDeps] = useState(false)
+export function ReviewModal({
+  selectedPlugins,
+  preFetchedDependencies = [],
+  instanceId,
+  onClose,
+  onConfirm,
+  isInstalling
+}: ReviewModalProps) {
+  const [dependencies, setDependencies] = useState<Project[]>(preFetchedDependencies)
   const [selectedForInstall, setSelectedForInstall] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    // Initialize with all selected plugins immediately
-    setSelectedForInstall(new Set(selectedPlugins.map(p => p.id)))
-
-    const fetchDeps = async () => {
-      setLoadingDeps(true)
-      const allDeps: Project[] = []
-      const seenIds = new Set(selectedPlugins.map(p => p.id))
-
-      try {
-        for (const plugin of selectedPlugins) {
-          if (plugin.provider === 'Modrinth') {
-            const deps = await invoke<Project[]>('get_plugin_dependencies', {
-              projectId: plugin.id,
-              provider: plugin.provider
-            })
-            for (const dep of deps) {
-              if (!seenIds.has(dep.id)) {
-                allDeps.push(dep)
-                seenIds.add(dep.id)
-              }
-            }
-          }
-        }
-        setDependencies(allDeps)
-        // Auto-select all plugins and dependencies
-        const allIds = new Set([...selectedPlugins.map(p => p.id), ...allDeps.map(p => p.id)])
-        setSelectedForInstall(allIds)
-      } catch (err) {
-        console.error('Failed to fetch dependencies:', err)
-      } finally {
-        setLoadingDeps(false)
-      }
-    }
-
-    fetchDeps()
-  }, [selectedPlugins])
+    // Initialize with all selected plugins and pre-fetched dependencies immediately
+    const allIds = new Set([
+      ...selectedPlugins.map(p => p.id),
+      ...preFetchedDependencies.map(p => p.id)
+    ])
+    setSelectedForInstall(allIds)
+    setDependencies(preFetchedDependencies)
+  }, [selectedPlugins, preFetchedDependencies])
 
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedForInstall)
@@ -105,18 +84,16 @@ export function ReviewModal({ selectedPlugins, instanceId, onClose, onConfirm, i
             <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Selected Plugins</h4>
             <div className="space-y-2">
               {selectedPlugins.map(plugin => (
-                <div 
-                  key={plugin.id} 
+                <div
+                  key={plugin.id}
                   onClick={() => toggleSelection(plugin.id)}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                    selectedForInstall.has(plugin.id) 
-                    ? 'bg-primary/10 border-primary/30' 
-                    : 'bg-white/5 border-white/5 opacity-50'
-                  }`}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedForInstall.has(plugin.id)
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'bg-white/5 border-white/5 opacity-50'
+                    }`}
                 >
-                  <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
-                    selectedForInstall.has(plugin.id) ? 'bg-primary border-primary' : 'border-white/20'
-                  }`}>
+                  <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${selectedForInstall.has(plugin.id) ? 'bg-primary border-primary' : 'border-white/20'
+                    }`}>
                     {selectedForInstall.has(plugin.id) && <Check size={14} className="text-white" />}
                   </div>
                   {plugin.icon_url ? (
@@ -132,27 +109,24 @@ export function ReviewModal({ selectedPlugins, instanceId, onClose, onConfirm, i
             </div>
           </div>
 
-          {(loadingDeps || dependencies.length > 0) && (
+          {(dependencies.length > 0) && (
             <div>
               <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 Dependencies
-                {loadingDeps && <RefreshCw size={14} className="animate-spin" />}
               </h4>
               {dependencies.length > 0 ? (
                 <div className="space-y-2">
                   {dependencies.map(dep => (
-                    <div 
-                      key={dep.id} 
+                    <div
+                      key={dep.id}
                       onClick={() => toggleSelection(dep.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedForInstall.has(dep.id) 
-                        ? 'bg-blue-500/10 border-blue-500/30' 
-                        : 'bg-white/5 border-white/5 opacity-50'
-                      }`}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedForInstall.has(dep.id)
+                          ? 'bg-blue-500/10 border-blue-500/30'
+                          : 'bg-white/5 border-white/5 opacity-50'
+                        }`}
                     >
-                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
-                        selectedForInstall.has(dep.id) ? 'bg-blue-500 border-blue-500' : 'border-white/20'
-                      }`}>
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${selectedForInstall.has(dep.id) ? 'bg-blue-500 border-blue-500' : 'border-white/20'
+                        }`}>
                         {selectedForInstall.has(dep.id) && <Check size={14} className="text-white" />}
                       </div>
                       {dep.icon_url ? (
@@ -169,9 +143,7 @@ export function ReviewModal({ selectedPlugins, instanceId, onClose, onConfirm, i
                     </div>
                   ))}
                 </div>
-              ) : !loadingDeps && (
-                <p className="text-sm text-gray-500 italic">No dependencies found.</p>
-              )}
+              ) : null}
             </div>
           )}
 
