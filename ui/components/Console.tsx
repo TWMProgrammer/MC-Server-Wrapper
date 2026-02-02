@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { Terminal, Maximize2, Send, ChevronRight, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Ansi from 'ansi-to-react'
@@ -30,27 +30,48 @@ export function Console({
   const settings = propSettings || hookSettings;
   const [isAtBottom, setIsAtBottom] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAutoScrolling = useRef(false);
 
   const handleScroll = () => {
-    if (scrollContainerRef.current) {
+    if (scrollContainerRef.current && !isAutoScrolling.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-      // Use a small threshold (10px) to determine if we're at the bottom
-      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      // Use a threshold to determine if we're at the bottom
+      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
       setIsAtBottom(atBottom);
     }
   };
 
-  const scrollToBottom = () => {
-    consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setIsAtBottom(true);
+  const scrollToBottom = (smooth = false) => {
+    if (scrollContainerRef.current) {
+      isAutoScrolling.current = true;
+      const { scrollHeight } = scrollContainerRef.current;
+
+      scrollContainerRef.current.scrollTo({
+        top: scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+
+      // We are definitely at the bottom now
+      setIsAtBottom(true);
+
+      // Reset auto-scrolling flag after a short delay
+      setTimeout(() => {
+        isAutoScrolling.current = false;
+      }, smooth ? 500 : 50);
+    }
   };
 
-  // Auto-scroll when logs change, but only if we were already at the bottom
-  useEffect(() => {
+  // Auto-scroll when logs change
+  useLayoutEffect(() => {
     if (isAtBottom) {
-      consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom(false);
     }
-  }, [logs, isAtBottom]);
+  }, [logs]);
+
+  // Handle manual scroll to bottom
+  const handleManualScrollToBottom = () => {
+    scrollToBottom(true);
+  };
 
   const formatLogLine = (line: string) => {
     const timestampMatch = line.match(/^\[\d{2}:\d{2}:\d{2}\]/);
@@ -154,7 +175,7 @@ export function Console({
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 10, scale: 0.9 }}
                 type="button"
-                onClick={scrollToBottom}
+                onClick={handleManualScrollToBottom}
                 className="absolute right-0 flex items-center gap-1.5 px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-glow-primary hover:scale-105 active:scale-95 transition-all z-10"
               >
                 <Activity size={12} className="animate-pulse" />
