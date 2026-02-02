@@ -283,7 +283,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className={cn(
             "bg-surface border border-white/10 shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300",
-            isMaximized ? "w-full h-full" : "w-full max-w-6xl h-[85vh] rounded-3xl"
+            isMaximized ? "w-full h-full" : "w-[80%] h-[80%] rounded-3xl"
           )}
         >
         {/* Header */}

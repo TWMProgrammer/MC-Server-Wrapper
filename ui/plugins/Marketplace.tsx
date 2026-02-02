@@ -62,7 +62,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
   const [page, setPage] = useState(1)
-  const PAGE_SIZE = 12
+  const PAGE_SIZE = 16
 
   const { showToast } = useToast()
 
@@ -260,9 +260,9 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
             {loading ? (
-              Array.from({ length: 9 }).map((_, i) => (
+              Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="bg-white/5 border border-white/5 rounded-[2rem] p-6 h-56 animate-pulse" />
               ))
             ) : results.length > 0 ? (

@@ -73,6 +73,7 @@ pub fn run() {
       }
 
       app.handle().plugin(tauri_plugin_dialog::init())?;
+      app.handle().plugin(tauri_plugin_opener::init())?;
 
       // Initialize Directories next to the executable
       let exe_path = std::env::current_exe()
