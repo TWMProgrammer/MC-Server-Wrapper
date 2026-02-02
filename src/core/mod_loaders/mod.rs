@@ -116,8 +116,11 @@ impl ModLoaderClient {
         let is_bedrock = if let Some(t) = server_type {
             t.to_lowercase() == "bedrock"
         } else {
-            let bedrock_versions = self.get_bedrock_versions().await.unwrap_or_default();
-            bedrock_versions.contains(&mc_version.to_string())
+            let bedrock_manifest = self.get_bedrock_versions().await.unwrap_or_else(|_| crate::downloader::VersionManifest {
+                latest: crate::downloader::LatestVersions { release: "".to_string(), snapshot: "".to_string() },
+                versions: vec![],
+            });
+            bedrock_manifest.versions.iter().any(|v| v.id == mc_version)
         };
 
         if is_bedrock {

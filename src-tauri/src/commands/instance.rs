@@ -461,7 +461,7 @@ pub async fn open_instance_folder(
 }
 
 #[tauri::command]
-pub async fn get_bedrock_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<Vec<String>, String> {
+pub async fn get_bedrock_versions(server_manager: State<'_, Arc<ServerManager>>) -> Result<mc_server_wrapper_core::downloader::VersionManifest, String> {
     server_manager.get_bedrock_versions().await.map_err(|e| e.to_string())
 }
 

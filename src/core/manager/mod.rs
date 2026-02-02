@@ -47,7 +47,7 @@ impl ServerManager {
         Ok(instance)
     }
 
-    pub async fn get_bedrock_versions(&self) -> Result<Vec<String>> {
+    pub async fn get_bedrock_versions(&self) -> Result<crate::downloader::VersionManifest> {
         self.mod_loader_client.get_bedrock_versions().await
     }
 

@@ -97,16 +97,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     try {
       setLoading(true);
       if (selectedServerType === 'bedrock') {
-        const versions = await invoke<string[]>('get_bedrock_versions');
-        setManifest({
-          latest: { release: versions[0], snapshot: versions[0] },
-          versions: versions.map(v => ({
-            id: v,
-            type: 'release',
-            url: '',
-            releaseTime: new Date().toISOString(),
-          }))
-        });
+        const manifest = await invoke<VersionManifest>('get_bedrock_versions');
+        setManifest(manifest);
       } else if (selectedServerType === 'velocity') {
         // For Velocity, we first get the versions, then we'll show builds for the latest version
         // Actually, the user wants to see builds directly in the list.
