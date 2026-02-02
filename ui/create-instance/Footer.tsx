@@ -55,7 +55,7 @@ export function Footer({
       onClick={showWarning ? undefined : onCreate}
       disabled={isDisabled}
       className={cn(
-        "px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-3 shadow-2xl",
+        "px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-3 shadow-2xl",
         isDisabled
           ? "bg-black/5 dark:bg-white/5 text-gray-400 dark:text-white/10 cursor-not-allowed"
           : "bg-primary hover:bg-primary-hover text-white shadow-glow-primary"
@@ -70,41 +70,41 @@ export function Footer({
   );
 
   return (
-    <div className="p-6 border-t border-black/5 dark:border-white/5 flex items-center justify-between bg-black/5 dark:bg-black/40 backdrop-blur-xl transition-colors duration-300">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20 flex items-center gap-3">
-        <Info size={16} className="text-primary" />
+    <div className="p-4 border-t border-black/5 dark:border-white/5 flex items-center justify-between bg-black/5 dark:bg-black/40 backdrop-blur-xl transition-colors duration-300">
+      <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20 flex items-center gap-2.5">
+        <Info size={14} className="text-primary" />
         <span>{getReadyMessage()}</span>
       </div>
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         {!isImport && (
           <button
             onClick={() => setStartAfterCreation(!startAfterCreation)}
             className={cn(
-              "flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 group",
+              "flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all duration-300 group",
               startAfterCreation
                 ? "bg-primary/10 text-primary border border-primary/20"
                 : "bg-black/5 dark:bg-white/5 text-gray-400 border border-transparent"
             )}
           >
             <div className={cn(
-              "w-8 h-4 rounded-full relative transition-colors duration-300",
+              "w-7 h-3.5 rounded-full relative transition-colors duration-300",
               startAfterCreation ? "bg-primary" : "bg-gray-300 dark:bg-white/10"
             )}>
               <motion.div
-                animate={{ x: startAfterCreation ? 18 : 2 }}
-                className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm"
+                animate={{ x: startAfterCreation ? 16 : 2 }}
+                className="absolute top-0.75 w-2 h-2 rounded-full bg-white shadow-sm"
               />
             </div>
             <div className="flex flex-col items-start">
-              <span className="text-[10px] font-black uppercase tracking-widest leading-none">Start Server</span>
-              <span className="text-[8px] font-bold opacity-50 uppercase tracking-tighter">After Creation</span>
+              <span className="text-[9px] font-black uppercase tracking-widest leading-none">Start Server</span>
+              <span className="text-[7px] font-bold opacity-50 uppercase tracking-tighter">After Creation</span>
             </div>
           </button>
         )}
 
         <button
           onClick={onClose}
-          className="px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+          className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-gray-400 dark:text-white/40 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-all"
         >
           Cancel
         </button>
