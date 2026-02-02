@@ -36,7 +36,7 @@ export function MarketplaceModal({ instanceId, onClose, onInstallSuccess }: Mark
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-[80%] h-[80%] bg-surface border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-[80%] h-[90%] bg-surface border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/5">

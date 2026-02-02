@@ -259,7 +259,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   const language = useMemo(() => getLanguageFromExtension(selectedConfig), [selectedConfig])
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 z-50 overflow-hidden"
       style={{
         width: `${100 / settings.scaling}%`,
@@ -283,173 +283,173 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className={cn(
             "bg-surface border border-white/10 shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300",
-            isMaximized ? "w-full h-full" : "w-[80%] h-[80%] rounded-3xl"
+            isMaximized ? "w-full h-full" : "w-[80%] h-[90%] rounded-3xl"
           )}
         >
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-[#1a1a1a]">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-              <Settings size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white leading-tight">
-                Config: {plugin.name}
-              </h2>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-0.5">
-                Plugin Configuration Editor
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsMaximized(!isMaximized)}
-              className="p-2.5 hover:bg-white/5 rounded-xl transition-all text-gray-400 hover:text-white"
-              title={isMaximized ? "Minimize" : "Maximize"}
-            >
-              {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2.5 hover:bg-red-500/10 rounded-xl transition-all text-gray-400 hover:text-red-500"
-            >
-              <X size={24} />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 flex min-h-0">
-          {/* Sidebar */}
-          <div className="w-72 border-r border-white/5 bg-[#141414] flex flex-col shrink-0">
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-              <div className="flex items-center gap-2 mb-4 px-2">
-                <FileText size={16} className="text-primary" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                  Files
-                </h3>
+          {/* Header */}
+          <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-[#1a1a1a]">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                <Settings size={24} />
               </div>
-
-              <div className="space-y-0.5">
-                {configs.length === 0 && !loading ? (
-                  <div className="px-4 py-8 text-center bg-white/5 rounded-2xl border border-white/5">
-                    <AlertCircle size={24} className="mx-auto text-gray-600 mb-2" />
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      No config files found.<br />
-                      <span className="opacity-50 text-[10px]">Is the plugin folder named correctly?</span>
-                    </p>
-                  </div>
-                ) : (
-                  renderFileTree(fileTree)
-                )}
+              <div>
+                <h2 className="text-xl font-bold text-white leading-tight">
+                  Config: {plugin.name}
+                </h2>
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-0.5">
+                  Plugin Configuration Editor
+                </p>
               </div>
             </div>
 
-            <div className="p-6 border-t border-white/5 bg-[#1a1a1a]">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Terminal size={14} className="text-primary" />
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Reload</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsMaximized(!isMaximized)}
+                className="p-2.5 hover:bg-white/5 rounded-xl transition-all text-gray-400 hover:text-white"
+                title={isMaximized ? "Minimize" : "Maximize"}
+              >
+                {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2.5 hover:bg-red-500/10 rounded-xl transition-all text-gray-400 hover:text-red-500"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex min-h-0">
+            {/* Sidebar */}
+            <div className="w-72 border-r border-white/5 bg-[#141414] flex flex-col shrink-0">
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div className="flex items-center gap-2 mb-4 px-2">
+                  <FileText size={16} className="text-primary" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                    Files
+                  </h3>
                 </div>
-                <button
-                  onClick={() => setAutoReload(!autoReload)}
-                  className={cn(
-                    "w-10 h-5 rounded-full transition-all relative border",
-                    autoReload ? "bg-primary border-primary" : "bg-black/40 border-white/10"
-                  )}
-                >
-                  <motion.div
-                    animate={{ x: autoReload ? 20 : 2 }}
-                    className="absolute top-1 w-2.5 h-2.5 rounded-full bg-white shadow-sm"
-                  />
-                </button>
-              </div>
-              <p className="text-[10px] text-gray-500 leading-relaxed">
-                Automatically send <b>/reload confirm</b> after saving changes.
-              </p>
-            </div>
-          </div>
 
-          {/* Editor Area */}
-          <div className="flex-1 flex flex-col bg-[#1e1e1e] relative">
-            {loading ? (
-              <div className="absolute inset-0 z-10 bg-black/20 backdrop-blur-[2px] flex items-center justify-center">
-                <RefreshCw size={32} className="animate-spin text-primary opacity-50" />
-              </div>
-            ) : null}
-
-            <div className="flex-1 overflow-hidden relative">
-              <Editor
-                height="100%"
-                language={language}
-                theme="vs-dark"
-                value={content}
-                beforeMount={handleEditorWillMount}
-                onMount={handleEditorDidMount}
-                onChange={(value) => setContent(value || '')}
-                options={{
-                  fontSize: 14,
-                  fontFamily: 'JetBrains Mono, Fira Code, monospace',
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'off',
-                  lineNumbers: 'on',
-                  renderWhitespace: 'selection',
-                  scrollbar: {
-                    vertical: 'visible',
-                    horizontal: 'visible',
-                    useShadows: false,
-                    verticalScrollbarSize: 10,
-                    horizontalScrollbarSize: 10,
-                  },
-                  padding: { top: 20, bottom: 20 },
-                  automaticLayout: true,
-                  backgroundColor: '#1e1e1e',
-                  rules: [
-                    { token: 'comment', foreground: '6A9955' },
-                    { token: 'keyword', foreground: '569CD6' },
-                    { token: 'string', foreground: 'CE9178' },
-                    { token: 'variable', foreground: '9CDCFE' },
-                  ]
-                } as any}
-              />
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-white/5 bg-[#1a1a1a] flex items-center justify-between">
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5 max-w-[300px] truncate">
-                  <FileText size={14} className="opacity-50 shrink-0" />
-                  {selectedConfig || 'No file selected'}
-                </span>
-                <span className="w-px h-3 bg-white/10 shrink-0" />
-                <span className="shrink-0">{lineCount} lines</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleReload}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-all"
-                >
-                  <RefreshCw size={18} />
-                  Manual Reload
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !selectedConfig}
-                  className="flex items-center gap-2 px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? (
-                    <RefreshCw size={18} className="animate-spin" />
+                <div className="space-y-0.5">
+                  {configs.length === 0 && !loading ? (
+                    <div className="px-4 py-8 text-center bg-white/5 rounded-2xl border border-white/5">
+                      <AlertCircle size={24} className="mx-auto text-gray-600 mb-2" />
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        No config files found.<br />
+                        <span className="opacity-50 text-[10px]">Is the plugin folder named correctly?</span>
+                      </p>
+                    </div>
                   ) : (
-                    <Save size={18} />
+                    renderFileTree(fileTree)
                   )}
-                  Save Changes
-                </button>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-white/5 bg-[#1a1a1a]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-primary" />
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Reload</span>
+                  </div>
+                  <button
+                    onClick={() => setAutoReload(!autoReload)}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-all relative border",
+                      autoReload ? "bg-primary border-primary" : "bg-black/40 border-white/10"
+                    )}
+                  >
+                    <motion.div
+                      animate={{ x: autoReload ? 20 : 2 }}
+                      className="absolute top-1 w-2.5 h-2.5 rounded-full bg-white shadow-sm"
+                    />
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-500 leading-relaxed">
+                  Automatically send <b>/reload confirm</b> after saving changes.
+                </p>
+              </div>
+            </div>
+
+            {/* Editor Area */}
+            <div className="flex-1 flex flex-col bg-[#1e1e1e] relative">
+              {loading ? (
+                <div className="absolute inset-0 z-10 bg-black/20 backdrop-blur-[2px] flex items-center justify-center">
+                  <RefreshCw size={32} className="animate-spin text-primary opacity-50" />
+                </div>
+              ) : null}
+
+              <div className="flex-1 overflow-hidden relative">
+                <Editor
+                  height="100%"
+                  language={language}
+                  theme="vs-dark"
+                  value={content}
+                  beforeMount={handleEditorWillMount}
+                  onMount={handleEditorDidMount}
+                  onChange={(value) => setContent(value || '')}
+                  options={{
+                    fontSize: 14,
+                    fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'off',
+                    lineNumbers: 'on',
+                    renderWhitespace: 'selection',
+                    scrollbar: {
+                      vertical: 'visible',
+                      horizontal: 'visible',
+                      useShadows: false,
+                      verticalScrollbarSize: 10,
+                      horizontalScrollbarSize: 10,
+                    },
+                    padding: { top: 20, bottom: 20 },
+                    automaticLayout: true,
+                    backgroundColor: '#1e1e1e',
+                    rules: [
+                      { token: 'comment', foreground: '6A9955' },
+                      { token: 'keyword', foreground: '569CD6' },
+                      { token: 'string', foreground: 'CE9178' },
+                      { token: 'variable', foreground: '9CDCFE' },
+                    ]
+                  } as any}
+                />
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-white/5 bg-[#1a1a1a] flex items-center justify-between">
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1.5 max-w-[300px] truncate">
+                    <FileText size={14} className="opacity-50 shrink-0" />
+                    {selectedConfig || 'No file selected'}
+                  </span>
+                  <span className="w-px h-3 bg-white/10 shrink-0" />
+                  <span className="shrink-0">{lineCount} lines</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleReload}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-bold transition-all"
+                  >
+                    <RefreshCw size={18} />
+                    Manual Reload
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !selectedConfig}
+                    className="flex items-center gap-2 px-8 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                      <RefreshCw size={18} className="animate-spin" />
+                    ) : (
+                      <Save size={18} />
+                    )}
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </motion.div>
       </div>
     </div>,

@@ -56,7 +56,7 @@ export function PluginDetailsModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-[75%] h-[80%] bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-[75%] h-[90%] bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="p-6 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
