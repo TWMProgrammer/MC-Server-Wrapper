@@ -7,6 +7,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::path::PathBuf;
 use sysinfo::{Pid, System, ProcessesToUpdate};
+use regex::Regex;
+use std::sync::OnceLock;
 
 use super::handle::ServerHandle;
 use super::types::{ServerStatus, ResourceUsage};
@@ -127,29 +129,90 @@ impl ServerHandle {
         // Output capture tasks
         let log_sender_stdout = self.log_sender.clone();
         let online_players_clone = Arc::clone(&self.online_players);
+        
+        static ANSI_REGEX: OnceLock<Regex> = OnceLock::new();
+        let ansi_re = ANSI_REGEX.get_or_init(|| Regex::new(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])").unwrap());
+
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 info!("[Server Output] {}", line);
                 let _ = log_sender_stdout.send(line.clone());
                 
-                if line.contains("Done") && line.contains("For help, type \"help\"") {
+                let line_stripped = ansi_re.replace_all(&line, "");
+                let line_lower = line_stripped.to_lowercase();
+                
+                // Detect if server is ready
+                let is_ready = (line_lower.contains("done") && line_lower.contains("for help, type \"help\""))
+                    || line_lower.contains("! for help, type \"help\"")
+                    || line_lower.contains("server started.") // Bedrock
+                    || line_lower.contains("rcon running on")
+                    || (line_lower.contains("done") && line_lower.contains("(") && line_lower.contains("s)"))
+                    || line_lower.contains("timings reset");
+
+                if is_ready {
                     let mut status = status_clone.lock().await;
                     if *status == ServerStatus::Starting {
                         *status = ServerStatus::Running;
-                        info!("Server is now Running");
+                        info!("Server is now Running (detected via logs)");
                     }
                 }
 
-                if line.contains("joined the game") {
-                    if let Some(username) = line.split("INFO]: ").nth(1).and_then(|s| s.split(' ').next()) {
-                        let mut players = online_players_clone.lock().await;
-                        players.insert(username.to_string());
+                // Detect player joins
+                if line_stripped.contains("joined the game") || line_stripped.contains("connected:") {
+                    // If a player joins, the server MUST be running
+                    {
+                        let mut status = status_clone.lock().await;
+                        if *status == ServerStatus::Starting {
+                            *status = ServerStatus::Running;
+                            info!("Server is now Running (detected via player join)");
+                        }
                     }
-                } else if line.contains("left the game") {
-                    if let Some(username) = line.split("INFO]: ").nth(1).and_then(|s| s.split(' ').next()) {
-                        let mut players = online_players_clone.lock().await;
-                        players.remove(username);
+
+                    let username = if line_stripped.contains("joined the game") {
+                        // Paper/Fabric/Vanilla: [TIMESTAMP INFO]: Username joined the game
+                        // Or: [TIMESTAMP] [Server thread/INFO]: Username joined the game
+                        line_stripped.split("joined the game")
+                            .next()
+                            .and_then(|s| s.split("INFO]: ").last())
+                            .or_else(|| line_stripped.split("joined the game").next().and_then(|s| s.split(": ").last()))
+                            .map(|s| s.trim())
+                    } else {
+                        // Bedrock: Player connected: Username, xuid: ...
+                        line_stripped.split("connected: ")
+                            .nth(1)
+                            .and_then(|s| s.split(',').next())
+                            .map(|s| s.trim())
+                    };
+
+                    if let Some(name) = username {
+                        if !name.is_empty() {
+                            let mut players = online_players_clone.lock().await;
+                            players.insert(name.to_string());
+                            info!("Player joined: {}", name);
+                        }
+                    }
+                } else if line_stripped.contains("left the game") || line_stripped.contains("disconnected:") {
+                    let username = if line_stripped.contains("left the game") {
+                        line_stripped.split("left the game")
+                            .next()
+                            .and_then(|s| s.split("INFO]: ").last())
+                            .or_else(|| line_stripped.split("left the game").next().and_then(|s| s.split(": ").last()))
+                            .map(|s| s.trim())
+                    } else {
+                        // Bedrock: Player disconnected: Username, xuid: ...
+                        line_stripped.split("disconnected: ")
+                            .nth(1)
+                            .and_then(|s| s.split(',').next())
+                            .map(|s| s.trim())
+                    };
+
+                    if let Some(name) = username {
+                        if !name.is_empty() {
+                            let mut players = online_players_clone.lock().await;
+                            players.remove(name);
+                            info!("Player left: {}", name);
+                        }
                     }
                 }
             }
