@@ -377,6 +377,17 @@ export function AppSettingsModal({
                               </div>
                             </div>
                           </Section>
+
+                          <Section title="Console" icon={Monitor}>
+                            <div className="p-2 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                              <Checkbox
+                                label="White Console Text"
+                                description="Use white text for console logs by default instead of accent color"
+                                checked={settings.use_white_console_text}
+                                onChange={(val) => updateSettings({ use_white_console_text: val })}
+                              />
+                            </div>
+                          </Section>
                         </>
                       )}
 

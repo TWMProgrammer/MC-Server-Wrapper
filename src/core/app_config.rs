@@ -8,6 +8,7 @@ pub struct AppSettings {
     // Interface
     pub display_ipv6: bool,
     pub hide_ip_address: bool,
+    pub use_white_console_text: bool,
     
     // Navigation
     pub start_page: String, // "Dashboard", "Global Dashboard", etc.
@@ -45,6 +46,7 @@ impl Default for AppSettings {
         Self {
             display_ipv6: false,
             hide_ip_address: false,
+            use_white_console_text: false,
             start_page: "Dashboard".to_string(),
             download_player_heads: true,
             use_helm_heads: true,

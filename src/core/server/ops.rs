@@ -58,7 +58,10 @@ impl ServerHandle {
 
                 let mut c = Command::new(java_cmd);
                 c.arg(format!("-Xmx{}", config.max_memory))
-                 .arg(format!("-Xms{}", config.min_memory));
+                 .arg(format!("-Xms{}", config.min_memory))
+                 .arg("-Dterminal.jline=false")
+                 .arg("-Dterminal.ansi=true")
+                 .arg("-Dlog4j.skipJansi=false");
 
                 if let Some(jar_path) = &config.jar_path {
                     c.arg("-jar").arg(jar_path);

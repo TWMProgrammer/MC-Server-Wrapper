@@ -22,6 +22,7 @@ export interface AppSettings {
   // Interface
   display_ipv6: boolean;
   hide_ip_address: boolean;
+  use_white_console_text: boolean;
   
   // Navigation
   start_page: string;
@@ -50,6 +51,7 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   display_ipv6: false,
   hide_ip_address: false,
+  use_white_console_text: false,
   start_page: "Dashboard",
   download_player_heads: true,
   use_helm_heads: true,

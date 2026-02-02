@@ -13,6 +13,7 @@ import { GlobalDashboard } from './components/GlobalDashboard'
 import { TabRenderer } from './components/TabRenderer'
 import { getAvailableTabs } from './utils/tabUtils'
 import { TabId } from './types'
+import { cn } from './utils'
 
 function App() {
   const {
@@ -72,14 +73,14 @@ function App() {
     >
       <div className="flex h-full text-gray-900 dark:text-white selection:bg-primary/30">
         <Sidebar
-        instances={instances}
-        selectedInstanceId={selectedInstanceId}
-        onSelectInstance={setSelectedInstanceId}
-        onCreateNew={() => setShowCreateModal(true)}
-        onOpenSettings={() => setShowSettingsModal(true)}
-        onInstancesUpdated={loadInstances}
-        settings={settings}
-      />
+          instances={instances}
+          selectedInstanceId={selectedInstanceId}
+          onSelectInstance={setSelectedInstanceId}
+          onCreateNew={() => setShowCreateModal(true)}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onInstancesUpdated={loadInstances}
+          settings={settings}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-surface/30 backdrop-blur-sm">
@@ -96,7 +97,10 @@ function App() {
                 onInstancesUpdated={loadInstances}
               />
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className={cn(
+                "flex-1 min-h-0",
+                activeTab === 'console' ? "overflow-hidden" : "overflow-y-auto custom-scrollbar"
+              )}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -104,7 +108,10 @@ function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="p-6 h-full"
+                    className={cn(
+                      "p-6",
+                      activeTab === 'console' ? "h-full" : "min-h-full"
+                    )}
                   >
                     <TabRenderer
                       activeTab={activeTab}

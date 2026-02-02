@@ -1,6 +1,8 @@
 import { Terminal, Maximize2, Send, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
+import Ansi from 'ansi-to-react'
 import { cn } from '../utils'
+import { useAppSettings } from '../hooks/useAppSettings'
 
 interface ConsoleProps {
   logs: string[];
@@ -21,6 +23,8 @@ export function Console({
   isFull = false,
   onViewFull
 }: ConsoleProps) {
+  const { settings } = useAppSettings();
+
   const formatLogLine = (line: string) => {
     const timestampMatch = line.match(/^\[\d{2}:\d{2}:\d{2}\]/);
     const timestamp = timestampMatch ? timestampMatch[0] : '';
@@ -29,12 +33,18 @@ export function Console({
     let typeColor = 'text-gray-400';
     if (line.includes('ERROR') || line.includes('Exception')) typeColor = 'text-accent-rose font-bold';
     else if (line.includes('WARN')) typeColor = 'text-accent-amber font-bold';
-    else if (line.includes('INFO')) typeColor = 'text-primary/80 font-bold';
+    else if (line.includes('INFO')) {
+      typeColor = settings.use_white_console_text
+        ? 'text-gray-900 dark:text-white font-bold'
+        : 'text-primary/80 font-bold';
+    }
 
     return (
       <div className="flex gap-3 py-0.5 group hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors rounded px-2 -mx-2">
         {timestamp && <span className="text-gray-400 dark:text-white/20 shrink-0 select-none font-medium">{timestamp}</span>}
-        <span className={cn("break-all leading-relaxed", typeColor)}>{rest}</span>
+        <span className={cn("break-all leading-relaxed", typeColor)}>
+          <Ansi>{rest}</Ansi>
+        </span>
       </div>
     );
   };
@@ -45,7 +55,7 @@ export function Console({
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
         "bg-white dark:bg-black/80 backdrop-blur-md rounded-2xl border border-black/10 dark:border-white/5 flex flex-col overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transition-all duration-300",
-        isFull ? "h-[calc(100vh-280px)]" : "h-96"
+        isFull ? "h-full" : "h-96"
       )}
     >
       <div className="bg-black/[0.03] dark:bg-white/[0.03] px-6 py-3 border-b border-black/10 dark:border-white/5 text-sm font-bold flex items-center justify-between">
@@ -70,7 +80,7 @@ export function Console({
       </div>
 
       <div className={cn(
-        "flex-1 p-6 font-mono overflow-y-auto custom-scrollbar bg-black/5 dark:bg-black/40",
+        "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40",
         isFull ? "text-sm" : "text-[13px]"
       )}>
         {logs && logs.length > 0 ? (
