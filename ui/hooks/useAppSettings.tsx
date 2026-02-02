@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 export type AccentColor = {
@@ -67,7 +67,21 @@ const DEFAULT_SETTINGS: AppSettings = {
   scaling: 0.8,
 };
 
-export function useAppSettings() {
+interface AppSettingsContextType {
+  settings: AppSettings;
+  updateSettings: (newSettings: Partial<AppSettings>) => Promise<void>;
+  isLoading: boolean;
+  accentColor: AccentColor;
+  setAccentColor: (color: AccentColor) => Promise<void>;
+  theme: Theme;
+  setTheme: (theme: Theme) => Promise<void>;
+  scaling: number;
+  setScaling: (scaling: number) => Promise<void>;
+}
+
+const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
+
+export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -115,21 +129,29 @@ export function useAppSettings() {
     }
   };
 
-  // Compatibility helpers for existing code
-  const setAccentColor = (color: AccentColor) => updateSettings({ accent_color: color.name });
-  const setTheme = (theme: Theme) => updateSettings({ theme });
-  const setScaling = (scaling: number) => updateSettings({ scaling });
-
-  return {
+  const contextValue: AppSettingsContextType = {
     settings,
     updateSettings,
     isLoading,
-    // Backward compatibility
     accentColor: ACCENT_COLORS.find(c => c.name === settings.accent_color) || ACCENT_COLORS[0],
-    setAccentColor,
+    setAccentColor: (color: AccentColor) => updateSettings({ accent_color: color.name }),
     theme: settings.theme,
-    setTheme,
+    setTheme: (theme: Theme) => updateSettings({ theme }),
     scaling: settings.scaling,
-    setScaling,
+    setScaling: (scaling: number) => updateSettings({ scaling }),
   };
+
+  return (
+    <AppSettingsContext.Provider value={contextValue}>
+      {children}
+    </AppSettingsContext.Provider>
+  );
+}
+
+export function useAppSettings() {
+  const context = useContext(AppSettingsContext);
+  if (context === undefined) {
+    throw new Error('useAppSettings must be used within an AppSettingsProvider');
+  }
+  return context;
 }
