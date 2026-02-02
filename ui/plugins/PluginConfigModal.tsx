@@ -1,36 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import Prism from 'prismjs'
-import 'prismjs/components/prism-yaml'
-import 'prismjs/components/prism-json'
-import 'prismjs/components/prism-toml'
-import 'prismjs/components/prism-lua'
-import 'prismjs/components/prism-markdown'
-import 'prismjs/components/prism-properties'
-import 'prismjs/components/prism-bash'
-import 'prismjs/components/prism-markup'
-import 'prismjs/components/prism-javascript'
-
-// Define Skript language for Prism
-Prism.languages.skript = {
-  'comment': /#.*/,
-  'string': {
-    pattern: /"(?:""|[^"])*"/,
-    greedy: true
-  },
-  'variable': {
-    pattern: /\{[^\s\}]+\}/,
-    alias: 'variable'
-  },
-  'function': /\b(?:on|command|trigger|function)\b/,
-  'keyword': /\b(?:if|else|loop|every|while|stop|exit|return|cancel event|message|broadcast|send|set|add|remove|give|teleport|kill|spawn|execute|wait|chance|random|player|victim|attacker|target|location|world|metadata|variable|list|index)\b/,
-  'boolean': /\b(?:true|false|yes|no|on|off)\b/,
-  'number': /\b\d+(?:\.\d+)?\b/,
-  'operator': /[=<>!]+|(?:\b(?:is|isn't|not|and|or|has|contains|greater|less|than|equal|to)\b)/,
-  'punctuation': /[\[\]{},.:]/
-};
-Prism.languages.sk = Prism.languages.skript;
+import Editor, { loader } from '@monaco-editor/react'
+import { registerSkriptLanguage, getLanguageFromExtension } from '../utils/monaco'
 import {
   X,
   Save,
@@ -75,9 +47,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   const [autoReload, setAutoReload] = useState(false)
   const { showToast } = useToast()
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const lineNumbersRef = useRef<HTMLDivElement>(null)
-  const preRef = useRef<HTMLPreElement>(null)
+  const editorRef = useRef<any>(null)
 
   useEffect(() => {
     loadConfigs()
@@ -86,34 +56,17 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   useEffect(() => {
     if (selectedConfig && configDir) {
       setContent('') // Clear content immediately when switching files to avoid ghosting
-
-      // Reset scroll position
-      if (textareaRef.current) textareaRef.current.scrollTop = 0
-      if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = 0
-      if (preRef.current) {
-        preRef.current.scrollTop = 0
-        preRef.current.scrollLeft = 0
-      }
-
       loadFileContent(selectedConfig)
     }
   }, [selectedConfig, configDir])
 
-  useEffect(() => {
-    // Force a re-render of the highlight element when content or language changes
-    if (content.trim() && selectedConfig) {
-      if (preRef.current) {
-        // We need to remove the existing highlighted code and replace it with fresh code text
-        // before telling Prism to highlight it again.
-        // This fixes the issue where Prism doesn't update if the underlying DOM is still "highlighted".
-        const codeElement = preRef.current.querySelector('code');
-        if (codeElement) {
-          codeElement.textContent = content;
-          Prism.highlightElement(codeElement);
-        }
-      }
-    }
-  }, [content, selectedConfig])
+  const handleEditorWillMount = (monaco: any) => {
+    registerSkriptLanguage(monaco)
+  }
+
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor
+  }
 
   const loadConfigs = async () => {
     setLoading(true)
@@ -202,43 +155,16 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
     }
   }
 
-  const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current && preRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
-      preRef.current.scrollTop = textareaRef.current.scrollTop
-      preRef.current.scrollLeft = textareaRef.current.scrollLeft
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const start = e.currentTarget.selectionStart
-      const end = e.currentTarget.selectionEnd
-      const newValue = content.substring(0, start) + '  ' + content.substring(end)
-      setContent(newValue)
-
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 2
-        }
-      }, 0)
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
-      handleSave()
-    }
-  }
-
   const handleSave = async () => {
     if (!selectedConfig || !configDir) return
     setSaving(true)
     try {
       const relPath = `plugins/${configDir}/${selectedConfig}`
+      const valueToSave = editorRef.current ? editorRef.current.getValue() : content;
       await invoke('save_text_file', {
         instanceId,
         relPath,
-        content
+        content: valueToSave
       })
       showToast('Configuration saved successfully', 'success')
 
@@ -328,29 +254,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   }
 
   const lineCount = content.split('\n').length
-  const language = useMemo(() => {
-    if (!selectedConfig) return 'language-yaml'
-    const ext = selectedConfig.split('.').pop()?.toLowerCase()
-    switch (ext) {
-      case 'json': return 'language-json'
-      case 'yml':
-      case 'yaml': return 'language-yaml'
-      case 'sk': return 'language-sk'
-      case 'toml': return 'language-toml'
-      case 'lua': return 'language-lua'
-      case 'md': return 'language-markdown'
-      case 'properties': return 'language-properties'
-      case 'sh': return 'language-bash'
-      case 'js': return 'language-javascript'
-      case 'xml':
-      case 'html': return 'language-markup'
-      case 'conf':
-      case 'hocon': return 'language-yaml' // HOCON is close to YAML/JSON, YAML highlighting usually works well
-      case 'txt':
-      case 'log': return 'language-plain'
-      default: return 'language-yaml'
-    }
-  }, [selectedConfig])
+  const language = useMemo(() => getLanguageFromExtension(selectedConfig), [selectedConfig])
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
@@ -463,41 +367,40 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
               </div>
             ) : null}
 
-            <div className="flex-1 flex overflow-hidden relative font-mono text-sm leading-relaxed">
-              {/* Line Numbers */}
-              <div
-                ref={lineNumbersRef}
-                className="w-12 shrink-0 bg-[#1e1e1e] border-r border-white/5 py-8 text-right pr-3 text-white/20 select-none overflow-hidden"
-              >
-                {Array.from({ length: lineCount }).map((_, i) => (
-                  <div key={i} className="h-[1.625rem]">{i + 1}</div>
-                ))}
-              </div>
-
-              {/* Code Highlight Overlay */}
-              <pre
-                ref={preRef}
-                key={`${selectedConfig}-${language}`}
-                className={cn(
-                  "absolute inset-0 left-12 p-8 m-0 pointer-events-none overflow-hidden whitespace-pre-wrap break-all transition-opacity duration-200",
-                  language,
-                  !content.trim() ? "opacity-0" : "opacity-100"
-                )}
-                aria-hidden="true"
-              >
-                <code className={language}>{content}</code>
-              </pre>
-
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
+            <div className="flex-1 overflow-hidden relative">
+              <Editor
+                height="100%"
+                language={language}
+                theme="vs-dark"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onScroll={handleScroll}
-                onKeyDown={handleKeyDown}
-                spellCheck={false}
-                className="flex-1 bg-transparent text-transparent caret-white p-8 resize-none focus:outline-none overflow-auto custom-scrollbar selection:bg-primary/30 z-10 whitespace-pre-wrap break-all"
-                placeholder={selectedConfig ? "This file is empty. Start typing to add configuration..." : "Select a file to edit..."}
+                beforeMount={handleEditorWillMount}
+                onMount={handleEditorDidMount}
+                onChange={(value) => setContent(value || '')}
+                options={{
+                  fontSize: 14,
+                  fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'off',
+                  lineNumbers: 'on',
+                  renderWhitespace: 'selection',
+                  scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                    useShadows: false,
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10,
+                  },
+                  padding: { top: 20, bottom: 20 },
+                  automaticLayout: true,
+                  backgroundColor: '#1e1e1e',
+                  rules: [
+                    { token: 'comment', foreground: '6A9955' },
+                    { token: 'keyword', foreground: '569CD6' },
+                    { token: 'string', foreground: 'CE9178' },
+                    { token: 'variable', foreground: '9CDCFE' },
+                  ]
+                } as any}
               />
             </div>
 

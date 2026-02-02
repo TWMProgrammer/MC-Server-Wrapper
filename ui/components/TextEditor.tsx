@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Save, X, Maximize2, Minimize2, Share } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Editor from '@monaco-editor/react'
+import { registerSkriptLanguage, getLanguageFromExtension } from '../utils/monaco'
 import { cn } from '../utils'
 
 interface TextEditorProps {
@@ -12,46 +14,28 @@ interface TextEditorProps {
   language?: string
 }
 
-export function TextEditor({ initialValue, onSave, onClose, onOpenExternal, title }: TextEditorProps) {
+export function TextEditor({ initialValue, onSave, onClose, onOpenExternal, title, language: propLanguage }: TextEditorProps) {
   const [value, setValue] = useState(initialValue)
   const [isSaving, setIsSaving] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const lineNumbersRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<any>(null)
 
   const lineCount = value.split('\n').length
+  const language = useMemo(() => propLanguage || getLanguageFromExtension(title), [propLanguage, title])
 
-  const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
-    }
+  const handleEditorWillMount = (monaco: any) => {
+    registerSkriptLanguage(monaco)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault()
-      const start = e.currentTarget.selectionStart
-      const end = e.currentTarget.selectionEnd
-      const newValue = value.substring(0, start) + '    ' + value.substring(end)
-      setValue(newValue)
-
-      // Reset selection after state update
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 4
-        }
-      }, 0)
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
-      handleSave()
-    }
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await onSave(value)
+      const valueToSave = editorRef.current ? editorRef.current.getValue() : value;
+      await onSave(valueToSave)
     } finally {
       setIsSaving(false)
     }
@@ -116,27 +100,34 @@ export function TextEditor({ initialValue, onSave, onClose, onOpenExternal, titl
         </div>
 
         {/* Editor Area */}
-        <div className="flex-1 flex overflow-hidden relative font-mono text-sm leading-relaxed">
-          {/* Line Numbers */}
-          <div
-            ref={lineNumbersRef}
-            className="w-12 shrink-0 bg-[#1e1e1e] border-r border-white/5 py-4 text-right pr-3 text-white/20 select-none overflow-hidden"
-          >
-            {Array.from({ length: lineCount }).map((_, i) => (
-              <div key={i} className="h-[1.625rem]">{i + 1}</div>
-            ))}
-          </div>
-
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
+        <div className="flex-1 overflow-hidden relative">
+          <Editor
+            height="100%"
+            language={language}
+            theme="vs-dark"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onScroll={handleScroll}
-            onKeyDown={handleKeyDown}
-            spellCheck={false}
-            className="flex-1 bg-transparent text-white/80 p-4 resize-none focus:outline-none overflow-auto custom-scrollbar selection:bg-primary/30"
-            placeholder="Start typing..."
+            beforeMount={handleEditorWillMount}
+            onMount={handleEditorDidMount}
+            onChange={(val) => setValue(val || '')}
+            options={{
+              fontSize: 14,
+              fontFamily: 'JetBrains Mono, Fira Code, monospace',
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              wordWrap: 'off',
+              lineNumbers: 'on',
+              renderWhitespace: 'selection',
+              scrollbar: {
+                vertical: 'visible',
+                horizontal: 'visible',
+                useShadows: false,
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 10,
+              },
+              padding: { top: 16, bottom: 16 },
+              automaticLayout: true,
+              backgroundColor: '#1e1e1e',
+            } as any}
           />
         </div>
 
