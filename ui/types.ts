@@ -114,6 +114,22 @@ export interface InstalledPlugin {
   version?: string;
   author?: string;
   description?: string;
+  source?: PluginSource;
+}
+
+export interface PluginSource {
+  project_id: string;
+  provider: PluginProvider;
+  current_version_id?: string;
+}
+
+export interface PluginUpdate {
+  filename: string;
+  current_version?: string;
+  latest_version: string;
+  latest_version_id: string;
+  project_id: string;
+  provider: PluginProvider;
 }
 
 export type PluginProvider = 'Modrinth' | 'Spiget' | 'CurseForge';

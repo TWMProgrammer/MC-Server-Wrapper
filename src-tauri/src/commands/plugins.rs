@@ -1,5 +1,5 @@
 use mc_server_wrapper_core::instance::InstanceManager;
-use mc_server_wrapper_core::plugins::{self, InstalledPlugin, Project, PluginProvider, SearchOptions};
+use mc_server_wrapper_core::plugins::{self, InstalledPlugin, Project, PluginProvider, SearchOptions, PluginUpdate};
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -21,13 +21,27 @@ pub async fn toggle_plugin(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: Uuid,
     filename: String,
-    enabled: bool,
+    enable: bool,
 ) -> Result<(), String> {
     let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
-    plugins::toggle_plugin(&instance.path, filename, enabled).await.map_err(|e| e.to_string())
+    plugins::toggle_plugin(&instance.path, filename, enable).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bulk_toggle_plugins(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: Uuid,
+    filenames: Vec<String>,
+    enable: bool,
+) -> Result<(), String> {
+    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instance = instances.iter().find(|i| i.id == instance_id)
+        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+
+    plugins::bulk_toggle_plugins(&instance.path, filenames, enable).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -42,6 +56,48 @@ pub async fn uninstall_plugin(
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
     plugins::uninstall_plugin(&instance.path, filename, delete_config).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn bulk_uninstall_plugins(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: Uuid,
+    filenames: Vec<String>,
+    delete_config: bool,
+) -> Result<(), String> {
+    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instance = instances.iter().find(|i| i.id == instance_id)
+        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+
+    plugins::bulk_uninstall_plugins(&instance.path, filenames, delete_config).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn check_for_plugin_updates(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: Uuid,
+) -> Result<Vec<PluginUpdate>, String> {
+    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instance = instances.iter().find(|i| i.id == instance_id)
+        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+
+    plugins::check_for_updates(&instance.path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_plugin(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    instance_id: Uuid,
+    filename: String,
+    project_id: String,
+    provider: PluginProvider,
+    latest_version_id: String,
+) -> Result<(), String> {
+    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instance = instances.iter().find(|i| i.id == instance_id)
+        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+
+    plugins::update_plugin(&instance.path, filename, project_id, provider, latest_version_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -67,7 +123,7 @@ pub async fn install_plugin(
     project_id: String,
     provider: PluginProvider,
     version_id: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;

@@ -67,7 +67,18 @@ impl SpigetClient {
         Ok(projects)
     }
 
-    pub async fn download_resource(&self, resource_id: &str, target_dir: impl AsRef<Path>) -> Result<()> {
+    pub async fn get_latest_version(&self, resource_id: &str) -> Result<(String, String)> {
+        let url = format!("https://api.spiget.org/v2/resources/{}/versions/latest", resource_id);
+        let response = self.client.get(&url).send().await?.error_for_status()?;
+        let json = response.json::<serde_json::Value>().await?;
+        
+        let id = json["id"].as_u64().unwrap_or(0).to_string();
+        let name = json["name"].as_str().unwrap_or_default().to_string();
+        
+        Ok((id, name))
+    }
+
+    pub async fn download_resource(&self, resource_id: &str, target_dir: impl AsRef<Path>) -> Result<String> {
         let url = format!("https://api.spiget.org/v2/resources/{}/download", resource_id);
         let response = self.client.get(&url).send().await?.error_for_status()?;
         
@@ -79,7 +90,7 @@ impl SpigetClient {
         }
 
         let filename = format!("spigot-resource-{}.jar", resource_id);
-        let target_path = target_dir.as_ref().join(filename);
+        let target_path = target_dir.as_ref().join(&filename);
 
         let mut f = fs::File::create(&target_path).await?;
         let mut stream = response.bytes_stream();
@@ -97,6 +108,6 @@ impl SpigetClient {
             return Err(anyhow::anyhow!("Downloaded file is empty. This plugin might require a manual download or be blocked by Cloudflare."));
         }
 
-        Ok(())
+        Ok(filename)
     }
 }

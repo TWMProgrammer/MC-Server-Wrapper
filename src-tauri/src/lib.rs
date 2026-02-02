@@ -195,9 +195,13 @@ pub fn run() {
         commands::scheduler::list_scheduled_tasks,
         commands::plugins::list_installed_plugins,
         commands::plugins::toggle_plugin,
+        commands::plugins::bulk_toggle_plugins,
         commands::plugins::uninstall_plugin,
+        commands::plugins::bulk_uninstall_plugins,
         commands::plugins::search_plugins,
         commands::plugins::install_plugin,
+        commands::plugins::update_plugin,
+        commands::plugins::check_for_plugin_updates,
         commands::plugins::list_plugin_configs,
     ])
     .run(tauri::generate_context!())

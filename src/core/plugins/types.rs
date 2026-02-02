@@ -71,4 +71,22 @@ pub struct InstalledPlugin {
     pub version: Option<String>,
     pub author: Option<String>,
     pub description: Option<String>,
+    pub source: Option<PluginSource>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginSource {
+    pub project_id: String,
+    pub provider: PluginProvider,
+    pub current_version_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginUpdate {
+    pub filename: String,
+    pub current_version: Option<String>,
+    pub latest_version: String,
+    pub latest_version_id: String,
+    pub project_id: String,
+    pub provider: PluginProvider,
 }

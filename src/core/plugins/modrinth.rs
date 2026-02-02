@@ -118,7 +118,7 @@ impl ModrinthClient {
         Ok(versions)
     }
 
-    pub async fn download_version(&self, version: &ProjectVersion, target_dir: impl AsRef<Path>) -> Result<()> {
+    pub async fn download_version(&self, version: &ProjectVersion, target_dir: impl AsRef<Path>) -> Result<String> {
         let file = version.files.iter().find(|f| f.primary).or_else(|| version.files.first())
             .ok_or_else(|| anyhow!("No files found for version"))?;
 
@@ -139,6 +139,6 @@ impl ModrinthClient {
         }
 
         f.flush().await?;
-        Ok(())
+        Ok(file.filename.clone())
     }
 }

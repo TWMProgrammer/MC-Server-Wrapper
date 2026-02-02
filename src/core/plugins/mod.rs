@@ -33,6 +33,7 @@ struct PluginCacheEntry {
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct PluginCache {
     entries: HashMap<String, PluginCacheEntry>,
+    sources: HashMap<String, PluginSource>,
 }
 
 /// Extracts metadata from a plugin JAR file.
@@ -69,6 +70,7 @@ fn extract_metadata_sync(path: &Path) -> Result<InstalledPlugin> {
             version: None,
             author: None,
             description: None,
+            source: None,
         });
     }
     
@@ -89,6 +91,7 @@ fn extract_metadata_sync(path: &Path) -> Result<InstalledPlugin> {
                 version: None,
                 author: None,
                 description: None,
+                source: None,
             });
         }
     };
@@ -110,6 +113,7 @@ fn extract_metadata_sync(path: &Path) -> Result<InstalledPlugin> {
         version,
         author,
         description: yaml.description,
+        source: None,
     })
 }
 
@@ -152,6 +156,7 @@ pub async fn list_installed_plugins(instance_path: impl AsRef<Path>) -> Result<V
                     if entry.last_modified == last_modified {
                         let mut p = entry.metadata.clone();
                         p.enabled = !is_disabled; // Update enabled state just in case it was renamed
+                        p.source = cache.sources.get(&filename).cloned();
                         plugins.push(p);
                         continue;
                     }
@@ -159,10 +164,12 @@ pub async fn list_installed_plugins(instance_path: impl AsRef<Path>) -> Result<V
 
                 // Extract metadata in a blocking task
                 let path_clone = path.clone();
-                let plugin = tokio::task::spawn_blocking(move || {
+                let mut plugin = tokio::task::spawn_blocking(move || {
                     extract_metadata_sync(&path_clone)
                 }).await??;
                 
+                plugin.source = cache.sources.get(&filename).cloned();
+
                 cache.entries.insert(filename.clone(), PluginCacheEntry {
                     last_modified,
                     metadata: plugin.clone(),
@@ -263,10 +270,10 @@ pub async fn install_plugin(
     project_id: &str,
     provider: PluginProvider,
     version_id: Option<&str>,
-) -> Result<()> {
+) -> Result<String> {
     let plugins_dir = instance_path.as_ref().join("plugins");
     
-    match provider {
+    let (filename, vid) = match provider {
         PluginProvider::Modrinth => {
             let client = ModrinthClient::new();
             let versions = client.get_versions(project_id).await?;
@@ -276,18 +283,39 @@ pub async fn install_plugin(
             } else {
                 versions.first().ok_or_else(|| anyhow::anyhow!("No versions found for project"))?
             };
-            client.download_version(version, plugins_dir).await?;
+            let fname = client.download_version(version, &plugins_dir).await?;
+            (fname, Some(version.id.clone()))
         }
         PluginProvider::Spiget => {
             let client = SpigetClient::new();
-            client.download_resource(project_id, plugins_dir).await?;
+            let fname = client.download_resource(project_id, &plugins_dir).await?;
+            (fname, None)
         }
         PluginProvider::CurseForge => {
             return Err(anyhow::anyhow!("CurseForge installation is not yet implemented"));
         }
+    };
+
+    // Update source cache
+    let cache_path = plugins_dir.join(".plugin_metadata_cache.json");
+    let mut cache: PluginCache = if cache_path.exists() {
+        let content = fs::read_to_string(&cache_path).await.unwrap_or_default();
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        PluginCache::default()
+    };
+
+    cache.sources.insert(filename.clone(), PluginSource {
+        project_id: project_id.to_string(),
+        provider,
+        current_version_id: vid,
+    });
+
+    if let Ok(content) = serde_json::to_string(&cache) {
+        let _ = fs::write(&cache_path, content).await;
     }
 
-    Ok(())
+    Ok(filename)
 }
 
 /// Uninstalls a plugin by removing its file and optionally its configuration folder.
@@ -314,4 +342,128 @@ pub async fn uninstall_plugin(instance_path: impl AsRef<Path>, filename: String,
     }
 
     Ok(())
+}
+
+/// Toggles multiple plugins at once.
+pub async fn bulk_toggle_plugins(
+    instance_path: impl AsRef<Path>,
+    filenames: Vec<String>,
+    enable: bool,
+) -> Result<()> {
+    for filename in filenames {
+        let _ = toggle_plugin(&instance_path, filename, enable).await;
+    }
+    Ok(())
+}
+
+/// Uninstalls multiple plugins at once.
+pub async fn bulk_uninstall_plugins(
+    instance_path: impl AsRef<Path>,
+    filenames: Vec<String>,
+    delete_config: bool,
+) -> Result<()> {
+    for filename in filenames {
+        let _ = uninstall_plugin(&instance_path, filename, delete_config).await;
+    }
+    Ok(())
+}
+
+/// Checks for updates for all installed plugins that have source information.
+pub async fn check_for_updates(instance_path: impl AsRef<Path>) -> Result<Vec<PluginUpdate>> {
+    let installed = list_installed_plugins(&instance_path).await?;
+    let mut updates = Vec::new();
+
+    for plugin in installed {
+        if let Some(source) = plugin.source {
+            match source.provider {
+                PluginProvider::Modrinth => {
+                    let client = ModrinthClient::new();
+                    if let Ok(versions) = client.get_versions(&source.project_id).await {
+                        if let Some(latest) = versions.first() {
+                            if Some(latest.id.clone()) != source.current_version_id {
+                                updates.push(PluginUpdate {
+                                    filename: plugin.filename.clone(),
+                                    current_version: plugin.version.clone(),
+                                    latest_version: latest.version_number.clone(),
+                                    latest_version_id: latest.id.clone(),
+                                    project_id: source.project_id.clone(),
+                                    provider: source.provider,
+                                });
+                            }
+                        }
+                    }
+                }
+                PluginProvider::Spiget => {
+                    let client = SpigetClient::new();
+                    if let Ok((latest_id, latest_name)) = client.get_latest_version(&source.project_id).await {
+                        if Some(latest_id.clone()) != source.current_version_id {
+                            updates.push(PluginUpdate {
+                                filename: plugin.filename.clone(),
+                                current_version: plugin.version.clone(),
+                                latest_version: latest_name,
+                                latest_version_id: latest_id,
+                                project_id: source.project_id.clone(),
+                                provider: source.provider,
+                            });
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(updates)
+}
+
+/// Updates a plugin by downloading the new version and replacing the old one.
+pub async fn update_plugin(
+    instance_path: impl AsRef<Path>,
+    filename: String,
+    project_id: String,
+    provider: PluginProvider,
+    latest_version_id: String,
+) -> Result<()> {
+    let plugins_dir = instance_path.as_ref().join("plugins");
+    let old_path = plugins_dir.join(&filename);
+
+    // 1. Create backup
+    let backup_path = plugins_dir.join(format!("{}.bak", filename));
+    if old_path.exists() {
+        fs::copy(&old_path, &backup_path).await.context("Failed to create backup")?;
+    }
+
+    // 2. Download new version
+    match install_plugin(&instance_path, &project_id, provider, Some(&latest_version_id)).await {
+        Ok(new_filename) => {
+            let mut final_filename = new_filename.clone();
+
+            // 3. Preserve disabled state
+            if filename.ends_with(".disabled") && !final_filename.ends_with(".disabled") {
+                let current_new_path = plugins_dir.join(&new_filename);
+                let disabled_new_filename = format!("{}.disabled", new_filename);
+                let disabled_new_path = plugins_dir.join(&disabled_new_filename);
+                
+                if let Ok(_) = fs::rename(current_new_path, disabled_new_path).await {
+                    final_filename = disabled_new_filename;
+                }
+            }
+
+            // 4. If the filename changed (and we didn't already handle it by renaming above), delete the old one
+            if final_filename != filename && old_path.exists() {
+                let _ = fs::remove_file(old_path).await;
+            }
+
+            // 5. Delete backup on success
+            let _ = fs::remove_file(backup_path).await;
+            Ok(())
+        }
+        Err(e) => {
+            // Restore from backup if download failed
+            if backup_path.exists() {
+                let _ = fs::rename(backup_path, old_path).await;
+            }
+            Err(e)
+        }
+    }
 }
