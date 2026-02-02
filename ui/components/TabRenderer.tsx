@@ -70,6 +70,7 @@ export function TabRenderer({
             onCommandChange={onCommandChange}
             onSendCommand={onSendCommand}
             onViewFull={() => onSetActiveTab('console')}
+            settings={settings}
           />
         </div>
       </div>
@@ -85,6 +86,7 @@ export function TabRenderer({
         command={command}
         onCommandChange={onCommandChange}
         onSendCommand={onSendCommand}
+        settings={settings}
       />
     );
   }

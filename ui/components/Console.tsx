@@ -3,7 +3,7 @@ import { Terminal, Maximize2, Send, ChevronRight, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Ansi from 'ansi-to-react'
 import { cn } from '../utils'
-import { useAppSettings } from '../hooks/useAppSettings'
+import { useAppSettings, AppSettings } from '../hooks/useAppSettings'
 
 interface ConsoleProps {
   logs: string[];
@@ -13,6 +13,7 @@ interface ConsoleProps {
   onSendCommand: (e: React.FormEvent) => void;
   isFull?: boolean;
   onViewFull?: () => void;
+  settings?: AppSettings;
 }
 
 export function Console({
@@ -22,9 +23,11 @@ export function Console({
   onCommandChange,
   onSendCommand,
   isFull = false,
-  onViewFull
+  onViewFull,
+  settings: propSettings
 }: ConsoleProps) {
-  const { settings } = useAppSettings();
+  const { settings: hookSettings } = useAppSettings();
+  const settings = propSettings || hookSettings;
   const [isAtBottom, setIsAtBottom] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -54,12 +57,15 @@ export function Console({
     const timestamp = timestampMatch ? timestampMatch[0] : '';
     const rest = timestampMatch ? line.slice(timestamp.length) : line;
 
-    let typeColor = 'text-gray-400';
+    let typeColor = settings.use_white_console_text
+      ? 'text-gray-900 dark:text-white/90 font-medium'
+      : 'text-gray-400';
+
     if (line.includes('ERROR') || line.includes('Exception')) typeColor = 'text-accent-rose font-bold';
     else if (line.includes('WARN')) typeColor = 'text-accent-amber font-bold';
     else if (line.includes('INFO')) {
       typeColor = settings.use_white_console_text
-        ? 'text-gray-900 dark:text-white font-bold'
+        ? 'text-gray-900 dark:text-white/90 font-bold'
         : 'text-primary/80 font-bold';
     }
 
