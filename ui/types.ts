@@ -106,3 +106,35 @@ export interface ScheduledTask {
   last_run?: string;
   next_run?: string;
 }
+
+export interface InstalledPlugin {
+  name: string;
+  filename: string;
+  enabled: boolean;
+  version?: string;
+  author?: string;
+  description?: string;
+}
+
+export type PluginProvider = 'Modrinth' | 'Spiget' | 'CurseForge';
+
+export type SortOrder = 'Relevance' | 'Downloads' | 'Follows' | 'Newest' | 'Updated';
+
+export interface SearchOptions {
+  query: string;
+  facets?: string[];
+  sort?: SortOrder;
+  offset?: number;
+  limit?: number;
+}
+
+export interface Project {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  downloads: number;
+  icon_url?: string;
+  author: string;
+  provider: PluginProvider;
+}

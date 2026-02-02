@@ -47,9 +47,9 @@ export function Header({
             )}
           </motion.div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0 flex-1">
             <div className="flex items-center gap-4">
-              <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white transition-colors duration-300">{currentInstance.name}</h2>
+              <h2 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white transition-colors duration-300 truncate">{currentInstance.name}</h2>
               <div className={cn(
                 "flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ring-1 transition-all duration-300",
                 status === 'Running' ? "bg-accent-emerald/10 text-accent-emerald ring-accent-emerald/20" :

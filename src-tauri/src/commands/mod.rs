@@ -5,6 +5,7 @@ pub mod config;
 pub mod files;
 pub mod backups;
 pub mod scheduler;
+pub mod plugins;
 
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;

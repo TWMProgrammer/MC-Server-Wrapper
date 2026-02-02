@@ -193,6 +193,12 @@ pub fn run() {
         commands::scheduler::add_scheduled_task,
         commands::scheduler::remove_scheduled_task,
         commands::scheduler::list_scheduled_tasks,
+        commands::plugins::list_installed_plugins,
+        commands::plugins::toggle_plugin,
+        commands::plugins::uninstall_plugin,
+        commands::plugins::search_plugins,
+        commands::plugins::install_plugin,
+        commands::plugins::list_plugin_configs,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

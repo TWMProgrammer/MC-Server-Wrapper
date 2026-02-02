@@ -1,5 +1,30 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum PluginProvider {
+    Modrinth,
+    Spiget,
+    CurseForge,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum SortOrder {
+    Relevance,
+    Downloads,
+    Follows,
+    Newest,
+    Updated,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchOptions {
+    pub query: String,
+    pub facets: Option<Vec<String>>,
+    pub sort: Option<SortOrder>,
+    pub offset: Option<u32>,
+    pub limit: Option<u32>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub id: String,
@@ -9,6 +34,15 @@ pub struct Project {
     pub downloads: u64,
     pub icon_url: Option<String>,
     pub author: String,
+    pub provider: PluginProvider,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Dependency {
+    pub project_id: Option<String>,
+    pub version_id: Option<String>,
+    pub filename: Option<String>,
+    pub dependency_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -27,4 +61,14 @@ pub struct ProjectFile {
     pub filename: String,
     pub primary: bool,
     pub size: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstalledPlugin {
+    pub name: String,
+    pub filename: String,
+    pub enabled: bool,
+    pub version: Option<String>,
+    pub author: Option<String>,
+    pub description: Option<String>,
 }

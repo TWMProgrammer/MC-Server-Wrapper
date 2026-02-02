@@ -106,7 +106,7 @@ export function Sidebar({
                   <div className="flex items-center gap-1.5">
                     {settings.display_server_version && (
                       <span className={cn(
-                        "text-[10px] uppercase font-bold tracking-wider opacity-60",
+                        "text-[10px] uppercase font-bold tracking-wider opacity-60 truncate max-w-[80px]",
                         selectedInstanceId === inst.id ? "text-white" : "text-gray-500"
                       )}>
                         {inst.version}
@@ -165,9 +165,9 @@ export function Sidebar({
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent-indigo flex items-center justify-center text-white font-bold shadow-lg">
               AD
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">Administrator</span>
-              <span className="text-[10px] text-gray-500">System Control</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">Administrator</span>
+              <span className="text-[10px] text-gray-500 truncate">System Control</span>
             </div>
           </div>
           <button

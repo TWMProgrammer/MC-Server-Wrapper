@@ -3,7 +3,7 @@ use std::path::Path;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
-use super::types::Project;
+use super::types::{Project, PluginProvider};
 
 pub struct SpigetClient {
     client: reqwest::Client,
@@ -25,8 +25,10 @@ impl SpigetClient {
         }
     }
 
-    pub async fn search(&self, query: &str) -> Result<Vec<Project>> {
-        let url = format!("https://api.spiget.org/v2/search/resources/{}?field=name&size=10", query);
+    pub async fn search(&self, options: &super::types::SearchOptions) -> Result<Vec<Project>> {
+        let size = options.limit.unwrap_or(20);
+        let page = (options.offset.unwrap_or(0) / size) + 1;
+        let url = format!("https://api.spiget.org/v2/search/resources/{}?field=name&size={}&page={}", urlencoding::encode(&options.query), size, page);
         let response = self.client.get(&url).send().await?.json::<Vec<serde_json::Value>>().await?;
         
         let projects = response.into_iter().map(|h| Project {
@@ -37,6 +39,7 @@ impl SpigetClient {
             downloads: h["downloads"].as_u64().unwrap_or(0),
             icon_url: h["icon"]["url"].as_str().map(|s| s.to_string()),
             author: "SpigotMC".to_string(),
+            provider: PluginProvider::Spiget,
         }).collect();
 
         Ok(projects)

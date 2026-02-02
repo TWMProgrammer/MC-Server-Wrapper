@@ -47,6 +47,7 @@ After making any code modifications, you **MUST** verify the integrity of the co
     - **ALWAYS** use the custom `Select` component from `ui/components/Select.tsx` for all dropdown selections.
     - This ensures consistent styling, proper application scaling, and prevents clipping by parent containers with `overflow: hidden/auto`.
 - **Framer Motion**: Use `framer-motion` for smooth transitions and animations where appropriate.
+- **Opaque Modals**: All modals, including the Plugin Configuration Modal, MUST be fully opaque. NEVER use glass/blur effects (`backdrop-blur`) for the modal background itself, though the overlay (the background behind the modal) should remain blurred and semi-transparent.
 
 ---
 

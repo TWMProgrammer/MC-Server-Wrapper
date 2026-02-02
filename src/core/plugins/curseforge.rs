@@ -3,7 +3,7 @@ use std::path::Path;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
-use super::types::Project;
+use super::types::{Project, PluginProvider};
 
 pub struct CurseForgeClient {
     client: reqwest::Client,
@@ -48,6 +48,7 @@ impl CurseForgeClient {
             downloads: h["downloadCount"].as_u64().unwrap_or(0),
             icon_url: h["logo"]["url"].as_str().map(|s| s.to_string()),
             author: h["authors"].as_array().and_then(|a| a.first()).and_then(|a| a["name"].as_str()).unwrap_or("Unknown").to_string(),
+            provider: PluginProvider::CurseForge,
         }).collect();
 
         Ok(projects)

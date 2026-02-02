@@ -63,63 +63,100 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 ## 🗺️ Roadmap
 
 ### Phase 1: Foundation (MVP)
-- [x] Basic process spawning (Start/Stop).
-- [x] Console output capture.
-- [x] Basic TOML configuration.
+- [x] **Basic process spawning (Start/Stop)**
+    - [x] `Child` process management with `tokio::process`.
+    - [x] Environment variable passing and working directory isolation.
+- [x] **Console output capture**
+    - [x] Async stdout/stderr streaming.
+    - [x] ANSI color code support and filtering.
+- [x] **Basic TOML configuration**
+    - [x] Global settings for application-wide behavior.
+    - [x] Persistence using `serde` and `tokio::fs`.
 - [x] **Directory Structure Initialization**
     - [x] Create `backups/` directory for server snapshots.
     - [x] Create `resources/` directory for application configurations.
     - [x] Create `server/` directory as the root for all instances.
     - [x] Ensure folders are relative to the executable.
+- [x] **Logging & Error Handling**
+    - [x] Setup `tracing` for structured logging.
+    - [x] Implement centralized error handling with `anyhow`.
 
 ### Phase 2: Management
-- **Instance Management System**
+- [x] **Instance Management System**
     - [x] Create `InstanceManager` to track multiple server directories.
     - [x] Implement unique ID generation for instances.
     - [x] Metadata storage for each instance (version, last run, etc.).
-- **Version Downloader**
+- [x] **Version Downloader**
     - [x] Integrate with Mojang's Version Manifest API.
     - [x] Support for Fabric/Paper/Forge/NeoForge (Metadata scraping/APIs).
     - [x] Hash verification for downloaded artifacts.
-- **Process Interaction**
+- [x] **Process Interaction**
     - [x] Implement `send_command` via `stdin`.
     - [x] Graceful shutdown (send "stop", wait for exit).
-- **Data Safety**
+- [x] **Data Safety**
     - [x] Automated backup triggers (on stop/scheduled).
     - [x] Compression support (zip/tar.gz).
-- **Scheduled Tasks**
+- [x] **Scheduled Tasks**
     - [x] Cron-style scheduling for restarts and backups.
     - [x] Persistence of schedules in instance metadata.
     - [x] UI for managing schedules.
+- [x] **Java Management**
+    - [x] Automatic detection of system Java versions.
+    - [x] Integration with Adoptium API for downloading specific JDKs.
 
 ### Phase 3: Enhancement
-- [x] Tauri-based Desktop UI (React + Tailwind foundation).
-- [x] Plugin/Mod downloader (Modrinth, Spigot, and CurseForge).
-- [x] Resource monitoring (Live CPU/RAM graphs in UI).
-- [ ] **Instance Creation UI Redesign (Prism Launcher Inspired)**
-    - [ ] **Frontend: `CreateInstanceModal` Component**
+- [x] **Tauri-based Desktop UI**
+    - [x] React + Tailwind foundation.
+    - [x] Real-time state synchronization via Tauri Events.
+- [x] **Instance Management System Enhancement**
+    - [x] **Plugins Management (Phase 1)**
+        - [x] Basic listing of `.jar` files in `plugins/` directory.
+        - [x] Enable/Disable plugins via file renaming (`.jar.disabled`).
+        - [x] Safe uninstallation with confirmation and optional config cleanup.
+- [x] **Instance Creation UI Redesign**
+    - [x] **Frontend: `CreateInstanceModal` Component**
         - [x] Header section for instance Name and Group.
-        - [x] Navigation sidebar for installation methods (Custom, Import, Modrinth, etc.).
-        - [x] Version selection grid/table with sorting (Version, Release Date, Type).
-        - [x] Advanced filtering for versions (Snapshots, Betas, Experiments).
+        - [x] Navigation sidebar for installation methods.
+        - [x] Version selection grid with sorting and filtering.
         - [x] Mod loader selection panel (Fabric, Forge, Quilt, NeoForge).
-        - [x] Integrated search for both versions and mod loaders.
-        - [x] **Local Import Support (Folders & ZIPs)**
-            - [x] Implement `import_instance` in `InstanceManager`.
-            - [x] Implement recursive directory copy and ZIP extraction.
-            - [x] Add Tauri commands for folder/ZIP inspection and import.
-            - [x] UI: "Import from Local" tab with JAR selection and safety checks.
+    - [x] **Local Import Support**
+        - [x] Recursive directory copy and ZIP extraction.
+        - [x] Tauri commands for folder/ZIP inspection.
     - [x] **Backend: Metadata & API Integration**
-        - [ ] Extend `VersionDownloader` to fetch detailed version metadata (release dates).
-        - [ ] Implement Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
-        - [ ] Add Tauri commands for asynchronous version listing and filtering.
-- [ ] Visual `server.properties` editor.
-- [ ] Auto-updater for core components.
+        - [x] Fetch detailed version metadata and release dates.
+        - [x] Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
+- [ ] **Plugin/Mod Downloader**
+    - [x] Modrinth API integration for mods and plugins.
+    - [x] Spigot (Spiget) API integration.
+    - [ ] CurseForge API support (requires API key).
+    - [ ] Dependency resolution for complex modpacks.
+- [ ] **Resource Monitoring**
+    - [x] Live CPU/RAM usage tracking.
+    - [ ] Disk I/O monitoring.
+    - [ ] Historical usage graphs with `recharts`.
+- [ ] **Visual Config Editors**
+    - [ ] `server.properties` visual editor with type safety.
+    - [ ] YAML/JSON editor for plugin configurations.
+    - [ ] Search and filter within configuration files.
+- [ ] **Auto-Updater**
+    - [ ] Core application update check on startup.
+    - [ ] Automated backup before applying updates.
 
 ### Phase 4: Scale
-- [ ] Remote Web Dashboard.
-- [ ] API for external integrations.
-- [ ] Advanced clustering/proxy support.
+- [ ] **Remote Web Dashboard**
+    - [ ] Next.js + Tailwind frontend for remote access.
+    - [ ] JWT-based authentication and Role-Based Access Control (RBAC).
+    - [ ] Dockerized deployment options.
+- [ ] **Advanced Networking**
+    - [ ] Built-in tunnel support (e.g., ngrok or cloudflare tunnels).
+    - [ ] Proxy support for Velocity/BungeeCord clusters.
+- [ ] **Developer Tools**
+    - [ ] Public REST API for external automation.
+    - [ ] WebSocket stream for real-time console access from 3rd party apps.
+    - [ ] OpenAPI/Swagger documentation.
+- [ ] **Optimization & Maintenance**
+    - [ ] Log rotation and cleanup policies.
+    - [ ] Advanced performance profiling tools for the server process.
 
 ---
 
