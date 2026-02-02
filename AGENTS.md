@@ -45,6 +45,25 @@ After making any code modifications, you **MUST** verify the integrity of the co
 - **Dropdowns & Popups**: Use `createPortal` from `react-dom` for all custom dropdowns, select menus, and popups.
     - **NEVER** use the native HTML `<select>` element.
     - **ALWAYS** use the custom `Select` component from `ui/components/Select.tsx` for all dropdown selections.
+    - **App Scaling**: Components using `createPortal` MUST manually implement app scaling. Use the `useAppSettings` hook and apply a scale transform to the portal container:
+      ```tsx
+      const { settings } = useAppSettings();
+      // ...
+      return createPortal(
+        <div 
+          className="fixed inset-0 z-[100] overflow-hidden"
+          style={{
+            width: `${100 / settings.scaling}%`,
+            height: `${100 / settings.scaling}%`,
+            transform: `scale(${settings.scaling})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {/* Modal Content */}
+        </div>,
+        document.body
+      );
+      ```
     - This ensures consistent styling, proper application scaling, and prevents clipping by parent containers with `overflow: hidden/auto`.
 - **Framer Motion**: Use `framer-motion` for smooth transitions and animations where appropriate.
 - **Opaque Modals**: All modals, including the Plugin Configuration Modal, MUST be fully opaque. NEVER use glass/blur effects (`backdrop-blur`) for the modal background itself, though the overlay (the background behind the modal) should remain blurred and semi-transparent.

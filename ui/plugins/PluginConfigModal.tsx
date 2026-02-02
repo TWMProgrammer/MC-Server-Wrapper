@@ -21,6 +21,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { InstalledPlugin } from '../types'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../utils'
+import { useAppSettings } from '../hooks/useAppSettings'
 
 interface PluginConfigModalProps {
   plugin: InstalledPlugin;
@@ -46,6 +47,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   const [isMaximized, setIsMaximized] = useState(false)
   const [autoReload, setAutoReload] = useState(false)
   const { showToast } = useToast()
+  const { settings } = useAppSettings()
 
   const editorRef = useRef<any>(null)
 
@@ -257,24 +259,33 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   const language = useMemo(() => getLanguageFromExtension(selectedConfig), [selectedConfig])
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
+    <div 
+      className="fixed inset-0 z-50 overflow-hidden"
+      style={{
+        width: `${100 / settings.scaling}%`,
+        height: `${100 / settings.scaling}%`,
+        transform: `scale(${settings.scaling})`,
+        transformOrigin: 'top left',
+      }}
+    >
+      <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className={cn(
-          "bg-surface border border-white/10 shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300",
-          isMaximized ? "w-full h-full" : "w-full max-w-6xl h-[85vh] rounded-3xl"
-        )}
-      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className={cn(
+            "bg-surface border border-white/10 shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300",
+            isMaximized ? "w-full h-full" : "w-full max-w-6xl h-[85vh] rounded-3xl"
+          )}
+        >
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-[#1a1a1a]">
           <div className="flex items-center gap-4">
@@ -439,7 +450,8 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
             </div>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>,
     document.body
   )

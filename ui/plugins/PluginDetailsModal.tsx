@@ -14,6 +14,7 @@ import {
   Star
 } from 'lucide-react'
 import { Project } from '../types'
+import { useAppSettings } from '../hooks/useAppSettings'
 
 interface PluginDetailsModalProps {
   project: Project;
@@ -29,22 +30,33 @@ export function PluginDetailsModal({
   onInstall, 
   isSelected 
 }: PluginDetailsModalProps) {
+  const { settings } = useAppSettings()
+
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-      />
-      
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-4xl max-h-[90vh] bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-      >
+    <div 
+      className="fixed inset-0 z-[100] overflow-hidden"
+      style={{
+        width: `${100 / settings.scaling}%`,
+        height: `${100 / settings.scaling}%`,
+        transform: `scale(${settings.scaling})`,
+        transformOrigin: 'top left',
+      }}
+    >
+      <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
+        
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-4xl max-h-[90vh] bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        >
         {/* Header */}
         <div className="p-6 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
           <div className="flex items-center gap-5">
@@ -184,6 +196,7 @@ export function PluginDetailsModal({
           </div>
         </div>
       </motion.div>
+      </div>
     </div>,
     document.body
   )
