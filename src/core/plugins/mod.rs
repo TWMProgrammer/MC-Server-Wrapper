@@ -1,12 +1,10 @@
 pub mod types;
 pub mod modrinth;
 pub mod spiget;
-pub mod curseforge;
 
 pub use types::*;
 pub use modrinth::*;
 pub use spiget::*;
-pub use curseforge::*;
 
 use std::path::Path;
 use tokio::fs;
@@ -230,11 +228,6 @@ pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProv
             let client = SpigetClient::new();
             results.extend(client.search(options).await?);
         }
-        Some(PluginProvider::CurseForge) => {
-            // CurseForge requires an API key, which we don't handle globally yet
-            // Return empty or error if explicitly requested
-            return Err(anyhow::anyhow!("CurseForge search is not yet implemented"));
-        }
         None => {
             // Search all providers
             let modrinth = ModrinthClient::new();
@@ -260,7 +253,7 @@ pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider)
             let client = ModrinthClient::new();
             client.get_dependencies(project_id).await
         }
-        _ => Ok(vec![]), // Spiget and CurseForge dependencies not implemented yet
+        _ => Ok(vec![]), // Spiget dependencies not implemented yet
     }
 }
 
@@ -290,9 +283,6 @@ pub async fn install_plugin(
             let client = SpigetClient::new();
             let fname = client.download_resource(project_id, &plugins_dir).await?;
             (fname, None)
-        }
-        PluginProvider::CurseForge => {
-            return Err(anyhow::anyhow!("CurseForge installation is not yet implemented"));
         }
     };
 

@@ -208,6 +208,11 @@ pub fn run() {
         commands::plugins::update_plugin,
         commands::plugins::check_for_plugin_updates,
         commands::plugins::list_plugin_configs,
+        commands::mods::list_installed_mods,
+        commands::mods::toggle_mod,
+        commands::mods::bulk_toggle_mods,
+        commands::mods::uninstall_mod,
+        commands::mods::bulk_uninstall_mods,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -113,6 +113,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
         - [x] Basic listing of `.jar` files in `plugins/` directory.
         - [x] Enable/Disable plugins via file renaming (`.jar.disabled`).
         - [x] Safe uninstallation with confirmation and optional config cleanup.
+    - [ ] **Mods Management (Phase 1)**
+        - [x] Basic listing of `.jar` files in `mods/` directory.
+        - [x] Enable/Disable mods via file renaming (`.jar.disabled`).
+        - [x] Safe uninstallation with optional config cleanup.
 - [x] **Instance Creation UI Redesign**
     - [x] **Frontend: `CreateInstanceModal` Component**
         - [x] Header section for instance Name and Group.

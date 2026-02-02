@@ -132,7 +132,9 @@ export interface PluginUpdate {
   provider: PluginProvider;
 }
 
-export type PluginProvider = 'Modrinth' | 'Spiget' | 'CurseForge';
+export type PluginProvider = 'Modrinth' | 'Spiget';
+
+export type ModProvider = 'Modrinth' | 'CurseForge';
 
 export type SortOrder = 'Relevance' | 'Downloads' | 'Follows' | 'Newest' | 'Updated';
 
@@ -152,5 +154,22 @@ export interface Project {
   downloads: number;
   icon_url?: string;
   author: string;
-  provider: PluginProvider;
+  provider: PluginProvider | ModProvider;
+}
+
+export interface InstalledMod {
+  name: string;
+  filename: string;
+  enabled: boolean;
+  version?: string;
+  author?: string;
+  description?: string;
+  loader?: string;
+  source?: ModSource;
+}
+
+export interface ModSource {
+  project_id: string;
+  provider: ModProvider;
+  current_version_id?: string;
 }

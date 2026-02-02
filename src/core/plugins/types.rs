@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 pub enum PluginProvider {
     Modrinth,
     Spiget,
-    CurseForge,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
