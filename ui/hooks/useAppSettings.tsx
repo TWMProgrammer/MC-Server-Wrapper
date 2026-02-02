@@ -23,25 +23,25 @@ export interface AppSettings {
   display_ipv6: boolean;
   hide_ip_address: boolean;
   use_white_console_text: boolean;
-  
+
   // Navigation
   start_page: string;
-  
+
   // Player List
   download_player_heads: boolean;
   use_helm_heads: boolean;
   query_heads_by_username: boolean;
-  
+
   // Server Tabs
   display_server_icon: boolean;
   display_online_player_count: boolean;
   display_server_version: boolean;
   display_server_status: boolean;
   display_navigational_buttons: boolean;
-  
+
   // Close Preference
   close_behavior: CloseBehavior;
-  
+
   // Appearance (Existing)
   accent_color: string;
   theme: Theme;
@@ -102,16 +102,16 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     const accent = ACCENT_COLORS.find(c => c.name === settings.accent_color) || ACCENT_COLORS[0];
-    
+
     root.style.setProperty('--primary', accent.value);
-    
+
     // Calculate hover and active colors (roughly)
     const [h, s, l] = accent.value.split(' ');
     const lValue = parseFloat(l.replace('%', ''));
-    
+
     root.style.setProperty('--primary-hover', `${h} ${s} ${lValue - 8}%`);
     root.style.setProperty('--primary-active', `${h} ${s} ${lValue - 18}%`);
-    
+
     if (settings.theme === 'dark') {
       root.classList.add('dark');
     } else {

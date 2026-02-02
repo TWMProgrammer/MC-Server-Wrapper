@@ -28,10 +28,11 @@ function App() {
     loadInstances,
     startServer,
     stopServer,
-    sendCommand
+    sendCommand,
+    loading: serverLoading
   } = useServer()
 
-  const { settings, updateSettings } = useAppSettings()
+  const { settings, updateSettings, isLoading: settingsLoading } = useAppSettings()
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -60,6 +61,21 @@ function App() {
       }
     }
   }, [currentInstance, activeTab, tabs]);
+
+  const isAppLoading = serverLoading || settingsLoading;
+
+  if (isAppLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-screen bg-[#0a0a0c] text-white font-sans">
+        <div className="mb-6">
+          <div className="w-16 h-16 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
+        </div>
+        <div className="text-sm font-medium tracking-widest uppercase opacity-80 animate-pulse">
+          {settingsLoading ? "Loading Settings..." : "Initializing Instances..."}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
