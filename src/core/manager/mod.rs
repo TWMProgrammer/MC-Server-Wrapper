@@ -4,6 +4,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 use anyhow::Result;
 use super::instance::{InstanceManager, InstanceMetadata};
+use super::app_config::GlobalConfigManager;
 use super::downloader::VersionDownloader;
 use super::mod_loaders::ModLoaderClient;
 use super::server::ServerHandle;
@@ -13,16 +14,18 @@ mod install;
 
 pub struct ServerManager {
     pub(crate) instance_manager: Arc<InstanceManager>,
+    pub(crate) config_manager: Arc<GlobalConfigManager>,
     pub(crate) downloader: VersionDownloader,
     pub(crate) mod_loader_client: ModLoaderClient,
     pub(crate) servers: Arc<Mutex<HashMap<Uuid, Arc<ServerHandle>>>>,
 }
 
 impl ServerManager {
-    pub fn new(instance_manager: Arc<InstanceManager>) -> Self {
+    pub fn new(instance_manager: Arc<InstanceManager>, config_manager: Arc<GlobalConfigManager>) -> Self {
         let cache_dir = instance_manager.get_base_dir().join("cache");
         Self {
             instance_manager,
+            config_manager,
             downloader: VersionDownloader::new(Some(cache_dir.clone())),
             mod_loader_client: ModLoaderClient::new(Some(cache_dir)),
             servers: Arc::new(Mutex::new(HashMap::new())),

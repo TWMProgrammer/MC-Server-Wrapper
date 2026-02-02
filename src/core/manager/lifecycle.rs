@@ -153,15 +153,33 @@ impl ServerManager {
             args.clear();
         }
 
+        // Resolve Java path
+        let mut java_path = None;
+        if let Some(java_override) = &instance.settings.java_path_override {
+            if !java_override.is_empty() && java_override != "java" {
+                // Check if it's a managed version ID
+                let settings = self.config_manager.load().await?;
+                if let Some(managed) = settings.managed_java_versions.iter().find(|v| v.id == *java_override) {
+                    java_path = Some(managed.path.clone());
+                } else {
+                    // Check if it's a valid path on disk
+                    let path = std::path::Path::new(java_override);
+                    if path.exists() {
+                        java_path = Some(path.to_path_buf());
+                    }
+                }
+            }
+        }
+
         let mut config = ServerConfig {
             name: instance.name.clone(),
-            max_memory: "2G".to_string(),
-            min_memory: "1G".to_string(),
+            max_memory: format!("{}{}", instance.settings.ram, instance.settings.ram_unit),
+            min_memory: "1G".to_string(), // Could also be made configurable
             jar_path: final_jar_path,
             run_script,
             args,
             working_dir: instance.path.clone(),
-            java_path: None,
+            java_path,
             auto_restart: true,
         };
 

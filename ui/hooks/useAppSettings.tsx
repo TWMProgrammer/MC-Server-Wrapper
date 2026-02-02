@@ -18,6 +18,14 @@ export const ACCENT_COLORS: AccentColor[] = [
 export type Theme = 'dark' | 'light';
 export type CloseBehavior = 'HideToSystemTray' | 'HideToTaskbar' | 'Exit';
 
+export interface ManagedJavaVersion {
+  id: string;
+  name: string;
+  path: string;
+  version: string;
+  major_version: number;
+}
+
 export interface AppSettings {
   // Interface
   display_ipv6: boolean;
@@ -46,6 +54,9 @@ export interface AppSettings {
   accent_color: string;
   theme: Theme;
   scaling: number;
+
+  // Java Management
+  managed_java_versions: ManagedJavaVersion[];
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -65,6 +76,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   accent_color: "Blue",
   theme: "dark",
   scaling: 0.8,
+  managed_java_versions: [],
 };
 
 interface AppSettingsContextType {

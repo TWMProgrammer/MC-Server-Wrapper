@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 import { useToast } from './hooks/useToast'
+import { useAppSettings } from './hooks/useAppSettings'
 import { Instance, InstanceSettings, LaunchMethod, CrashHandlingMode } from './types'
 import { Select } from './components/Select'
 
@@ -40,6 +41,7 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
   const [showPreview, setShowPreview] = useState(false)
   const [updatingJar, setUpdatingJar] = useState(false)
   const { showToast } = useToast()
+  const { settings: appSettings } = useAppSettings()
 
   // Update local state when instance changes
   useEffect(() => {
@@ -418,24 +420,54 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
                     Java Configuration
                   </h3>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-500 dark:text-white/40">Java Path Override (Optional)</label>
+                    <label className="text-sm font-medium text-gray-500 dark:text-white/40">Java Version</label>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={settings.java_path_override || ''}
-                        onChange={(e) => updateSetting('java_path_override', e.target.value || undefined)}
-                        className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="Default System Java"
+                      <Select
+                        value={(() => {
+                          if (!settings.java_path_override) return 'default';
+                          const isManaged = appSettings.managed_java_versions.some(v => v.id === settings.java_path_override);
+                          return isManaged ? settings.java_path_override : 'custom';
+                        })()}
+                        onChange={(value) => {
+                          if (value === 'default') {
+                            updateSetting('java_path_override', undefined);
+                          } else if (value === 'custom') {
+                            handleBrowseJava();
+                          } else {
+                            updateSetting('java_path_override', value);
+                          }
+                        }}
+                        options={[
+                          { value: 'default', label: 'System Default (java)' },
+                          ...appSettings.managed_java_versions.map(v => ({
+                            value: v.id,
+                            label: `${v.name} (Managed)`
+                          })),
+                          {
+                            value: 'custom',
+                            label: settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override)
+                              ? `Custom: ${settings.java_path_override.split(/[\\/]/).pop()}`
+                              : 'Custom...'
+                          }
+                        ]}
+                        className="flex-1"
                       />
-                      <button
-                        onClick={handleBrowseJava}
-                        className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
-                        title="Select Java Executable"
-                      >
-                        Browse
-                      </button>
+                      {settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override) && (
+                        <button
+                          onClick={handleBrowseJava}
+                          className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
+                          title="Change Custom Java Path"
+                        >
+                          Change
+                        </button>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-white/40">Leave empty to use the system's default Java or the version recommended for this Minecraft version.</p>
+                    {settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override) && (
+                      <p className="text-[10px] font-mono text-gray-400 truncate max-w-full" title={settings.java_path_override}>
+                        Path: {settings.java_path_override}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-white/40">Select a managed Java version or provide a custom path to a Java executable.</p>
                   </div>
                 </div>
 

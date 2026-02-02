@@ -4,6 +4,15 @@ use anyhow::{Result, Context};
 use tokio::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ManagedJavaVersion {
+    pub id: String,
+    pub name: String,
+    pub path: PathBuf,
+    pub version: String,
+    pub major_version: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     // Interface
     pub display_ipv6: bool,
@@ -32,6 +41,10 @@ pub struct AppSettings {
     pub accent_color: String,
     pub theme: String,
     pub scaling: f32,
+
+    // Java Management
+    #[serde(default)]
+    pub managed_java_versions: Vec<ManagedJavaVersion>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
@@ -60,6 +73,7 @@ impl Default for AppSettings {
             accent_color: "Blue".to_string(),
             theme: "dark".to_string(),
             scaling: 0.8,
+            managed_java_versions: vec![],
         }
     }
 }

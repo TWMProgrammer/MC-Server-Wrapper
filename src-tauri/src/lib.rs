@@ -4,6 +4,7 @@ use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::backup::BackupManager;
 use mc_server_wrapper_core::scheduler::SchedulerManager;
+use mc_server_wrapper_core::java_manager::JavaManager;
 use mc_server_wrapper_core::app_config::{GlobalConfigManager, CloseBehavior};
 use tauri::Manager;
 use tauri::menu::{Menu, MenuItem};
@@ -86,12 +87,15 @@ pub fn run() {
       // Initialize GlobalConfigManager
       let config_manager = Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
       
+      // Initialize JavaManager
+      let java_manager = Arc::new(JavaManager::new().expect("failed to initialize java manager"));
+
       // Initialize InstanceManager using the 'server' directory
       let instance_manager = Arc::new(tauri::async_runtime::block_on(async {
           InstanceManager::new(app_dirs.server).await.expect("failed to initialize instance manager")
       }));
 
-      let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager)));
+      let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager), Arc::clone(&config_manager)));
       let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
       let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
           let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.expect("failed to initialize scheduler manager");
@@ -113,6 +117,7 @@ pub fn run() {
       app.manage(backup_manager);
       app.manage(scheduler_manager);
       app.manage(config_manager);
+      app.manage(java_manager);
       app.manage(AppState {
           subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
       });
@@ -198,6 +203,10 @@ pub fn run() {
         commands::scheduler::add_scheduled_task,
         commands::scheduler::remove_scheduled_task,
         commands::scheduler::list_scheduled_tasks,
+        commands::java::get_managed_java_versions,
+        commands::java::download_java_version,
+        commands::java::delete_java_version,
+        commands::java::validate_custom_java,
         commands::plugins::list_installed_plugins,
         commands::plugins::toggle_plugin,
         commands::plugins::bulk_toggle_plugins,

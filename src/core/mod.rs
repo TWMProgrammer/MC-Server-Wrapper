@@ -13,3 +13,4 @@ pub mod mod_loaders;
 pub mod server_properties;
 pub mod config_files;
 pub mod scheduler;
+pub mod java_manager;
