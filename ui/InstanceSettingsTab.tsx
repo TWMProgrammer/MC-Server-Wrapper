@@ -533,20 +533,17 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
                       >
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-gray-500 dark:text-white/40">Select Script File</label>
-                          <div className="flex gap-2">
-                            <select
+                          <div className="flex gap-2 items-center">
+                            <Select
                               value={settings.bat_file || ''}
-                              onChange={(e) => updateSetting('bat_file', e.target.value || undefined)}
-                              className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                            >
-                              <option value="">Select a file...</option>
-                              {batFiles.map(file => (
-                                <option key={file} value={file}>{file}</option>
-                              ))}
-                            </select>
+                              onChange={(value) => updateSetting('bat_file', value || undefined)}
+                              options={batFiles.map(file => ({ value: file, label: file }))}
+                              placeholder="Select a file..."
+                              className="flex-1"
+                            />
                             <button
                               onClick={loadBatFiles}
-                              className="p-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors"
+                              className="p-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors shrink-0"
                               title="Reload files"
                             >
                               <RefreshCw size={18} />
