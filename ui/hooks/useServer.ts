@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Instance, ResourceUsage } from '../types'
+import { Instance, ResourceUsage, TransitionType } from '../types'
 
 export function useServer() {
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
   const [status, setStatus] = useState<string>('Stopped')
+  const [isTransitioning, setIsTransitioning] = useState<Record<string, TransitionType | null>>({})
   const [usage, setUsage] = useState<ResourceUsage | null>(null)
   const [history, setHistory] = useState<ResourceUsage[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +47,27 @@ export function useServer() {
         const hasChanged = updatedInstances.some((inst, idx) => inst.status !== instances[idx].status)
         if (hasChanged) {
           setInstances(updatedInstances)
+          
+          // Clear transitioning state for instances that reached a stable state
+          setIsTransitioning(prev => {
+            const next = { ...prev };
+            let changed = false;
+            updatedInstances.forEach(inst => {
+              const type = next[inst.id];
+              if (!type) return;
+
+              const isStable = 
+                (type === 'starting' && (inst.status === 'Running' || inst.status === 'Crashed')) ||
+                (type === 'stopping' && inst.status === 'Stopped') ||
+                (type === 'restarting' && inst.status === 'Running');
+
+              if (isStable) {
+                delete next[inst.id];
+                changed = true;
+              }
+            });
+            return changed ? next : prev;
+          });
         }
 
         if (selectedInstanceId) {
@@ -109,29 +131,71 @@ export function useServer() {
   async function startServer(instanceId?: string) {
     const id = instanceId || selectedInstanceId;
     if (!id || !(window as any).__TAURI_INTERNALS__) return;
+    setIsTransitioning(prev => ({ ...prev, [id]: 'starting' }))
     try {
       await invoke('start_server', { instanceId: id })
     } catch (e) {
       console.error(e)
+      setIsTransitioning(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      })
     }
   }
 
   async function stopServer(instanceId?: string) {
     const id = instanceId || selectedInstanceId;
     if (!id || !(window as any).__TAURI_INTERNALS__) return;
+    setIsTransitioning(prev => ({ ...prev, [id]: 'stopping' }))
     try {
       await invoke('stop_server', { instanceId: id })
     } catch (e) {
       console.error(e)
+      setIsTransitioning(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      })
+    }
+  }
+
+  async function restartServer(instanceId?: string) {
+    const id = instanceId || selectedInstanceId;
+    if (!id || !(window as any).__TAURI_INTERNALS__) return;
+    setIsTransitioning(prev => ({ ...prev, [id]: 'restarting' }))
+    try {
+      await invoke('send_command', { instanceId: id, command: 'restart' })
+    } catch (e) {
+      console.error(e)
+      setIsTransitioning(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      })
     }
   }
 
   async function sendCommand(command: string) {
     if (!command || !selectedInstanceId) return
+    const cmdTrimmed = command.trim().toLowerCase()
+    const id = selectedInstanceId
+    if (cmdTrimmed === 'stop') {
+      setIsTransitioning(prev => ({ ...prev, [id]: 'stopping' }))
+    } else if (cmdTrimmed === 'restart') {
+      setIsTransitioning(prev => ({ ...prev, [id]: 'restarting' }))
+    }
     try {
-      await invoke('send_command', { instanceId: selectedInstanceId, command })
+      await invoke('send_command', { instanceId: id, command })
     } catch (e) {
       console.error(e)
+      if (cmdTrimmed === 'stop' || cmdTrimmed === 'restart') {
+        setIsTransitioning(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        })
+      }
     }
   }
 
@@ -143,6 +207,7 @@ export function useServer() {
     setSelectedInstanceId,
     currentInstance,
     status,
+    isTransitioning,
     usage,
     history,
     loading,
@@ -150,6 +215,7 @@ export function useServer() {
     loadInstances,
     startServer,
     stopServer,
+    restartServer,
     sendCommand
   }
 }

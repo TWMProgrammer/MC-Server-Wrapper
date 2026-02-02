@@ -129,10 +129,31 @@ pub async fn get_server_usage(
 #[tauri::command]
 pub async fn send_command(
     server_manager: State<'_, Arc<ServerManager>>,
+    app_handle: tauri::AppHandle,
     instance_id: String,
     command: String,
 ) -> Result<(), String> {
     let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+    let cmd_trimmed = command.trim().to_lowercase();
+    
+    if cmd_trimmed == "stop" {
+        return server_manager.stop_server(id).await.map_err(|e| e.to_string());
+    } else if cmd_trimmed == "restart" {
+        let server_manager_clone = server_manager.inner().clone();
+        let app_handle_clone = app_handle.clone();
+        let instance_id_clone = instance_id.clone();
+        
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = server_manager_clone.restart_server(id).await {
+                let _ = app_handle_clone.emit("server-log", LogPayload {
+                    instance_id: instance_id_clone,
+                    line: format!("Error restarting server: {}", e),
+                });
+            }
+        });
+        return Ok(());
+    }
+
     if let Some(server) = server_manager.get_server(id).await {
         server.send_command(&command).await.map_err(|e: anyhow::Error| e.to_string())
     } else {

@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
-import { Database, Play, Square, Network, Beaker, Users, Activity } from 'lucide-react'
+import { Database, Play, Square, Network, Beaker, Users, Activity, Loader2 } from 'lucide-react'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { Instance } from '../types'
+import { Instance, TransitionType } from '../types'
 import { cn } from '../utils'
 import { AppSettings } from '../hooks/useAppSettings'
 
 interface GlobalDashboardProps {
   instances: Instance[];
+  isTransitioning: Record<string, TransitionType | null>;
   onSelectInstance: (id: string) => void;
   onStartServer: (id: string) => void;
   onStopServer: (id: string) => void;
@@ -15,6 +16,7 @@ interface GlobalDashboardProps {
 
 export function GlobalDashboard({
   instances,
+  isTransitioning,
   onSelectInstance,
   onStartServer,
   onStopServer,
@@ -65,39 +67,59 @@ export function GlobalDashboard({
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "w-2 h-2 rounded-full",
-                      instance.status === 'Running' ? "bg-accent-emerald animate-pulse" :
-                        instance.status === 'Starting' ? "bg-accent-amber animate-pulse" :
-                          "bg-gray-400 dark:bg-gray-500"
+                      (instance.status === 'Running' || isTransitioning[instance.id] === 'starting' || (isTransitioning[instance.id] === 'restarting' && instance.status === 'Starting')) ? "bg-accent-emerald animate-pulse" :
+                        (instance.status === 'Starting' || (isTransitioning[instance.id] as any) === 'starting') ? "bg-accent-amber animate-pulse" :
+                          (instance.status === 'Stopping' || isTransitioning[instance.id] === 'stopping') ? "bg-accent-rose animate-pulse" :
+                            "bg-gray-400 dark:bg-gray-500"
                     )} />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                      {instance.status === 'Stopped' ? 'Offline' : instance.status}
+                      {isTransitioning[instance.id] === 'starting' ? 'Starting...' :
+                        isTransitioning[instance.id] === 'stopping' ? 'Stopping...' :
+                          isTransitioning[instance.id] === 'restarting' ? 'Restarting...' :
+                            instance.status === 'Stopped' ? 'Offline' : instance.status}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {instance.status === 'Stopped' || instance.status === 'Crashed' ? (
+                {instance.status === 'Stopped' || instance.status === 'Crashed' || instance.status === 'Starting' || isTransitioning[instance.id] === 'starting' ? (
                   <button
+                    disabled={!!isTransitioning[instance.id] || instance.status === 'Starting'}
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartServer(instance.id);
                     }}
-                    className="p-2 rounded-lg bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald hover:text-white transition-all duration-300"
+                    className={cn(
+                      "p-2 rounded-lg bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald hover:text-white transition-all duration-300",
+                      (isTransitioning[instance.id] || instance.status === 'Starting') && "opacity-50 cursor-not-allowed"
+                    )}
                     title="Start Server"
                   >
-                    <Play size={18} fill="currentColor" />
+                    {isTransitioning[instance.id] === 'starting' || instance.status === 'Starting' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Play size={18} fill="currentColor" />
+                    )}
                   </button>
                 ) : (
                   <button
+                    disabled={!!isTransitioning[instance.id] || instance.status === 'Stopping'}
                     onClick={(e) => {
                       e.stopPropagation();
                       onStopServer(instance.id);
                     }}
-                    className="p-2 rounded-lg bg-accent-rose/10 text-accent-rose hover:bg-accent-rose hover:text-white transition-all duration-300"
+                    className={cn(
+                      "p-2 rounded-lg bg-accent-rose/10 text-accent-rose hover:bg-accent-rose hover:text-white transition-all duration-300",
+                      (isTransitioning[instance.id] || instance.status === 'Stopping') && "opacity-50 cursor-not-allowed"
+                    )}
                     title="Stop Server"
                   >
-                    <Square size={18} fill="currentColor" />
+                    {isTransitioning[instance.id] === 'stopping' || instance.status === 'Stopping' || isTransitioning[instance.id] === 'restarting' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Square size={18} fill="currentColor" />
+                    )}
                   </button>
                 )}
               </div>

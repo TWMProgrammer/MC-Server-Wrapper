@@ -43,6 +43,8 @@ export interface ResourceUsage {
 
 export type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'mods' | 'players' | 'config' | 'backups' | 'scheduler' | 'settings';
 
+export type TransitionType = 'starting' | 'stopping' | 'restarting';
+
 export interface PlayerEntry {
   uuid: string;
   name: string;

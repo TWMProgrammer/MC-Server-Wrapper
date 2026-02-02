@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::info;
@@ -199,7 +200,26 @@ impl ServerManager {
     }
 
     pub async fn restart_server(&self, instance_id: Uuid) -> Result<()> {
-        self.stop_server(instance_id).await?;
+        let server = {
+            let servers = self.servers.lock().await;
+            servers.get(&instance_id).cloned()
+        };
+
+        if let Some(server) = server {
+            server.stop().await?;
+            
+            // Wait for it to stop (max 30 seconds)
+            let mut attempts = 0;
+            while attempts < 30 {
+                let status = server.get_status().await;
+                if status == ServerStatus::Stopped {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                attempts += 1;
+            }
+        }
+        
         self.start_server(instance_id).await?;
         Ok(())
     }

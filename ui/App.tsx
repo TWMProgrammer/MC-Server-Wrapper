@@ -22,12 +22,14 @@ function App() {
     setSelectedInstanceId,
     currentInstance,
     status,
+    isTransitioning,
     usage,
     history,
     logs,
     loadInstances,
     startServer,
     stopServer,
+    restartServer,
     sendCommand,
     loading: serverLoading
   } = useServer()
@@ -105,10 +107,12 @@ function App() {
               <Header
                 currentInstance={currentInstance}
                 status={status}
+                isTransitioning={selectedInstanceId ? isTransitioning[selectedInstanceId] : null}
                 activeTab={activeTab}
                 tabs={tabs}
                 onStartServer={() => startServer()}
                 onStopServer={() => stopServer()}
+                onRestartServer={() => restartServer()}
                 onSetActiveTab={setActiveTab}
                 onInstancesUpdated={loadInstances}
               />
@@ -155,6 +159,7 @@ function App() {
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <GlobalDashboard
                   instances={instances}
+                  isTransitioning={isTransitioning}
                   onSelectInstance={setSelectedInstanceId}
                   onStartServer={startServer}
                   onStopServer={stopServer}
