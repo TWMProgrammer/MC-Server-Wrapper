@@ -253,7 +253,10 @@ pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider)
             let client = ModrinthClient::new();
             client.get_dependencies(project_id).await
         }
-        _ => Ok(vec![]), // Spiget dependencies not implemented yet
+        PluginProvider::Spiget => {
+            let client = SpigetClient::new();
+            client.get_dependencies(project_id).await
+        }
     }
 }
 
@@ -271,7 +274,7 @@ pub async fn install_plugin(
     let (filename, vid) = match provider {
         PluginProvider::Modrinth => {
             let client = ModrinthClient::new();
-            let versions = client.get_versions(project_id).await?;
+            let versions = client.get_versions(project_id, game_version, loader).await?;
             let version = if let Some(vid) = version_id {
                 versions.iter().find(|v| v.id == vid)
                     .ok_or_else(|| anyhow::anyhow!("Version not found: {}", vid))?
@@ -372,7 +375,11 @@ pub async fn bulk_uninstall_plugins(
 }
 
 /// Checks for updates for all installed plugins that have source information.
-pub async fn check_for_updates(instance_path: impl AsRef<Path>) -> Result<Vec<PluginUpdate>> {
+pub async fn check_for_updates(
+    instance_path: impl AsRef<Path>,
+    game_version: Option<&str>,
+    loader: Option<&str>,
+) -> Result<Vec<PluginUpdate>> {
     let installed = list_installed_plugins(&instance_path).await?;
     let mut updates = Vec::new();
 
@@ -381,7 +388,7 @@ pub async fn check_for_updates(instance_path: impl AsRef<Path>) -> Result<Vec<Pl
             match source.provider {
                 PluginProvider::Modrinth => {
                     let client = ModrinthClient::new();
-                    if let Ok(versions) = client.get_versions(&source.project_id).await {
+                    if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
                         if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
                                 updates.push(PluginUpdate {

@@ -81,7 +81,11 @@ pub async fn check_for_plugin_updates(
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
-    plugins::check_for_updates(&instance.path).await.map_err(|e| e.to_string())
+    plugins::check_for_updates(
+        &instance.path,
+        Some(instance.version.as_str()),
+        instance.mod_loader.as_deref(),
+    ).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

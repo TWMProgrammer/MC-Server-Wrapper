@@ -146,8 +146,27 @@ impl ModrinthClient {
         Ok(projects)
     }
 
-    pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {
-        let url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
+    pub async fn get_versions(
+        &self,
+        project_id: &str,
+        game_version: Option<&str>,
+        loader: Option<&str>,
+    ) -> Result<Vec<ProjectVersion>> {
+        let mut url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
+        
+        let mut query_params = Vec::new();
+        if let Some(gv) = game_version {
+            query_params.push(format!("game_versions=[\"{}\"]", gv));
+        }
+        if let Some(l) = loader {
+            query_params.push(format!("loaders=[\"{}\"]", l.to_lowercase()));
+        }
+
+        if !query_params.is_empty() {
+            url.push_str("?");
+            url.push_str(&query_params.join("&"));
+        }
+
         let versions = self.client.get(&url).send().await?.json::<Vec<ProjectVersion>>().await?;
         Ok(versions)
     }

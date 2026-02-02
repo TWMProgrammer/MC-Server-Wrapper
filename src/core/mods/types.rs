@@ -96,3 +96,13 @@ pub struct ModCache {
     pub entries: HashMap<String, ModCacheEntry>,
     pub sources: HashMap<String, ModSource>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModUpdate {
+    pub filename: String,
+    pub current_version: Option<String>,
+    pub latest_version: String,
+    pub latest_version_id: String,
+    pub project_id: String,
+    pub provider: ModProvider,
+}

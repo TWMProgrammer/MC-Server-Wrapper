@@ -20,7 +20,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { InstalledMod } from '../types'
+import { InstalledMod, ModUpdate } from '../types'
 import { useToast } from '../hooks/useToast'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
 import { ModConfigModal } from './ModConfigModal'
@@ -34,7 +34,10 @@ type ViewMode = 'table' | 'grid'
 
 export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps) {
   const [mods, setMods] = useState<InstalledMod[]>([])
+  const [updates, setUpdates] = useState<ModUpdate[]>([])
   const [loading, setLoading] = useState(true)
+  const [checkingUpdates, setCheckingUpdates] = useState(false)
+  const [updatingMods, setUpdatingMods] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [selectedFilenames, setSelectedFilenames] = useState<Set<string>>(new Set())
@@ -56,6 +59,60 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
       showToast('Failed to load mods', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCheckUpdates = async () => {
+    setCheckingUpdates(true)
+    try {
+      const result = await invoke<ModUpdate[]>('check_for_mod_updates', { instanceId })
+      setUpdates(result)
+      if (result.length > 0) {
+        showToast(`Found ${result.length} updates!`, 'info')
+      } else {
+        showToast('All mods are up to date', 'info')
+      }
+    } catch (err) {
+      console.error('Failed to check for updates:', err)
+      showToast('Failed to check for updates', 'error')
+    } finally {
+      setCheckingUpdates(false)
+    }
+  }
+
+  const handleUpdateMod = async (update: ModUpdate) => {
+    setUpdatingMods(prev => new Set(prev).add(update.filename))
+    try {
+      await invoke('update_mod', {
+        instanceId,
+        filename: update.filename,
+        projectId: update.project_id,
+        provider: update.provider,
+        latestVersionId: update.latest_version_id
+      })
+      showToast(`Updated ${update.filename} to ${update.latest_version}`)
+      setUpdates(prev => prev.filter(u => u.filename !== update.filename))
+      await loadMods()
+    } catch (err) {
+      console.error('Failed to update mod:', err)
+      showToast(`Failed to update ${update.filename}: ${err}`, 'error')
+    } finally {
+      setUpdatingMods(prev => {
+        const next = new Set(prev)
+        next.delete(update.filename)
+        return next
+      })
+    }
+  }
+
+  const handleBulkUpdate = async () => {
+    const updatesToRun = updates.filter(u => selectedFilenames.has(u.filename))
+    if (updatesToRun.length === 0) return
+
+    showToast(`Updating ${updatesToRun.length} mods...`, 'info')
+
+    for (const update of updatesToRun) {
+      await handleUpdateMod(update)
     }
   }
 
@@ -172,6 +229,14 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
             </button>
           </div>
           <button
+            onClick={handleCheckUpdates}
+            disabled={checkingUpdates || loading}
+            className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all border border-primary/20 disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={checkingUpdates ? 'animate-spin' : ''} />
+            <span className="font-medium">{checkingUpdates ? 'Checking...' : 'Check for Updates'}</span>
+          </button>
+          <button
             onClick={loadMods}
             disabled={loading}
             className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl transition-all border border-white/5"
@@ -181,41 +246,68 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
           </button>
         </div>
 
-        {selectedFilenames.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 p-1 bg-primary/10 border border-primary/20 rounded-xl"
-          >
-            <span className="text-sm font-bold text-primary px-3">{selectedFilenames.size} selected</span>
-            <div className="h-6 w-px bg-primary/20" />
-            <button
-              onClick={() => handleBulkToggle(true)}
-              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              title="Enable Selected"
+        <AnimatePresence>
+          {selectedFilenames.size > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+              animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
+              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+              className="overflow-hidden w-full"
             >
-              <Power size={18} />
-            </button>
-            <button
-              onClick={() => handleBulkToggle(false)}
-              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-              title="Disable Selected"
-            >
-              <Power size={18} className="rotate-180" />
-            </button>
-            <ConfirmDropdown
-              onConfirm={() => handleBulkDelete(false)}
-              title="Uninstall Selected?"
-              message={`Are you sure you want to uninstall ${selectedFilenames.size} mods?`}
-              confirmText="Uninstall"
-              className="right-0"
-            >
-              <button className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
-                <Trash2 size={18} />
-              </button>
-            </ConfirmDropdown>
-          </motion.div>
-        )}
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary text-white rounded-lg">
+                    <CheckSquare size={20} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-primary">{selectedFilenames.size} Selected</div>
+                    <div className="text-xs text-primary/60">Bulk actions for selected mods</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleBulkToggle(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-500 rounded-lg transition-colors border border-green-500/20 text-sm font-medium"
+                  >
+                    <Power size={14} /> Enable
+                  </button>
+                  <button
+                    onClick={() => handleBulkToggle(false)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-500 rounded-lg transition-colors border border-orange-500/20 text-sm font-medium"
+                  >
+                    <Power size={14} /> Disable
+                  </button>
+                  {updates.some(u => selectedFilenames.has(u.filename)) && (
+                    <button
+                      onClick={handleBulkUpdate}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500 rounded-lg transition-colors border border-blue-500/20 text-sm font-medium"
+                    >
+                      <ArrowUpCircle size={14} /> Update
+                    </button>
+                  )}
+                  <ConfirmDropdown
+                    title="Uninstall Selected"
+                    message={`Are you sure you want to uninstall ${selectedFilenames.size} mods?`}
+                    confirmText="Uninstall All"
+                    variant="danger"
+                    onConfirm={() => handleBulkDelete(false)}
+                  >
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded-lg transition-colors border border-red-500/20 text-sm font-medium">
+                      <Trash2 size={14} /> Uninstall
+                    </button>
+                  </ConfirmDropdown>
+                  <div className="w-px h-6 bg-primary/20 mx-2" />
+                  <button
+                    onClick={() => setSelectedFilenames(new Set())}
+                    className="text-primary/60 hover:text-primary text-sm font-medium px-2"
+                  >
+                    Deselect
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {loading ? (
@@ -240,6 +332,9 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
               key={mod.filename}
               mod={mod}
               isSelected={selectedFilenames.has(mod.filename)}
+              update={updates.find(u => u.filename === mod.filename)}
+              isUpdating={updatingMods.has(mod.filename)}
+              onUpdate={(u) => handleUpdateMod(u)}
               onToggleSelect={() => toggleSelection(mod.filename)}
               onToggleEnabled={() => handleToggleMod(mod)}
               onDelete={(delConfig) => handleDeleteMod(mod, delConfig)}
@@ -273,6 +368,9 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
                   key={mod.filename}
                   mod={mod}
                   isSelected={selectedFilenames.has(mod.filename)}
+                  update={updates.find(u => u.filename === mod.filename)}
+                  isUpdating={updatingMods.has(mod.filename)}
+                  onUpdate={(u) => handleUpdateMod(u)}
                   onToggleSelect={() => toggleSelection(mod.filename)}
                   onToggleEnabled={() => handleToggleMod(mod)}
                   onDelete={(delConfig) => handleDeleteMod(mod, delConfig)}
@@ -297,9 +395,12 @@ export function InstalledMods({ instanceId, refreshTrigger }: InstalledModsProps
   )
 }
 
-function ModGridCard({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelete, onConfigure }: {
+function ModGridCard({ mod, isSelected, update, isUpdating, onUpdate, onToggleSelect, onToggleEnabled, onDelete, onConfigure }: {
   mod: InstalledMod;
   isSelected: boolean;
+  update?: ModUpdate;
+  isUpdating: boolean;
+  onUpdate: (update: ModUpdate) => void;
   onToggleSelect: () => void;
   onToggleEnabled: () => void;
   onDelete: (delConfig: boolean) => void;
@@ -334,7 +435,12 @@ function ModGridCard({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelet
             )}
           </div>
           <div className="min-w-0">
-            <h4 className="font-bold truncate text-gray-200">{mod.name}</h4>
+            <h4 className="font-bold truncate text-gray-200 flex items-center gap-2">
+              {mod.name}
+              {update && (
+                <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse" title={`Update available: ${update.latest_version}`} />
+              )}
+            </h4>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-white/5 rounded text-gray-500">
                 {mod.version || 'v?.?.?'}
@@ -359,6 +465,21 @@ function ModGridCard({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelet
       <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">
         {mod.description || 'No description available.'}
       </p>
+
+      {update && (
+        <div className="mb-4 p-2 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-between">
+          <div className="text-[10px] text-blue-400 font-bold uppercase flex items-center gap-1">
+            <ArrowUpCircle size={12} /> Update to {update.latest_version}
+          </div>
+          <button
+            onClick={() => onUpdate(update)}
+            disabled={isUpdating}
+            className="px-2 py-1 bg-blue-500 text-white text-[10px] font-bold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+          >
+            {isUpdating ? 'Updating...' : 'Update'}
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -390,9 +511,12 @@ function ModGridCard({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelet
   )
 }
 
-function ModTableRow({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelete, onConfigure }: {
+function ModTableRow({ mod, isSelected, update, isUpdating, onUpdate, onToggleSelect, onToggleEnabled, onDelete, onConfigure }: {
   mod: InstalledMod;
   isSelected: boolean;
+  update?: ModUpdate;
+  isUpdating: boolean;
+  onUpdate: (update: ModUpdate) => void;
   onToggleSelect: () => void;
   onToggleEnabled: () => void;
   onDelete: (delConfig: boolean) => void;
@@ -418,13 +542,27 @@ function ModTableRow({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelet
             )}
           </div>
           <div>
-            <div className="font-bold text-gray-200">{mod.name}</div>
+            <div className="font-bold text-gray-200 flex items-center gap-2">
+              {mod.name}
+              {update && (
+                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1">
+                  <ArrowUpCircle size={10} /> Update Available
+                </span>
+              )}
+            </div>
             <div className="text-xs text-gray-500 truncate max-w-[200px]">{mod.filename}</div>
           </div>
         </div>
       </td>
       <td className="p-4 text-sm text-gray-400">
-        {mod.version || 'Unknown'}
+        <div className="flex flex-col">
+          <span>{mod.version || 'Unknown'}</span>
+          {update && (
+            <span className="text-[10px] text-blue-400 font-medium">
+              → {update.latest_version}
+            </span>
+          )}
+        </div>
       </td>
       <td className="p-4">
         {mod.loader ? (
@@ -448,6 +586,16 @@ function ModTableRow({ mod, isSelected, onToggleSelect, onToggleEnabled, onDelet
       </td>
       <td className="p-4 text-right">
         <div className="flex items-center justify-end gap-1">
+          {update && (
+            <button
+              onClick={() => onUpdate(update)}
+              disabled={isUpdating}
+              className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+              title={`Update to ${update.latest_version}`}
+            >
+              <ArrowUpCircle size={16} className={isUpdating ? 'animate-spin' : ''} />
+            </button>
+          )}
           <button
             onClick={onConfigure}
             className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"

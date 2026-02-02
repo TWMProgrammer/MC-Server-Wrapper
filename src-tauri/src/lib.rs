@@ -217,7 +217,9 @@ pub fn run() {
         commands::mods::install_mod,
         commands::mods::get_mod_dependencies,
         commands::mods::get_mod_configs,
-                commands::mods::list_mod_config_files,
+        commands::mods::list_mod_config_files,
+        commands::mods::check_for_mod_updates,
+        commands::mods::update_mod,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

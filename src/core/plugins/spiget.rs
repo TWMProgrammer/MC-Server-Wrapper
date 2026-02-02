@@ -30,7 +30,31 @@ impl SpigetClient {
         let page = (options.offset.unwrap_or(0) / size) + 1;
         
         let url = if options.query.trim().is_empty() {
-            format!("https://api.spiget.org/v2/resources?size={}&page={}&sort=-downloads", size, page)
+            if let Some(facets) = &options.facets {
+                let category = facets.iter()
+                    .find(|f| f.starts_with("categories:"))
+                    .and_then(|f| f.strip_prefix("categories:"));
+                
+                if let Some(cat) = category {
+                    // Map common category names to Spiget IDs if possible, 
+                    // or assume the facet is already the ID
+                    let cat_id = match cat {
+                        "administration" => "10",
+                        "chat" => "11",
+                        "economy" => "12",
+                        "gameplay" => "13",
+                        "management" => "14",
+                        "utility" => "16",
+                        "world-management" => "17",
+                        _ => cat
+                    };
+                    format!("https://api.spiget.org/v2/categories/{}/resources?size={}&page={}&sort=-downloads", cat_id, size, page)
+                } else {
+                    format!("https://api.spiget.org/v2/resources?size={}&page={}&sort=-downloads", size, page)
+                }
+            } else {
+                format!("https://api.spiget.org/v2/resources?size={}&page={}&sort=-downloads", size, page)
+            }
         } else {
             format!("https://api.spiget.org/v2/search/resources/{}?field=name&size={}&page={}", 
                 urlencoding::encode(&options.query), size, page)
@@ -65,6 +89,56 @@ impl SpigetClient {
         }).collect();
 
         Ok(projects)
+    }
+
+    pub async fn get_dependencies(&self, resource_id: &str) -> Result<Vec<Project>> {
+        let url = format!("https://api.spiget.org/v2/resources/{}/dependencies", resource_id);
+        let response = self.client.get(&url).send().await?;
+        
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(vec![]);
+        }
+
+        let response = response.error_for_status()?;
+        let json = response.json::<Vec<serde_json::Value>>().await?;
+        
+        let mut projects = Vec::new();
+        for dep in json {
+            // Spiget dependencies can be internal (numeric ID) or external (URL/Name)
+            // For internal ones, we can fetch the project info
+            if let Some(id) = dep["id"].as_u64() {
+                if let Ok(project) = self.get_project(&id.to_string()).await {
+                    projects.push(project);
+                }
+            }
+        }
+
+        Ok(projects)
+    }
+
+    pub async fn get_project(&self, id: &str) -> Result<Project> {
+        let url = format!("https://api.spiget.org/v2/resources/{}", id);
+        let response = self.client.get(&url).send().await?.error_for_status()?;
+        let h = response.json::<serde_json::Value>().await?;
+        
+        Ok(Project {
+            id: h["id"].as_u64().unwrap_or(0).to_string(),
+            slug: h["name"].as_str().unwrap_or_default().to_lowercase().replace(' ', "-"),
+            title: h["name"].as_str().unwrap_or_default().to_string(),
+            description: h["tag"].as_str().unwrap_or_default().to_string(),
+            downloads: h["downloads"].as_u64().unwrap_or(0),
+            icon_url: h["icon"]["url"].as_str()
+                .filter(|s| !s.is_empty())
+                .map(|s| {
+                    if s.starts_with("http") {
+                        s.to_string()
+                    } else {
+                        format!("https://www.spigotmc.org/{}", s)
+                    }
+                }),
+            author: format!("User {}", h["author"]["id"]),
+            provider: PluginProvider::Spiget,
+        })
     }
 
     pub async fn get_latest_version(&self, resource_id: &str) -> Result<(String, String)> {

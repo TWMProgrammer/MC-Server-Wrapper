@@ -145,17 +145,15 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     try {
       while (queue.length > 0) {
         const plugin = queue.shift()!
-        if (plugin.provider === 'Modrinth') {
-          const deps = await invoke<Project[]>('get_plugin_dependencies', {
-            projectId: plugin.id,
-            provider: plugin.provider
-          })
-          for (const dep of deps) {
-            if (!seenIds.has(dep.id)) {
-              allDeps.set(dep.id, dep)
-              seenIds.add(dep.id)
-              queue.push(dep) // Add to queue to find its dependencies
-            }
+        const deps = await invoke<Project[]>('get_plugin_dependencies', {
+          projectId: plugin.id,
+          provider: plugin.provider
+        })
+        for (const dep of deps) {
+          if (!seenIds.has(dep.id)) {
+            allDeps.set(dep.id, dep)
+            seenIds.add(dep.id)
+            queue.push(dep) // Add to queue to find its dependencies
           }
         }
       }

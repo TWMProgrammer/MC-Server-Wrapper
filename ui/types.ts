@@ -183,3 +183,12 @@ export interface ModConfig {
   path: string;
   is_dir: boolean;
 }
+
+export interface ModUpdate {
+  filename: string;
+  current_version?: string;
+  latest_version: string;
+  latest_version_id: string;
+  project_id: string;
+  provider: ModProvider;
+}
