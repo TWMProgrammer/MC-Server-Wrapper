@@ -181,8 +181,8 @@ export function ModDetailsModal({
                 <button
                   onClick={onInstall}
                   className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 ${isSelected
-                      ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
-                      : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                    ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
+                    : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
                     }`}
                 >
                   {isSelected ? (
