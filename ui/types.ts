@@ -38,10 +38,12 @@ export type CrashHandlingMode = 'Nothing' | 'Elevated' | 'Aggressive';
 export interface ResourceUsage {
   cpu_usage: number;
   memory_usage: number;
+  disk_read: number;
+  disk_write: number;
   timestamp?: number;
 }
 
-export type TabId = 'dashboard' | 'console' | 'logs' | 'plugins' | 'mods' | 'players' | 'config' | 'backups' | 'scheduler' | 'settings';
+export type TabId = 'dashboard' | 'console' | 'logs' | 'stats' | 'plugins' | 'mods' | 'players' | 'config' | 'backups' | 'scheduler' | 'settings';
 
 export type TransitionType = 'starting' | 'stopping' | 'restarting';
 

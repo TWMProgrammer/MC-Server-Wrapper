@@ -15,6 +15,8 @@ pub enum ServerStatus {
 pub struct ResourceUsage {
     pub cpu_usage: f32,
     pub memory_usage: u64,
+    pub disk_read: u64,
+    pub disk_write: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]

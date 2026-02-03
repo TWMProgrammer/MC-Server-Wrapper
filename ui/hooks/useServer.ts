@@ -79,7 +79,7 @@ export function useServer() {
             const usageWithTime = { ...u, timestamp: Date.now() }
             setUsage(u)
 
-            const newHistory = [...historyRef.current, usageWithTime].slice(-30)
+            const newHistory = [...historyRef.current, usageWithTime].slice(-100)
             historyRef.current = newHistory
             setHistory(newHistory)
           } else {

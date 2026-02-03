@@ -142,8 +142,8 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] Dependency resolution for complex mods.
 - [ ] **Resource Monitoring**
     - [x] Live CPU/RAM usage tracking.
-    - [ ] Disk I/O monitoring.
-    - [ ] Historical usage graphs with `recharts`.
+    - [x] Disk I/O monitoring.
+    - [x] Historical usage graphs with `recharts`.
 - [ ] **Visual Config Editors**
     - [ ] `server.properties` visual editor with type safety.
     - [ ] YAML/JSON editor for plugin configurations.

@@ -20,6 +20,9 @@ impl ServerHandle {
                 let mut usage = usage_arc.lock().await;
                 usage.cpu_usage = process.cpu_usage();
                 usage.memory_usage = process.memory();
+                let disk = process.disk_usage();
+                usage.disk_read = disk.read_bytes;
+                usage.disk_write = disk.written_bytes;
             } else {
                 break;
             }

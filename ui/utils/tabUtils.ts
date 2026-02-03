@@ -8,7 +8,8 @@ import {
   History,
   Calendar,
   FileText,
-  Sliders
+  Sliders,
+  BarChart3
 } from 'lucide-react'
 import { TabId } from '../types'
 
@@ -16,6 +17,7 @@ export const ALL_TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'console', label: 'Console', icon: Terminal },
   { id: 'logs', label: 'Logs', icon: FileText },
+  { id: 'stats', label: 'Statistics', icon: BarChart3 },
   { id: 'players', label: 'Players', icon: Users },
   { id: 'config', label: 'Config', icon: Sliders },
   { id: 'plugins', label: 'Plugins', icon: Puzzle },

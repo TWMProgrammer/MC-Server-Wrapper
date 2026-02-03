@@ -15,6 +15,7 @@ import { BackupsTab } from '../BackupsTab'
 import { SchedulesTab } from '../SchedulesTab'
 import { PluginsTab } from '../PluginsTab'
 import { ModsTab } from '../ModsTab'
+import { StatsTab } from '../StatsTab'
 import { TabId, Instance, ResourceUsage } from '../types'
 import { AppSettings } from '../hooks/useAppSettings'
 
@@ -93,6 +94,10 @@ export function TabRenderer({
 
   if (activeTab === 'logs') {
     return <LogsTab instanceId={selectedInstanceId} />;
+  }
+
+  if (activeTab === 'stats') {
+    return <StatsTab history={history} settings={settings} />;
   }
 
   if (activeTab === 'players') {
