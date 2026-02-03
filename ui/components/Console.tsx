@@ -29,15 +29,37 @@ export function Console({
   const { settings: hookSettings } = useAppSettings();
   const settings = propSettings || hookSettings;
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isAutoScrolling = useRef(false);
+  const LINE_HEIGHT = 22; // Approximate height of a log line
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      setContainerHeight(scrollContainerRef.current.clientHeight);
+
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          setContainerHeight(entry.contentRect.height);
+        }
+      });
+
+      resizeObserver.observe(scrollContainerRef.current);
+      return () => resizeObserver.disconnect();
+    }
+  }, []);
 
   const handleScroll = () => {
-    if (scrollContainerRef.current && !isAutoScrolling.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-      // Use a threshold to determine if we're at the bottom
-      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setIsAtBottom(atBottom);
+    if (scrollContainerRef.current) {
+      const { scrollTop: st, scrollHeight, clientHeight } = scrollContainerRef.current;
+      setScrollTop(st);
+
+      if (!isAutoScrolling.current) {
+        // Use a threshold to determine if we're at the bottom
+        const atBottom = scrollHeight - st - clientHeight < 100;
+        setIsAtBottom(atBottom);
+      }
     }
   };
 
@@ -100,6 +122,12 @@ export function Console({
     );
   };
 
+  const totalHeight = logs.length * LINE_HEIGHT;
+  const startIndex = Math.max(0, Math.floor(scrollTop / LINE_HEIGHT) - 5);
+  const endIndex = Math.min(logs.length, Math.ceil((scrollTop + containerHeight) / LINE_HEIGHT) + 5);
+  const visibleLogs = logs.slice(startIndex, endIndex);
+  const offsetTop = startIndex * LINE_HEIGHT;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -134,14 +162,20 @@ export function Console({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn(
-          "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40",
+          "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40 relative",
           isFull ? "text-sm" : "text-[13px]"
         )}
       >
         {logs && logs.length > 0 ? (
-          logs.map((line, i) => (
-            <div key={i}>{formatLogLine(line)}</div>
-          ))
+          <div style={{ height: totalHeight, position: 'relative' }}>
+            <div style={{ transform: `translateY(${offsetTop}px)`, position: 'absolute', top: 0, left: 0, right: 0 }}>
+              {visibleLogs.map((line, i) => (
+                <div key={startIndex + i} style={{ height: LINE_HEIGHT, overflow: 'hidden' }}>
+                  {formatLogLine(line)}
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-white/20 space-y-4">
             <Terminal size={48} className="opacity-10" />

@@ -170,9 +170,15 @@ impl ServerManager {
             }
         }
 
+        let ram_unit = match instance.settings.ram_unit.as_str() {
+            "GB" => "G",
+            "MB" => "M",
+            u => u,
+        };
+
         let mut config = ServerConfig {
             name: instance.name.clone(),
-            max_memory: format!("{}{}", instance.settings.ram, instance.settings.ram_unit),
+            max_memory: format!("{}{}", instance.settings.ram, ram_unit),
             min_memory: "1G".to_string(), // Could also be made configurable
             jar_path: final_jar_path,
             run_script,

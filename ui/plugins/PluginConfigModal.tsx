@@ -15,13 +15,15 @@ import {
   Minimize2,
   ChevronRight,
   ChevronDown,
-  Folder
+  Folder,
+  Database
 } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { InstalledPlugin } from '../types'
 import { useToast } from '../hooks/useToast'
 import { cn } from '../utils'
 import { useAppSettings } from '../hooks/useAppSettings'
+import { YamlTreeEditor } from '../config/YamlTreeEditor'
 
 interface PluginConfigModalProps {
   plugin: InstalledPlugin;
@@ -42,6 +44,8 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [content, setContent] = useState('')
+  const [parsedContent, setParsedContent] = useState<any>(null)
+  const [isTreeMode, setIsTreeMode] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -60,7 +64,7 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
       setContent('') // Clear content immediately when switching files to avoid ghosting
       loadFileContent(selectedConfig)
     }
-  }, [selectedConfig, configDir])
+  }, [selectedConfig, configDir, isTreeMode])
 
   const handleEditorWillMount = (monaco: any) => {
     registerSkriptLanguage(monaco)
@@ -139,11 +143,36 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
     return root
   }, [configs])
 
+  const getConfigFormat = (filename: string): string | null => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'yml' || ext === 'yaml') return 'Yaml';
+    if (ext === 'toml') return 'Toml';
+    if (ext === 'json') return 'Json';
+    if (ext === 'properties') return 'Properties';
+    return null;
+  };
+
   const loadFileContent = async (filename: string) => {
     if (!configDir) return
     setLoading(true)
     try {
       const relPath = `plugins/${configDir}/${filename}`
+
+      if (isTreeMode) {
+        const format = getConfigFormat(filename);
+        if (format) {
+          const result = await invoke<any>('get_config_value', {
+            instanceId,
+            relPath,
+            format
+          });
+          setParsedContent(result);
+        } else {
+          showToast('Tree view not supported for this file type', 'info');
+          setIsTreeMode(false);
+        }
+      }
+
       const result = await invoke<string>('read_text_file', {
         instanceId,
         relPath
@@ -162,17 +191,34 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
     setSaving(true)
     try {
       const relPath = `plugins/${configDir}/${selectedConfig}`
-      const valueToSave = editorRef.current ? editorRef.current.getValue() : content;
-      await invoke('save_text_file', {
-        instanceId,
-        relPath,
-        content: valueToSave
-      })
+
+      if (isTreeMode) {
+        const format = getConfigFormat(selectedConfig);
+        if (format) {
+          await invoke('save_config_value', {
+            instanceId,
+            relPath,
+            format,
+            value: parsedContent
+          });
+        }
+      } else {
+        const valueToSave = editorRef.current ? editorRef.current.getValue() : content;
+        await invoke('save_text_file', {
+          instanceId,
+          relPath,
+          content: valueToSave
+        })
+      }
+
       showToast('Configuration saved successfully', 'success')
 
       if (autoReload) {
         handleReload()
       }
+
+      // Reload content after save to sync both views
+      loadFileContent(selectedConfig);
     } catch (err) {
       console.error('Failed to save config:', err)
       showToast('Failed to save configuration', 'error')
@@ -304,6 +350,19 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
 
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setIsTreeMode(!isTreeMode)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all text-xs font-bold border",
+                  isTreeMode
+                    ? "bg-primary/20 border-primary/30 text-primary shadow-lg shadow-primary/10"
+                    : "bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                )}
+                title={isTreeMode ? "Switch to Text Editor" : "Switch to Tree Editor"}
+              >
+                <Database size={16} />
+                <span className="hidden sm:inline">{isTreeMode ? "Tree Editor" : "Text Editor"}</span>
+              </button>
+              <button
                 onClick={() => setIsMaximized(!isMaximized)}
                 className="p-2.5 hover:bg-white/5 rounded-xl transition-all text-gray-400 hover:text-white"
                 title={isMaximized ? "Minimize" : "Maximize"}
@@ -379,40 +438,57 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
               ) : null}
 
               <div className="flex-1 overflow-hidden relative">
-                <Editor
-                  height="100%"
-                  language={language}
-                  theme="vs-dark"
-                  value={content}
-                  beforeMount={handleEditorWillMount}
-                  onMount={handleEditorDidMount}
-                  onChange={(value) => setContent(value || '')}
-                  options={{
-                    fontSize: 14,
-                    fontFamily: 'JetBrains Mono, Fira Code, monospace',
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    wordWrap: 'off',
-                    lineNumbers: 'on',
-                    renderWhitespace: 'selection',
-                    scrollbar: {
-                      vertical: 'visible',
-                      horizontal: 'visible',
-                      useShadows: false,
-                      verticalScrollbarSize: 10,
-                      horizontalScrollbarSize: 10,
-                    },
-                    padding: { top: 20, bottom: 20 },
-                    automaticLayout: true,
-                    backgroundColor: '#1e1e1e',
-                    rules: [
-                      { token: 'comment', foreground: '6A9955' },
-                      { token: 'keyword', foreground: '569CD6' },
-                      { token: 'string', foreground: 'CE9178' },
-                      { token: 'variable', foreground: '9CDCFE' },
-                    ]
-                  } as any}
-                />
+                {isTreeMode ? (
+                  <div className="h-full overflow-y-auto p-8 custom-scrollbar">
+                    {parsedContent !== null ? (
+                      <YamlTreeEditor
+                        value={parsedContent}
+                        onChange={setParsedContent}
+                        label={selectedConfig || 'Configuration'}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-4">
+                        <Database size={48} className="opacity-20" />
+                        <p className="text-sm italic">Loading configuration tree...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Editor
+                    height="100%"
+                    language={language}
+                    theme="vs-dark"
+                    value={content}
+                    beforeMount={handleEditorWillMount}
+                    onMount={handleEditorDidMount}
+                    onChange={(value) => setContent(value || '')}
+                    options={{
+                      fontSize: 14,
+                      fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'off',
+                      lineNumbers: 'on',
+                      renderWhitespace: 'selection',
+                      scrollbar: {
+                        vertical: 'visible',
+                        horizontal: 'visible',
+                        useShadows: false,
+                        verticalScrollbarSize: 10,
+                        horizontalScrollbarSize: 10,
+                      },
+                      padding: { top: 20, bottom: 20 },
+                      automaticLayout: true,
+                      backgroundColor: '#1e1e1e',
+                      rules: [
+                        { token: 'comment', foreground: '6A9955' },
+                        { token: 'keyword', foreground: '569CD6' },
+                        { token: 'string', foreground: 'CE9178' },
+                        { token: 'variable', foreground: '9CDCFE' },
+                      ]
+                    } as any}
+                  />
+                )}
               </div>
 
               {/* Footer Actions */}

@@ -122,7 +122,9 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
 
   // Initial search on load or when instance/filters change
   useEffect(() => {
-    handleSearch()
+    if (instance) {
+      handleSearch()
+    }
   }, [provider, activeCategory, sortOrder, page, instance])
 
   // Reset page when filters change
@@ -242,6 +244,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
+                data-testid={`category-${cat.id}`}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeCategory === cat.id
                   ? 'bg-white/10 text-white'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
@@ -289,6 +292,8 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
                 return (
                   <motion.div
                     key={`${project.provider}-${project.id}`}
+                    layout
+                    data-testid="mod-card"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`relative bg-surface border transition-all group flex flex-col p-6 rounded-[2rem] ${isSelected ? 'border-primary bg-primary/5' : 'border-white/5 hover:border-white/20'
@@ -367,6 +372,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1 || loading}
+                data-testid="prev-page-btn"
                 className="p-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 rounded-xl transition-all border border-white/5"
               >
                 <ChevronLeft size={24} />
@@ -393,6 +399,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={results.length < PAGE_SIZE || loading}
+                data-testid="next-page-btn"
                 className="p-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 rounded-xl transition-all border border-white/5"
               >
                 <ChevronRight size={24} />

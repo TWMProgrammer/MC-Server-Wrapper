@@ -36,7 +36,7 @@ impl Default for CrashHandlingMode {
 pub struct InstanceSettings {
     pub description: Option<String>,
     pub ram: u32,
-    pub ram_unit: String, // "GB" or "MB"
+    pub ram_unit: String, // "G" or "M"
     pub port: u16,
     pub force_save_all: bool,
     pub autostart: bool,
@@ -53,7 +53,7 @@ impl Default for InstanceSettings {
         Self {
             description: None,
             ram: 2,
-            ram_unit: "GB".to_string(),
+            ram_unit: "G".to_string(),
             port: 25565,
             force_save_all: false,
             autostart: false,

@@ -329,8 +329,8 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
                           value={settings.ram_unit}
                           onChange={(value) => updateSetting('ram_unit', value)}
                           options={[
-                            { value: 'GB', label: 'GB' },
-                            { value: 'MB', label: 'MB' }
+                            { value: 'G', label: 'GB' },
+                            { value: 'M', label: 'MB' }
                           ]}
                           className="w-24"
                           size="sm"
