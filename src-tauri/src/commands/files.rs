@@ -1,4 +1,5 @@
 use mc_server_wrapper_core::instance::InstanceManager;
+use mc_server_wrapper_core::utils::safe_join;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -13,7 +14,7 @@ pub async fn read_text_file(
     let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
     
-    let file_path = instance.path.join(&rel_path);
+    let file_path = safe_join(&instance.path, &rel_path).map_err(|e| e.to_string())?;
     if !file_path.exists() {
         return Ok("".to_string());
     }
@@ -32,7 +33,7 @@ pub async fn save_text_file(
     let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
     
-    let file_path = instance.path.join(&rel_path);
+    let file_path = safe_join(&instance.path, &rel_path).map_err(|e| e.to_string())?;
     
     // Ensure parent directory exists
     if let Some(parent) = file_path.parent() {
@@ -52,7 +53,7 @@ pub async fn open_file_in_editor(
     let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
         .ok_or_else(|| "Instance not found".to_string())?;
     
-    let file_path = instance.path.join(&rel_path);
+    let file_path = safe_join(&instance.path, &rel_path).map_err(|e| e.to_string())?;
     if !file_path.exists() {
         return Err("File does not exist".to_string());
     }

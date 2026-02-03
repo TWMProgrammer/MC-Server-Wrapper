@@ -366,6 +366,11 @@ pub async fn toggle_mod(instance_path: impl AsRef<Path>, filename: String, enabl
 
 /// Uninstalls a mod by removing its file and optionally its configuration folder.
 pub async fn uninstall_mod(instance_path: impl AsRef<Path>, filename: String, delete_config: bool) -> Result<()> {
+    // Path traversal protection
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return Err(anyhow::anyhow!("Invalid filename: {}", filename));
+    }
+
     let mods_dir = instance_path.as_ref().join("mods");
     let mod_file = mods_dir.join(&filename);
 

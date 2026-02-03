@@ -93,3 +93,44 @@ async fn test_restore_backup() {
     let content = std::fs::read_to_string(restored_file_path).unwrap();
     assert_eq!(content.trim(), "restore this");
 }
+
+#[tokio::test]
+async fn test_disaster_recovery_workflow() {
+    let base_dir = tempdir().unwrap();
+    let instance_dir = tempdir().unwrap();
+    let backup_mgr = BackupManager::new(base_dir.path());
+    let instance_id = Uuid::new_v4();
+
+    // 1. Setup: Create a config file
+    let config_path = instance_dir.path().join("server.properties");
+    let original_content = "difficulty=easy\nmax-players=10";
+    std::fs::write(&config_path, original_content).unwrap();
+
+    // 2. User creates a backup
+    let backup_info = backup_mgr.create_backup(
+        instance_id,
+        instance_dir.path(),
+        "disaster_recovery_pre",
+        |_, _| {}
+    ).await.expect("Failed to create backup");
+
+    // 3. User modifies a config file incorrectly (the "disaster")
+    let corrupted_content = "difficulty=HARDCORE_EXTREME\nmax-players=-1";
+    std::fs::write(&config_path, corrupted_content).unwrap();
+    
+    // Verify it's corrupted
+    let current_content = std::fs::read_to_string(&config_path).unwrap();
+    assert_eq!(current_content, corrupted_content);
+
+    // 4. User restores the backup
+    backup_mgr.restore_backup(instance_id, &backup_info.name, instance_dir.path())
+        .await
+        .expect("Failed to restore backup");
+
+    // 5. Verify the file is reverted
+    let restored_content = std::fs::read_to_string(&config_path).expect("Config file should exist after restore");
+    assert_eq!(restored_content.trim(), original_content.trim());
+    
+    // Verify only the original file exists (the restore should have wiped the corrupted one)
+    assert!(config_path.exists());
+}
