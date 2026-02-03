@@ -77,7 +77,7 @@ A powerful, modern, and cross-platform desktop application designed to simplify 
 
 ## � Testing
 
-For detailed information on running tests, see the [Testing Guide](file:///c:/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/documents/TESTING_GUIDE.md).
+For detailed information on running tests, see the [Testing Guide](documents/reference/TESTING_GUIDE.md).
 
 ## �🤝 Contributing
 
