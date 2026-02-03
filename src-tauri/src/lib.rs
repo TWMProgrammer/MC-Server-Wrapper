@@ -70,23 +70,39 @@ pub fn run() {
 
       let _tray = tray_builder.build(app)?;
 
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
-
-      app.handle().plugin(tauri_plugin_dialog::init())?;
-      app.handle().plugin(tauri_plugin_opener::init())?;
-
       // Initialize Directories next to the executable
       let exe_path = std::env::current_exe()
           .context("failed to get exe path")?
           .parent()
           .context("failed to get exe directory")?
           .to_path_buf();
+
+      // Logging
+      let log_level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+      } else {
+        log::LevelFilter::Info
+      };
+
+      app.handle().plugin(
+        tauri_plugin_log::Builder::default()
+          .level(log_level)
+          .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+          .targets([
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+              file_name: Some("app".to_string()),
+            }),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+              path: exe_path.join("logs"),
+              file_name: Some("app".to_string()),
+            }),
+          ])
+          .build(),
+      )?;
+
+      app.handle().plugin(tauri_plugin_dialog::init())?;
+      app.handle().plugin(tauri_plugin_opener::init())?;
 
       // Check for folder clutter
       let has_clutter = tauri::async_runtime::block_on(async {
