@@ -180,3 +180,79 @@ done
     }
     assert!(stopped, "Server did not reach Stopped state");
 }
+
+#[tokio::test]
+async fn test_manual_stop_command() {
+    let dir = tempdir().unwrap();
+    let working_dir = dir.path().to_path_buf();
+    
+    #[cfg(target_os = "windows")]
+    let (script_name, script_content) = ("manual_stop.bat", r#"@echo off
+echo [Server thread/INFO]: Done (1.23s)! For help, type "help"
+set /p cmd=
+if "%cmd%"=="stop" (
+    exit /b 0
+)
+exit /b 1
+"#);
+    
+    #[cfg(not(target_os = "windows"))]
+    let (script_name, script_content) = ("manual_stop.sh", r#"#!/bin/sh
+echo '[Server thread/INFO]: Done (1.23s)! For help, type "help"'
+read cmd
+if [ "$cmd" = "stop" ]; then
+    exit 0
+fi
+exit 1
+"#);
+
+    let script_path = working_dir.join(script_name);
+    fs::write(&script_path, script_content).unwrap();
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_path, perms).unwrap();
+    }
+
+    let config = ServerConfig {
+        name: "Manual Stop Server".to_string(),
+        run_script: Some(script_path.to_string_lossy().to_string()),
+        working_dir: working_dir.clone(),
+        ..Default::default()
+    };
+
+    let handle = ServerHandle::new(config);
+    handle.start().await.expect("Failed to start server");
+
+    // Wait for Running
+    let mut running = false;
+    for _ in 0..50 {
+        if handle.get_status().await == ServerStatus::Running {
+            running = true;
+            break;
+        }
+        sleep(Duration::from_millis(100)).await;
+    }
+    assert!(running, "Server did not reach Running state");
+
+    // Send "stop" command directly
+    handle.send_command("stop").await.expect("Failed to send command");
+
+    // Wait for Stopped (should NOT be Crashed even though we didn't call handle.stop())
+    let mut stopped = false;
+    for _ in 0..50 {
+        let status = handle.get_status().await;
+        if status == ServerStatus::Stopped {
+            stopped = true;
+            break;
+        }
+        if status == ServerStatus::Crashed {
+            panic!("Server detected as Crashed instead of Stopped");
+        }
+        sleep(Duration::from_millis(100)).await;
+    }
+    assert!(stopped, "Server did not reach Stopped state after manual command");
+}

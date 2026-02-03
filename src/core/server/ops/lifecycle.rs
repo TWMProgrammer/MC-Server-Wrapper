@@ -93,7 +93,9 @@ impl ServerHandle {
             monitor_handle.abort();
 
             let mut status = status_arc.lock().await;
-            if *status == ServerStatus::Stopping {
+            let exited_cleanly = exit_status.as_ref().map(|s| s.success()).unwrap_or(false);
+
+            if *status == ServerStatus::Stopping || *status == ServerStatus::Stopped || exited_cleanly {
                 info!("Server stopped gracefully.");
                 *status = ServerStatus::Stopped;
                 *stdin_arc.lock().await = None;
