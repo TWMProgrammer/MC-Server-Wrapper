@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   Settings,
@@ -8,20 +8,16 @@ import {
   RefreshCw,
   Save,
   Upload,
-  Trash2,
-  HardDrive,
-  Cpu,
-  Network,
-  Play,
-  Check,
   AlertCircle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from './utils'
 import { useToast } from './hooks/useToast'
 import { useAppSettings } from './hooks/useAppSettings'
-import { Instance, InstanceSettings, LaunchMethod, CrashHandlingMode } from './types'
-import { Select } from './components/Select'
+import { Instance, InstanceSettings, CrashHandlingMode } from './types'
+import { GeneralSettings } from './settings/GeneralSettings'
+import { JVMOptions } from './settings/JVMOptions'
+import { IconSettings } from './settings/IconSettings'
 
 interface InstanceSettingsTabProps {
   instance: Instance;
@@ -88,26 +84,6 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
       setShowPreview(true)
     } catch (err) {
       showToast(`Error generating preview: ${err}`, 'error')
-    }
-  }
-
-  const handleIconUpload = async () => {
-    try {
-      const selected = await open({
-        multiple: false,
-        filters: [{
-          name: 'Images',
-          extensions: ['png', 'jpg', 'jpeg', 'webp']
-        }]
-      })
-
-      if (selected && typeof selected === 'string') {
-        setTempIconPath(selected)
-        updateSetting('icon_path', selected)
-        showToast('Icon updated locally. Click Save to persist.', 'info')
-      }
-    } catch (err) {
-      showToast(`Error selecting icon: ${err}`, 'error')
     }
   }
 
@@ -221,185 +197,18 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
               className="space-y-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Server Identity */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <HardDrive size={20} className="text-primary" />
-                    Server Identity
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500 dark:text-white/40">Server Name</label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        placeholder="My Awesome Server"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500 dark:text-white/40">Description</label>
-                      <textarea
-                        value={settings.description || ''}
-                        onChange={(e) => updateSetting('description', e.target.value)}
-                        className="w-full bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all min-h-[100px] resize-none"
-                        placeholder="A brief description of your server..."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Server Icon */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Upload size={20} className="text-primary" />
-                    Server Icon
-                  </h3>
-                  <div className="flex items-start gap-6">
-                    <div className="w-32 h-32 bg-black/5 dark:bg-white/[0.05] border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl flex items-center justify-center overflow-hidden group relative">
-                      {tempIconPath ? (
-                        <img
-                          key={tempIconPath}
-                          src={convertFileSrc(tempIconPath)}
-                          alt="Server Icon"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            console.error("Failed to load icon:", tempIconPath);
-                            // Fallback if image fails to load
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <HardDrive size={32} className="text-gray-400 dark:text-white/20" />
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <button
-                          onClick={handleIconUpload}
-                          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                        >
-                          <Upload size={18} className="text-white" />
-                        </button>
-                        {tempIconPath && (
-                          <button
-                            onClick={() => {
-                              setTempIconPath(undefined)
-                              updateSetting('icon_path', undefined)
-                            }}
-                            className="p-2 bg-accent-rose/20 hover:bg-accent-rose/40 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={18} className="text-accent-rose" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <p className="text-sm text-gray-500 dark:text-white/40">
-                        Upload a custom icon for your server. Recommended size is 64x64 or 128x128.
-                      </p>
-                      <button
-                        onClick={handleIconUpload}
-                        className="text-sm font-bold text-primary hover:underline"
-                      >
-                        Upload Image
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-black/10 dark:border-white/10">
-                {/* Resources */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Cpu size={20} className="text-primary" />
-                    Resources
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500 dark:text-white/40">Allocated RAM</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          value={settings.ram}
-                          onChange={(e) => updateSetting('ram', parseInt(e.target.value) || 0)}
-                          className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                        />
-                        <Select
-                          value={settings.ram_unit}
-                          onChange={(value) => updateSetting('ram_unit', value)}
-                          options={[
-                            { value: 'G', label: 'GB' },
-                            { value: 'M', label: 'MB' }
-                          ]}
-                          className="w-24"
-                          size="sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-500 dark:text-white/40">Server Port</label>
-                      <input
-                        type="number"
-                        value={settings.port}
-                        onChange={(e) => updateSetting('port', parseInt(e.target.value) || 25565)}
-                        className="w-full bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Automation */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Network size={20} className="text-primary" />
-                    Automation & Safety
-                  </h3>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={settings.force_save_all}
-                        onChange={(e) => updateSetting('force_save_all', e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
-                      />
-                      <div>
-                        <p className="font-medium">Force 'save-all'</p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Run 'save-all' command before stopping the server.</p>
-                      </div>
-                    </label>
-                    <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={settings.autostart}
-                        onChange={(e) => updateSetting('autostart', e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
-                      />
-                      <div>
-                        <p className="font-medium">Autostart</p>
-                        <p className="text-xs text-gray-500 dark:text-white/40">Automatically start this server when the application launches.</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-4 border-t border-black/10 dark:border-white/10">
-                <label className="text-sm font-medium text-gray-500 dark:text-white/40">Instance Folder Path</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={instance.path}
-                    readOnly
-                    className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 text-gray-400 cursor-not-allowed"
-                  />
-                  <button
-                    onClick={() => invoke('open_instance_folder', { instanceId: instance.id })}
-                    className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
-                  >
-                    Open Folder
-                  </button>
-                </div>
+                <GeneralSettings
+                  instance={instance}
+                  name={name}
+                  setName={setName}
+                  settings={settings}
+                  updateSetting={updateSetting}
+                />
+                <IconSettings
+                  tempIconPath={tempIconPath}
+                  setTempIconPath={setTempIconPath}
+                  updateSetting={updateSetting}
+                />
               </div>
             </motion.div>
           )}
@@ -412,196 +221,19 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
               exit={{ opacity: 0, y: -10 }}
               className="space-y-8"
             >
-              <div className="grid grid-cols-1 gap-8">
-                {/* Java Path Override */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Cpu size={20} className="text-primary" />
-                    Java Configuration
-                  </h3>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-500 dark:text-white/40">Java Version</label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={(() => {
-                          if (!settings.java_path_override) return 'default';
-                          const isManaged = appSettings.managed_java_versions.some(v => v.id === settings.java_path_override);
-                          return isManaged ? settings.java_path_override : 'custom';
-                        })()}
-                        onChange={(value) => {
-                          if (value === 'default') {
-                            updateSetting('java_path_override', undefined);
-                          } else if (value === 'custom') {
-                            handleBrowseJava();
-                          } else {
-                            updateSetting('java_path_override', value);
-                          }
-                        }}
-                        options={[
-                          { value: 'default', label: 'System Default (java)' },
-                          ...appSettings.managed_java_versions.map(v => ({
-                            value: v.id,
-                            label: `${v.name} (Managed)`
-                          })),
-                          {
-                            value: 'custom',
-                            label: settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override)
-                              ? `Custom: ${settings.java_path_override.split(/[\\/]/).pop()}`
-                              : 'Custom...'
-                          }
-                        ]}
-                        className="flex-1"
-                      />
-                      {settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override) && (
-                        <button
-                          onClick={handleBrowseJava}
-                          className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
-                          title="Change Custom Java Path"
-                        >
-                          Change
-                        </button>
-                      )}
-                    </div>
-                    {settings.java_path_override && !appSettings.managed_java_versions.some(v => v.id === settings.java_path_override) && (
-                      <p className="text-[10px] font-mono text-gray-400 truncate max-w-full" title={settings.java_path_override}>
-                        Path: {settings.java_path_override}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-white/40">Select a managed Java version or provide a custom path to a Java executable.</p>
-                  </div>
-                </div>
-
-                {/* Launch Method */}
-                <div className="space-y-4 pt-4 border-t border-black/10 dark:border-white/10">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Play size={20} className="text-primary" />
-                    Launch Method
-                  </h3>
-
-                  <div className="flex gap-4 p-1 bg-black/5 dark:bg-white/5 rounded-2xl w-fit">
-                    <button
-                      onClick={() => updateSetting('launch_method', 'StartupLine')}
-                      className={cn(
-                        "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                        settings.launch_method === 'StartupLine'
-                          ? "bg-white dark:bg-white/10 shadow-sm text-primary"
-                          : "text-gray-500 hover:text-gray-700 dark:hover:text-white/80"
-                      )}
-                    >
-                      Startup Line
-                    </button>
-                    <button
-                      onClick={() => updateSetting('launch_method', 'BatFile')}
-                      className={cn(
-                        "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                        settings.launch_method === 'BatFile'
-                          ? "bg-white dark:bg-white/10 shadow-sm text-primary"
-                          : "text-gray-500 hover:text-gray-700 dark:hover:text-white/80"
-                      )}
-                    >
-                      Batch File
-                    </button>
-                  </div>
-
-                  <AnimatePresence mode="wait">
-                    {settings.launch_method === 'StartupLine' ? (
-                      <motion.div
-                        key="startup-line"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-2 overflow-hidden"
-                      >
-                        <label className="text-sm font-medium text-gray-500 dark:text-white/40">Startup Command</label>
-                        <textarea
-                          value={settings.startup_line}
-                          onChange={(e) => updateSetting('startup_line', e.target.value)}
-                          className="w-full bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-mono text-sm min-h-[80px]"
-                          placeholder="java -Xmx{ram}{unit} -jar server.jar nogui"
-                        />
-                        <div className="flex justify-between items-center">
-                          <p className="text-xs text-gray-500 dark:text-white/40">
-                            Use <code>{'{ram}'}</code> and <code>{'{unit}'}</code> as placeholders for RAM settings.
-                          </p>
-                          <button
-                            onClick={handleViewPreview}
-                            className="text-xs font-bold text-primary hover:underline"
-                          >
-                            View Preview
-                          </button>
-                        </div>
-
-                        <AnimatePresence>
-                          {showPreview && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="mt-2 p-3 bg-primary/10 border border-primary/20 rounded-xl relative group"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Command Preview</span>
-                                <button
-                                  onClick={() => setShowPreview(false)}
-                                  className="text-primary hover:text-primary/80"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                              <p className="text-xs font-mono text-gray-700 dark:text-white/80 break-all leading-relaxed">
-                                {startupPreview}
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="bat-file"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-4 overflow-hidden"
-                      >
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-gray-500 dark:text-white/40">Select Script File</label>
-                          <div className="flex gap-2 items-center">
-                            <Select
-                              value={settings.bat_file || ''}
-                              onChange={(value) => updateSetting('bat_file', value || undefined)}
-                              options={batFiles.map(file => ({ value: file, label: file }))}
-                              placeholder="Select a file..."
-                              className="flex-1"
-                            />
-                            <button
-                              onClick={loadBatFiles}
-                              className="p-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors shrink-0"
-                              title="Reload files"
-                            >
-                              <RefreshCw size={18} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => showToast('Edit File functionality coming soon', 'info')}
-                            className="flex-1 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
-                          >
-                            Edit File
-                          </button>
-                          <button
-                            onClick={() => showToast('Validate Script functionality coming soon', 'info')}
-                            className="flex-1 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl transition-colors text-sm font-medium"
-                          >
-                            Validate Script
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
+              <JVMOptions
+                settings={settings}
+                appSettings={appSettings}
+                updateSetting={updateSetting}
+                handleBrowseJava={handleBrowseJava}
+                handleViewPreview={handleViewPreview}
+                showPreview={showPreview}
+                setShowPreview={setShowPreview}
+                startupPreview={startupPreview}
+                batFiles={batFiles}
+                loadBatFiles={loadBatFiles}
+                showToast={showToast}
+              />
             </motion.div>
           )}
 
