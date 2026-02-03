@@ -10,3 +10,4 @@ mod java_tests;
 mod auto_restart_tests;
 mod modrinth_tests;
 mod spiget_tests;
+mod workflow_1_integration;
