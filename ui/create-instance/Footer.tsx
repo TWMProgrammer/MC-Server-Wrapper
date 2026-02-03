@@ -17,6 +17,7 @@ interface FooterProps {
   serverPropertiesExists: boolean;
   startAfterCreation: boolean;
   setStartAfterCreation: (val: boolean) => void;
+  nameExists?: boolean;
 }
 
 export function Footer({
@@ -31,12 +32,13 @@ export function Footer({
   selectedJar,
   serverPropertiesExists,
   startAfterCreation,
-  setStartAfterCreation
+  setStartAfterCreation,
+  nameExists = false
 }: FooterProps) {
   const isImport = activeTab === 'import';
   const isDisabled = isImport
-    ? !name || !importSourcePath || !selectedJar || creating
-    : !name || !selectedVersion || creating || loadingModLoaders;
+    ? !name || !importSourcePath || !selectedJar || creating || nameExists
+    : !name || !selectedVersion || creating || loadingModLoaders || nameExists;
 
   const showWarning = isImport && !serverPropertiesExists && !isDisabled;
 

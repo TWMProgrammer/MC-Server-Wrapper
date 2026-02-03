@@ -1,4 +1,4 @@
-import { X, Plus, Box } from 'lucide-react'
+import { X, Plus, Box, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sidebar } from './create-instance/Sidebar'
 import { SoftwareSelection } from './create-instance/SoftwareSelection'
@@ -28,6 +28,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     selectedLoaderVersion,
     setSelectedLoaderVersion,
     creating,
+    error,
+    setError,
     handleCreate,
     filteredVersions,
     importSourcePath,
@@ -44,7 +46,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     setRootWithinZip,
     importProgress,
     startAfterCreation,
-    setStartAfterCreation
+    setStartAfterCreation,
+    nameExists
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
@@ -134,22 +137,59 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             )}
           </AnimatePresence>
 
+          {/* Error Message */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-20 left-1/2 -translate-x-1/2 z-[80] bg-accent-rose/10 border border-accent-rose/20 text-accent-rose px-6 py-3 rounded-2xl flex items-center gap-3 shadow-glow-rose backdrop-blur-md"
+              >
+                <AlertTriangle size={18} />
+                <span className="text-xs font-bold">{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="ml-2 hover:opacity-70 transition-opacity"
+                >
+                  <X size={14} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Header */}
           <div className="p-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between gap-6 bg-black/[0.01] dark:bg-white/[0.02]">
             <div className="flex items-center gap-4 flex-1">
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center shadow-glow-primary border border-primary/20">
                 <Plus className="text-primary" size={24} />
               </div>
-              <div className="flex-1 max-w-md">
+              <div className="flex-1 max-w-md relative">
                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-primary mb-1 ml-1">New Instance</div>
                 <input
                   type="text"
                   placeholder="Enter instance name..."
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full bg-black/5 dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all font-medium"
+                  className={`w-full bg-black/5 dark:bg-white/[0.03] border rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-medium ${nameExists
+                    ? 'border-accent-rose focus:ring-accent-rose/50 focus:border-accent-rose/50'
+                    : 'border-black/10 dark:border-white/10 focus:ring-primary/50 focus:border-primary/50'
+                    }`}
                   autoFocus
                 />
+                <AnimatePresence>
+                  {nameExists && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute -bottom-5 left-1 text-[10px] font-bold text-accent-rose flex items-center gap-1"
+                    >
+                      <AlertTriangle size={10} />
+                      An instance with this name already exists
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
             <motion.button
@@ -253,6 +293,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             serverPropertiesExists={serverPropertiesExists}
             startAfterCreation={startAfterCreation}
             setStartAfterCreation={setStartAfterCreation}
+            nameExists={nameExists}
           />
         </motion.div>
       </div>

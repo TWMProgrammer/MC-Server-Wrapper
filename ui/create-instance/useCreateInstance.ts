@@ -18,6 +18,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [selectedLoader, setSelectedLoader] = useState<string>('none');
   const [selectedLoaderVersion, setSelectedLoaderVersion] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [nameExists, setNameExists] = useState(false);
   const [startAfterCreation, setStartAfterCreation] = useState(true);
 
   const [importSourcePath, setImportSourcePath] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setServerPropertiesExists(true);
     setRootWithinZip(null);
     setImportProgress(null);
+    setError(null);
   };
 
   useEffect(() => {
@@ -92,6 +95,24 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       setSelectedLoader('none');
     }
   }, [selectedServerType]);
+
+  useEffect(() => {
+    if (!name) {
+      setNameExists(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const exists = await invoke<boolean>('check_instance_name_exists', { name });
+        setNameExists(exists);
+      } catch (e) {
+        console.error('Failed to check if instance name exists', e);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [name]);
 
   async function loadVersions() {
     try {
@@ -183,13 +204,18 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   }, [filteredVersions, selectedVersion]);
 
   async function handleCreate() {
+    console.log('handleCreate called', { name, selectedVersion });
     if (activeTab === 'import') {
       return handleImport();
     }
-    if (!name || !selectedVersion) return;
+    if (!name || !selectedVersion || nameExists) {
+      console.log('handleCreate validation failed', { name, selectedVersion, nameExists });
+      return;
+    }
 
     try {
       setCreating(true);
+      setError(null);
       
       let version = selectedVersion;
       let modLoader = selectedLoader === 'none' ? null : selectedLoader;
@@ -220,16 +246,23 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       onClose();
     } catch (e) {
       console.error('Failed to create instance', e);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
     }
   }
 
   async function handleImport() {
-    if (!name || !importSourcePath || !selectedJar) return;
+    console.log('handleImport called', { name, importSourcePath, selectedJar });
+    if (!name || !importSourcePath || !selectedJar || nameExists) {
+      console.log('handleImport validation failed', { name, importSourcePath, selectedJar, nameExists });
+      return;
+    }
 
     try {
       setCreating(true);
+      setError(null);
+
       const instance = await invoke<Instance>('import_instance', {
         name,
         sourcePath: importSourcePath,
@@ -242,6 +275,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       onClose();
     } catch (e) {
       console.error('Failed to import instance', e);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setCreating(false);
     }
@@ -268,6 +302,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     startAfterCreation,
     setStartAfterCreation,
     creating,
+    error,
+    setError,
     handleCreate,
     filteredVersions,
     resetForm,
@@ -283,6 +319,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setServerPropertiesExists,
     rootWithinZip,
     setRootWithinZip,
-    importProgress
+    importProgress,
+    nameExists
   };
 }

@@ -308,6 +308,11 @@ impl InstanceManager {
         Ok(instances.into_iter().find(|i| i.id == id))
     }
 
+    pub async fn get_instance_by_name(&self, name: &str) -> Result<Option<InstanceMetadata>> {
+        let instances = self.list_instances().await?;
+        Ok(instances.into_iter().find(|i| i.name == name))
+    }
+
     pub async fn delete_instance(&self, id: Uuid) -> Result<()> {
         let mut instances = self.list_instances().await?;
         if let Some(pos) = instances.iter().position(|i| i.id == id) {
@@ -317,6 +322,19 @@ impl InstanceManager {
             }
             self.save_registry(&instances).await?;
             info!("Deleted instance: {} (ID: {})", instance.name, id);
+        }
+        Ok(())
+    }
+
+    pub async fn delete_instance_by_name(&self, name: &str) -> Result<()> {
+        let mut instances = self.list_instances().await?;
+        if let Some(pos) = instances.iter().position(|i| i.name == name) {
+            let instance = instances.remove(pos);
+            if instance.path.exists() {
+                fs::remove_dir_all(&instance.path).await?;
+            }
+            self.save_registry(&instances).await?;
+            info!("Deleted instance by name: {} (ID: {})", instance.name, instance.id);
         }
         Ok(())
     }

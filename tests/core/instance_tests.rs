@@ -77,3 +77,36 @@ async fn test_update_settings() -> Result<()> {
     assert_eq!(updated.settings.description, Some("Updated description".to_string()));
     Ok(())
 }
+
+#[tokio::test]
+async fn test_get_instance_by_name() -> Result<()> {
+    let dir = tempdir()?;
+    let manager = InstanceManager::new(dir.path()).await?;
+    
+    manager.create_instance("Test Server", "1.20.1").await?;
+    
+    let found = manager.get_instance_by_name("Test Server").await?;
+    assert!(found.is_some());
+    assert_eq!(found.unwrap().name, "Test Server");
+    
+    let not_found = manager.get_instance_by_name("Non Existent").await?;
+    assert!(not_found.is_none());
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_delete_instance_by_name() -> Result<()> {
+    let dir = tempdir()?;
+    let manager = InstanceManager::new(dir.path()).await?;
+    
+    let metadata = manager.create_instance("To Delete", "1.20.1").await?;
+    assert!(metadata.path.exists());
+    
+    manager.delete_instance_by_name("To Delete").await?;
+    assert!(!metadata.path.exists());
+    assert_eq!(manager.list_instances().await?.len(), 0);
+    
+    // Should not fail if name doesn't exist
+    manager.delete_instance_by_name("Non Existent").await?;
+    Ok(())
+}

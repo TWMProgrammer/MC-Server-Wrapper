@@ -29,6 +29,15 @@ pub async fn create_instance(
     instance_manager.create_instance(&name, &version).await.map_err(|e: anyhow::Error| e.to_string())
 }
 
+#[tauri::command]
+pub async fn check_instance_name_exists(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    name: String,
+) -> Result<bool, String> {
+    let instance = instance_manager.get_instance_by_name(&name).await.map_err(|e| e.to_string())?;
+    Ok(instance.is_some())
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct ImportProgressPayload {
     pub current: u64,
@@ -414,6 +423,14 @@ pub async fn delete_instance(
     drop(subscribed);
 
     instance_manager.delete_instance(id).await.map_err(|e: anyhow::Error| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_instance_by_name(
+    instance_manager: State<'_, Arc<InstanceManager>>,
+    name: String,
+) -> Result<(), String> {
+    instance_manager.delete_instance_by_name(&name).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
