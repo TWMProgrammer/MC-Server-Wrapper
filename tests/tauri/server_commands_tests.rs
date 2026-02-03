@@ -2,6 +2,7 @@ use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::server::{ServerStatus, ResourceUsage};
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::app_config::GlobalConfigManager;
+use mc_server_wrapper_core::database::Database;
 use std::sync::Arc;
 use tempfile::tempdir;
 
@@ -11,7 +12,9 @@ async fn test_server_commands_logic() {
     let dir = tempdir().unwrap();
     let config_path = dir.path().join("app_settings.json");
     let config_manager = Arc::new(GlobalConfigManager::new(config_path));
-    let instance_manager = Arc::new(InstanceManager::new(dir.path()).await.unwrap());
+    let db_path = dir.path().join("test.db");
+    let db = Arc::new(Database::new(db_path).await.expect("Failed to create database"));
+    let instance_manager = Arc::new(InstanceManager::new(dir.path(), db).await.unwrap());
     let server_manager = Arc::new(ServerManager::new(instance_manager.clone(), config_manager.clone()));
     
     // Create a dummy instance

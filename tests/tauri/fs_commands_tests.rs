@@ -1,4 +1,5 @@
 use mc_server_wrapper_core::instance::InstanceManager;
+use mc_server_wrapper_core::database::Database;
 use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::fs;
@@ -7,11 +8,13 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_fs_commands_logic() {
     let dir = tempdir().unwrap();
-    let instance_manager = Arc::new(InstanceManager::new(dir.path()).await.unwrap());
+    let db_path = dir.path().join("test.db");
+    let db = Arc::new(Database::new(db_path).await.expect("Failed to create database"));
+    let instance_manager = Arc::new(InstanceManager::new(dir.path(), db).await.unwrap());
     
     let metadata = instance_manager.create_instance("FS Test", "1.20.1").await.unwrap();
     let instance_id = metadata.id;
-    let instance_path = dir.path().join("instances").join(instance_id.to_string());
+    let instance_path = dir.path().join(instance_id.to_string());
     
     // Ensure instance path exists (though create_instance should have done it)
     fs::create_dir_all(&instance_path).await.unwrap();

@@ -1,10 +1,17 @@
 use mc_server_wrapper_core::instance::InstanceManager;
+use mc_server_wrapper_core::database::Database;
 use mc_server_wrapper_core::mods;
 use mc_server_wrapper_core::plugins;
 use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::fs;
 use std::io::Write;
+
+async fn setup_instance_manager(dir: &std::path::Path) -> Arc<InstanceManager> {
+    let db_path = dir.join("test.db");
+    let db = Arc::new(Database::new(db_path).await.expect("Failed to create database"));
+    Arc::new(InstanceManager::new(dir, db).await.unwrap())
+}
 
 async fn create_empty_jar(path: &std::path::Path) {
     let file = std::fs::File::create(path).unwrap();
@@ -17,11 +24,11 @@ async fn create_empty_jar(path: &std::path::Path) {
 #[tokio::test]
 async fn test_mod_commands_logic() {
     let dir = tempdir().unwrap();
-    let instance_manager = Arc::new(InstanceManager::new(dir.path()).await.unwrap());
+    let instance_manager = setup_instance_manager(dir.path()).await;
     
     let metadata = instance_manager.create_instance("Mod Test", "1.20.1").await.unwrap();
     let instance_id = metadata.id;
-    let instance_path = dir.path().join("instances").join(instance_id.to_string());
+    let instance_path = dir.path().join(instance_id.to_string());
     
     // Create mods directory
     let mods_dir = instance_path.join("mods");
@@ -54,11 +61,11 @@ async fn test_mod_commands_logic() {
 #[tokio::test]
 async fn test_plugin_commands_logic() {
     let dir = tempdir().unwrap();
-    let instance_manager = Arc::new(InstanceManager::new(dir.path()).await.unwrap());
+    let instance_manager = setup_instance_manager(dir.path()).await;
     
     let metadata = instance_manager.create_instance("Plugin Test", "1.20.1").await.unwrap();
     let instance_id = metadata.id;
-    let instance_path = dir.path().join("instances").join(instance_id.to_string());
+    let instance_path = dir.path().join(instance_id.to_string());
     
     // Create plugins directory
     let plugins_dir = instance_path.join("plugins");

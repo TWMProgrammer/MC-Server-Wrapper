@@ -1,10 +1,16 @@
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::app_config::GlobalConfigManager;
+use mc_server_wrapper_core::database::Database;
 use tempfile::tempdir;
 use anyhow::Result;
 use std::sync::Arc;
 use uuid::Uuid;
+
+async fn setup_instance_manager(dir: &std::path::Path) -> Result<InstanceManager> {
+    let db = Arc::new(Database::new(dir.join("test.db")).await?);
+    InstanceManager::new(dir, db).await
+}
 
 #[tokio::test]
 async fn test_get_or_create_server() -> Result<()> {
@@ -15,7 +21,7 @@ async fn test_get_or_create_server() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(
@@ -46,7 +52,7 @@ async fn test_prepare_server_fabric_no_vanilla_jar() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(
@@ -84,7 +90,7 @@ async fn test_prepare_server_vanilla_missing() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(
@@ -112,7 +118,7 @@ async fn test_prepare_server_with_run_script() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(
@@ -143,7 +149,7 @@ async fn test_prepare_server_paper_mock() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(
@@ -177,7 +183,7 @@ async fn test_prepare_server_invalid_instance() -> Result<()> {
     std::fs::create_dir_all(&instances_dir)?;
     std::fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(

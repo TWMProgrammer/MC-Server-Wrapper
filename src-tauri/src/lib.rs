@@ -42,12 +42,17 @@ pub fn run() {
       // Initialize GlobalConfigManager
       let config_manager = Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
       
+      // Initialize Database
+      let db = Arc::new(tauri::async_runtime::block_on(async {
+          mc_server_wrapper_core::database::Database::new(exe_path.join("resources").join("app.db")).await
+      }).context("failed to initialize database")?);
+
       // Initialize JavaManager
       let java_manager = Arc::new(JavaManager::new().context("failed to initialize java manager")?);
 
       // Initialize InstanceManager using the 'server' directory
       let instance_manager = Arc::new(tauri::async_runtime::block_on(async {
-          InstanceManager::new(app_dirs.server).await
+          InstanceManager::new(app_dirs.server, Arc::clone(&db)).await
       }).context("failed to initialize instance manager")?);
 
       let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager), Arc::clone(&config_manager)));

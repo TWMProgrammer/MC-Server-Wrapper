@@ -1,12 +1,18 @@
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::app_config::GlobalConfigManager;
+use mc_server_wrapper_core::database::Database;
 use mc_server_wrapper_core::server::{ServerStatus};
 use tempfile::tempdir;
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration, timeout};
 use std::fs;
+
+async fn setup_instance_manager(dir: &std::path::Path) -> Result<InstanceManager> {
+    let db = Arc::new(Database::new(dir.join("test.db")).await?);
+    InstanceManager::new(dir, db).await
+}
 
 #[tokio::test]
 async fn test_workflow_1_fresh_installation() -> Result<()> {
@@ -17,7 +23,7 @@ async fn test_workflow_1_fresh_installation() -> Result<()> {
     fs::create_dir_all(&instances_dir)?;
     fs::create_dir_all(&config_dir)?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
     
     let manager = ServerManager::new(

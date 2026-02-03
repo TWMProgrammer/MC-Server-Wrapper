@@ -1,5 +1,6 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods::{self, modrinth::ModrinthClient, types::SearchOptions};
+use mc_server_wrapper_core::database::Database;
 use tempfile::tempdir;
 use anyhow::Result;
 use tokio::fs;
@@ -7,6 +8,12 @@ use wiremock::{MockServer, Mock, ResponseTemplate};
 use wiremock::matchers::{method, path, query_param};
 use serde_json::json;
 use std::io::Write;
+use std::sync::Arc;
+
+async fn setup_instance_manager(dir: &std::path::Path) -> Result<InstanceManager> {
+    let db = Arc::new(Database::new(dir.join("test.db")).await?);
+    InstanceManager::new(dir, db).await
+}
 
 async fn create_dummy_jar(path: &std::path::Path) {
     let file = std::fs::File::create(path).unwrap();
@@ -30,7 +37,7 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
     let instances_dir = dir.path().join("instances");
     fs::create_dir_all(&instances_dir).await?;
 
-    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let instance_manager = setup_instance_manager(&instances_dir).await?;
     let instance = instance_manager.create_instance("Modded Server", "1.20.1").await?;
     let instance_path = instance.path.clone();
 

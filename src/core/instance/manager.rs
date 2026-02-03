@@ -2,26 +2,110 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 use anyhow::{Result, Context};
 use tokio::fs;
-use tracing::info;
+use tracing::{info, warn};
 use chrono::Utc;
+use std::sync::Arc;
+use sqlx::{sqlite::SqliteRow, Row};
 
 use super::types::InstanceMetadata;
 use super::archive::{extract_zip, extract_7z, copy_dir_all};
 use super::types::InstanceSettings;
+use crate::database::Database;
 
 pub struct InstanceManager {
     pub(crate) base_dir: PathBuf,
-    pub(crate) registry_path: PathBuf,
+    pub(crate) db: Arc<Database>,
 }
 
 impl InstanceManager {
-    pub async fn new(base_dir: impl AsRef<Path>) -> Result<Self> {
+    pub async fn new(base_dir: impl AsRef<Path>, db: Arc<Database>) -> Result<Self> {
         let base_dir = base_dir.as_ref().to_path_buf();
         if !base_dir.exists() {
             fs::create_dir_all(&base_dir).await?;
         }
-        let registry_path = base_dir.join("instances.json");
-        Ok(Self { base_dir, registry_path })
+        let manager = Self { base_dir, db };
+        if let Err(e) = manager.migrate_from_json().await {
+            warn!("Failed to migrate instances from JSON: {}", e);
+        }
+        Ok(manager)
+    }
+
+    async fn migrate_from_json(&self) -> Result<()> {
+        let json_path = self.base_dir.join("instances.json");
+        if !json_path.exists() {
+            return Ok(());
+        }
+
+        info!("Migrating instances from instances.json to SQLite...");
+        let content = fs::read_to_string(&json_path).await?;
+        let instances: Vec<InstanceMetadata> = serde_json::from_str(&content)
+            .context("Failed to parse instances.json during migration")?;
+
+        for instance in instances {
+            self.save_instance_to_db(&instance).await?;
+        }
+
+        // Rename the old file instead of deleting it, for safety
+        let backup_path = self.base_dir.join("instances.json.bak");
+        fs::rename(&json_path, &backup_path).await?;
+        info!("Migration complete. Old registry backed up to {:?}", backup_path);
+
+        Ok(())
+    }
+
+    async fn save_instance_to_db(&self, instance: &InstanceMetadata) -> Result<()> {
+        let settings_json = serde_json::to_string(&instance.settings)?;
+        let schedules_json = serde_json::to_string(&instance.schedules)?;
+
+        sqlx::query(
+            "INSERT OR REPLACE INTO instances (id, name, version, mod_loader, loader_version, created_at, last_run, path, settings, schedules)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(instance.id.to_string())
+        .bind(&instance.name)
+        .bind(&instance.version)
+        .bind(&instance.mod_loader)
+        .bind(&instance.loader_version)
+        .bind(instance.created_at.to_rfc3339())
+        .bind(instance.last_run.map(|dt| dt.to_rfc3339()))
+        .bind(instance.path.to_string_lossy().to_string())
+        .bind(settings_json)
+        .bind(schedules_json)
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
+    }
+
+    fn row_to_metadata(&self, row: SqliteRow) -> Result<InstanceMetadata> {
+        let id_str: String = row.try_get("id")?;
+        let id = Uuid::parse_str(&id_str)?;
+        let name: String = row.try_get("name")?;
+        let version: String = row.try_get("version")?;
+        let mod_loader: Option<String> = row.try_get("mod_loader")?;
+        let loader_version: Option<String> = row.try_get("loader_version")?;
+        let created_at_str: String = row.try_get("created_at")?;
+        let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)?.with_timezone(&Utc);
+        let last_run_str: Option<String> = row.try_get("last_run")?;
+        let last_run = last_run_str.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
+        let path: String = row.try_get("path")?;
+        let settings_json: String = row.try_get("settings")?;
+        let settings = serde_json::from_str(&settings_json)?;
+        let schedules_json: String = row.try_get("schedules")?;
+        let schedules = serde_json::from_str(&schedules_json)?;
+
+        Ok(InstanceMetadata {
+            id,
+            name,
+            version,
+            mod_loader,
+            loader_version,
+            created_at,
+            last_run,
+            path: PathBuf::from(path),
+            settings,
+            schedules,
+        })
     }
 
     pub async fn create_instance(&self, name: &str, version: &str) -> Result<InstanceMetadata> {
@@ -46,9 +130,7 @@ impl InstanceManager {
             settings: InstanceSettings::default(),
         };
 
-        let mut instances = self.list_instances().await?;
-        instances.push(metadata.clone());
-        self.save_registry(&instances).await?;
+        self.save_instance_to_db(&metadata).await?;
 
         info!("Created new instance: {} (ID: {})", name, id);
         Ok(metadata)
@@ -92,55 +174,71 @@ impl InstanceManager {
             settings,
         };
 
-        let mut instances = self.list_instances().await?;
-        instances.push(metadata.clone());
-        self.save_registry(&instances).await?;
+        self.save_instance_to_db(&metadata).await?;
 
         info!("Imported instance: {} (ID: {})", name, id);
         Ok(metadata)
     }
 
     pub async fn list_instances(&self) -> Result<Vec<InstanceMetadata>> {
-        if !self.registry_path.exists() {
-            return Ok(vec![]);
+        let rows = sqlx::query("SELECT * FROM instances")
+            .fetch_all(self.db.pool())
+            .await?;
+
+        let mut instances = Vec::new();
+        for row in rows {
+            instances.push(self.row_to_metadata(row)?);
         }
-        let content = fs::read_to_string(&self.registry_path).await?;
-        let instances: Vec<InstanceMetadata> = serde_json::from_str(&content)
-            .context("Failed to parse instances registry")?;
         Ok(instances)
     }
 
     pub async fn get_instance(&self, id: Uuid) -> Result<Option<InstanceMetadata>> {
-        let instances = self.list_instances().await?;
-        Ok(instances.into_iter().find(|i| i.id == id))
+        let row = sqlx::query("SELECT * FROM instances WHERE id = ?")
+            .bind(id.to_string())
+            .fetch_optional(self.db.pool())
+            .await?;
+
+        match row {
+            Some(row) => Ok(Some(self.row_to_metadata(row)?)),
+            None => Ok(None),
+        }
     }
 
     pub async fn get_instance_by_name(&self, name: &str) -> Result<Option<InstanceMetadata>> {
-        let instances = self.list_instances().await?;
-        Ok(instances.into_iter().find(|i| i.name == name))
+        let row = sqlx::query("SELECT * FROM instances WHERE name = ?")
+            .bind(name)
+            .fetch_optional(self.db.pool())
+            .await?;
+
+        match row {
+            Some(row) => Ok(Some(self.row_to_metadata(row)?)),
+            None => Ok(None),
+        }
     }
 
     pub async fn delete_instance(&self, id: Uuid) -> Result<()> {
-        let mut instances = self.list_instances().await?;
-        if let Some(pos) = instances.iter().position(|i| i.id == id) {
-            let instance = instances.remove(pos);
+        if let Some(instance) = self.get_instance(id).await? {
             if instance.path.exists() {
                 fs::remove_dir_all(&instance.path).await?;
             }
-            self.save_registry(&instances).await?;
+            sqlx::query("DELETE FROM instances WHERE id = ?")
+                .bind(id.to_string())
+                .execute(self.db.pool())
+                .await?;
             info!("Deleted instance: {} (ID: {})", instance.name, id);
         }
         Ok(())
     }
 
     pub async fn delete_instance_by_name(&self, name: &str) -> Result<()> {
-        let mut instances = self.list_instances().await?;
-        if let Some(pos) = instances.iter().position(|i| i.name == name) {
-            let instance = instances.remove(pos);
+        if let Some(instance) = self.get_instance_by_name(name).await? {
             if instance.path.exists() {
                 fs::remove_dir_all(&instance.path).await?;
             }
-            self.save_registry(&instances).await?;
+            sqlx::query("DELETE FROM instances WHERE name = ?")
+                .bind(name)
+                .execute(self.db.pool())
+                .await?;
             info!("Deleted instance by name: {} (ID: {})", instance.name, instance.id);
         }
         Ok(())
@@ -169,9 +267,7 @@ impl InstanceManager {
             settings: instance.settings.clone(),
         };
 
-        let mut instances = self.list_instances().await?;
-        instances.push(new_metadata.clone());
-        self.save_registry(&instances).await?;
+        self.save_instance_to_db(&new_metadata).await?;
 
         info!("Cloned instance: {} to {} (New ID: {})", instance.name, new_name, new_id);
         Ok(new_metadata)
@@ -179,11 +275,5 @@ impl InstanceManager {
 
     pub fn get_base_dir(&self) -> PathBuf {
         self.base_dir.clone()
-    }
-
-    pub(crate) async fn save_registry(&self, instances: &[InstanceMetadata]) -> Result<()> {
-        let content = serde_json::to_string_pretty(instances)?;
-        fs::write(&self.registry_path, content).await?;
-        Ok(())
     }
 }

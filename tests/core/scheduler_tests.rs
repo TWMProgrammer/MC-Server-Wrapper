@@ -3,6 +3,7 @@ use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::backup::BackupManager;
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::app_config::GlobalConfigManager;
+use mc_server_wrapper_core::database::Database;
 use std::sync::Arc;
 use tempfile::tempdir;
 use uuid::Uuid;
@@ -12,7 +13,9 @@ async fn test_scheduler_add_remove_task() {
     let base_dir = tempdir().unwrap();
     let config_dir = tempdir().unwrap();
     
-    let instance_manager = Arc::new(InstanceManager::new(base_dir.path()).await.expect("Failed to create instance manager"));
+    let db_path = base_dir.path().join("test.db");
+    let db = Arc::new(Database::new(db_path).await.expect("Failed to create database"));
+    let instance_manager = Arc::new(InstanceManager::new(base_dir.path(), db).await.expect("Failed to create instance manager"));
     let config_manager = Arc::new(GlobalConfigManager::new(config_dir.path().to_path_buf()));
     let server_manager = Arc::new(ServerManager::new(instance_manager, config_manager));
     let backup_manager = Arc::new(BackupManager::new(base_dir.path().join("backups")));

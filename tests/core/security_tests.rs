@@ -28,8 +28,12 @@ async fn test_path_traversal_protection_in_mods() {
 
 #[tokio::test]
 async fn test_path_traversal_protection_in_instance_manager() {
+    use mc_server_wrapper_core::database::Database;
+    use std::sync::Arc;
     let base_dir = tempdir().unwrap();
-    let _manager = InstanceManager::new(base_dir.path()).await.unwrap();
+    let db_path = base_dir.path().join("test.db");
+    let db = Arc::new(Database::new(db_path).await.unwrap());
+    let _manager = InstanceManager::new(base_dir.path(), db).await.unwrap();
     
     // Create a sensitive file
     let sensitive_file = base_dir.path().join("sensitive.txt");

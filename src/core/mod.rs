@@ -3,6 +3,7 @@ pub mod config;
 pub mod app_config;
 pub mod server;
 pub mod instance;
+pub mod database;
 pub mod downloader;
 pub mod backup;
 pub mod plugins;
