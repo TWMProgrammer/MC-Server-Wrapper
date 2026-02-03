@@ -75,7 +75,11 @@ A powerful, modern, and cross-platform desktop application designed to simplify 
    npm run tauri build
    ```
 
-## 🤝 Contributing
+## � Testing
+
+For detailed information on running tests, see the [Testing Guide](file:///c:/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/documents/TESTING_GUIDE.md).
+
+## �🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 

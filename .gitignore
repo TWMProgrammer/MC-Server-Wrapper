@@ -34,3 +34,5 @@ desktop.ini
 /temp/
 *.log
 /documents/
+/playwright-report/
+/test-results/
