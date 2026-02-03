@@ -38,6 +38,44 @@ async fn test_get_or_create_server() -> Result<()> {
 }
 
 #[tokio::test]
+async fn test_prepare_server_fabric_no_vanilla_jar() -> Result<()> {
+    let dir = tempdir()?;
+    let instances_dir = dir.path().join("instances");
+    let config_dir = dir.path().join("config");
+    
+    std::fs::create_dir_all(&instances_dir)?;
+    std::fs::create_dir_all(&config_dir)?;
+
+    let instance_manager = InstanceManager::new(&instances_dir).await?;
+    let config_manager = GlobalConfigManager::new(config_dir.join("config.json"));
+    
+    let manager = ServerManager::new(
+        Arc::new(instance_manager),
+        Arc::new(config_manager),
+    );
+
+    // Create a Fabric instance
+    let instance = manager.get_instance_manager().create_instance_full("Fabric Test", "1.20.1", Some("fabric".to_string()), Some("0.14.22".to_string())).await?;
+    
+    // Create fabric-server.jar but NOT server.jar
+    let fabric_jar_path = instance.path.join("fabric-server.jar");
+    std::fs::write(&fabric_jar_path, b"dummy fabric content")?;
+    
+    // Prepare the server - this should NOT trigger a download
+    // Since we can't easily check if download was skipped without mocking, 
+    // we check if server.jar was NOT created.
+    let server = manager.prepare_server(instance.id).await?;
+    
+    let jar_path = instance.path.join("server.jar");
+    assert!(!jar_path.exists(), "server.jar should not have been created for Fabric if fabric-server.jar exists");
+    
+    let config = server.get_config().await;
+    assert_eq!(config.jar_path, Some(fabric_jar_path));
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_prepare_server_vanilla_missing() -> Result<()> {
     let dir = tempdir()?;
     let instances_dir = dir.path().join("instances");

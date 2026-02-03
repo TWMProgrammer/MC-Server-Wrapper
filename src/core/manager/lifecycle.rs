@@ -8,6 +8,109 @@ use super::super::server::{ServerHandle, ServerStatus, generate_ascii_bar};
 use super::super::config::ServerConfig;
 
 impl ServerManager {
+    async fn build_server_config(&self, instance: &crate::instance::InstanceMetadata) -> ServerConfig {
+        let is_bedrock = instance.mod_loader.as_deref().map(|l| l.to_lowercase() == "bedrock").unwrap_or(false);
+        let bedrock_exe = if cfg!(windows) { "bedrock_server.exe" } else { "bedrock_server" };
+        let bedrock_path = instance.path.join(bedrock_exe);
+        let jar_path = instance.path.join("server.jar");
+
+        let mut final_jar_path = if is_bedrock { Some(bedrock_path) } else { Some(jar_path) };
+        let mut final_run_script = None;
+        let mut args = vec!["nogui".to_string()];
+
+        let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
+
+        // Check for Fabric server
+        if loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists() {
+            final_jar_path = Some(instance.path.join("fabric-server.jar"));
+        }
+
+        // Check for run scripts (modern Forge/NeoForge)
+        let run_script_name = if cfg!(windows) { "run.bat" } else { "run.sh" };
+        if instance.path.join(run_script_name).exists() {
+            final_run_script = Some(run_script_name.to_string());
+            final_jar_path = None;
+        }
+
+        // Apply custom launch settings if it's an imported instance or has custom settings
+        use crate::instance::LaunchMethod;
+        match instance.settings.launch_method {
+            LaunchMethod::BatFile => {
+                if let Some(bat) = &instance.settings.bat_file {
+                    final_run_script = Some(bat.clone());
+                    final_jar_path = None;
+                    args.clear();
+                }
+            },
+            LaunchMethod::StartupLine => {
+                let is_imported = instance.version == "Imported";
+                let has_specialized = final_run_script.is_some() || 
+                    (loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists());
+
+                if is_imported || !has_specialized {
+                    if let Some(jar_idx) = instance.settings.startup_line.find("-jar ") {
+                        let after_jar = &instance.settings.startup_line[jar_idx + 5..];
+                        let mut parts = after_jar.split_whitespace();
+                        if let Some(jar_name) = parts.next() {
+                            final_jar_path = Some(instance.path.join(jar_name));
+                        }
+                        args = parts.map(|s| s.to_string()).collect();
+                    }
+                }
+            }
+        }
+
+        // Special case for Proxies: they don't need nogui
+        if let Some(loader) = &loader_lower {
+            if loader == "velocity" || loader == "bungeecord" {
+                args.clear();
+            }
+        }
+
+        // Special case for Bedrock: it's not a jar and doesn't need nogui
+        if is_bedrock {
+            args.clear();
+        }
+
+        // Resolve Java path
+        let mut java_path = None;
+        if let Some(java_override) = &instance.settings.java_path_override {
+            if !java_override.is_empty() && java_override != "java" {
+                // Check if it's a managed version ID
+                if let Ok(settings) = self.config_manager.load().await {
+                    if let Some(managed) = settings.managed_java_versions.iter().find(|v| v.id == *java_override) {
+                        java_path = Some(managed.path.clone());
+                    } else {
+                        // Check if it's a valid path on disk
+                        let path = std::path::Path::new(java_override);
+                        if path.exists() {
+                            java_path = Some(path.to_path_buf());
+                        }
+                    }
+                }
+            }
+        }
+
+        let ram_unit = match instance.settings.ram_unit.as_str() {
+            "GB" => "G",
+            "MB" => "M",
+            u => u,
+        };
+
+        ServerConfig {
+            name: instance.name.clone(),
+            max_memory: format!("{}{}", instance.settings.ram, ram_unit),
+            min_memory: "1G".to_string(),
+            jar_path: final_jar_path,
+            run_script: final_run_script,
+            args,
+            working_dir: instance.path.clone(),
+            java_path,
+            crash_handling: instance.settings.crash_handling.clone(),
+            stop_timeout: 30,
+        }
+    }
+
     pub async fn get_or_create_server(&self, instance_id: Uuid) -> Result<Arc<ServerHandle>> {
         let mut servers = self.servers.lock().await;
         
@@ -18,19 +121,7 @@ impl ServerManager {
         let instance = self.instance_manager.get_instance(instance_id).await?
             .ok_or_else(|| anyhow!("Instance not found"))?;
 
-        let mut config = ServerConfig {
-            name: instance.name.clone(),
-            working_dir: instance.path.clone(),
-            ..Default::default()
-        };
-
-        // Check for run scripts (modern Forge/NeoForge)
-        let run_script = if cfg!(windows) { "run.bat" } else { "run.sh" };
-        if instance.path.join(run_script).exists() {
-            config.run_script = Some(run_script.to_string());
-            config.jar_path = None;
-        }
-
+        let config = self.build_server_config(&instance).await;
         let server = Arc::new(ServerHandle::new(config));
         servers.insert(instance_id, Arc::clone(&server));
         Ok(server)
@@ -46,10 +137,52 @@ impl ServerManager {
         let bedrock_path = instance.path.join(bedrock_exe);
         let jar_path = instance.path.join("server.jar");
         
-        let exists = if is_bedrock { bedrock_path.exists() } else { jar_path.exists() };
+        let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
+        let run_script_name = if cfg!(windows) { "run.bat" } else { "run.sh" };
+        
+        // Robust check for existing installation
+        let mut exists = if is_bedrock { 
+            bedrock_path.exists() 
+        } else { 
+            // Check for server.jar
+            jar_path.exists() || 
+            // Check for Fabric server
+            (loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists()) ||
+            // Check for modern Forge/NeoForge run scripts
+            instance.path.join(run_script_name).exists()
+        };
+
+        // For imported instances, check if the configured executable exists
+        if instance.version == "Imported" {
+            use crate::instance::LaunchMethod;
+            exists = match instance.settings.launch_method {
+                LaunchMethod::BatFile => {
+                    instance.settings.bat_file.as_ref()
+                        .map(|bat| instance.path.join(bat).exists())
+                        .unwrap_or(false)
+                },
+                LaunchMethod::StartupLine => {
+                    // Check if startup line has a -jar argument
+                    if let Some(jar_idx) = instance.settings.startup_line.find("-jar ") {
+                        let after_jar = &instance.settings.startup_line[jar_idx + 5..];
+                        let jar_name = after_jar.split_whitespace().next().unwrap_or("");
+                        !jar_name.is_empty() && instance.path.join(jar_name).exists()
+                    } else {
+                        // If no -jar, check if the startup line itself might be a direct executable path (unlikely but possible)
+                        // Or fallback to directory not empty check
+                        let exe_name = instance.settings.startup_line.split_whitespace().next().unwrap_or("");
+                        (!exe_name.is_empty() && instance.path.join(exe_name).exists()) || 
+                        (instance.path.exists() && std::fs::read_dir(&instance.path).map(|mut d| d.next().is_some()).unwrap_or(false))
+                    }
+                }
+            };
+        }
 
         // Download jar/binary if missing
         if !exists {
+            if instance.version == "Imported" {
+                return Err(anyhow!("Imported instance is missing its executable (jar or bat file). Please check the instance settings."));
+            }
             if let Some(loader) = &instance.mod_loader {
                 let loader_lower = loader.to_lowercase();
                 let is_fabric = loader_lower == "fabric";
@@ -128,74 +261,8 @@ impl ServerManager {
             }
         }
 
-        // Basic config for now, in a real app this would be loaded from instance directory
-        let mut final_jar_path = if is_bedrock { Some(bedrock_path) } else { Some(jar_path.clone()) };
-        let run_script = None;
-        let mut args = vec!["nogui".to_string()];
-
-        let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
-        
-        // Special case for Fabric: we want to run fabric-server.jar which then loads server.jar
-        if loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists() {
-            final_jar_path = Some(instance.path.join("fabric-server.jar"));
-        }
-
-        // Special case for Proxies: they don't need nogui
-        if let Some(loader) = &loader_lower {
-            if loader == "velocity" || loader == "bungeecord" {
-                args.clear();
-            }
-        }
-
-        // Special case for Bedrock: it's not a jar and doesn't need nogui
-        if is_bedrock {
-            args.clear();
-        }
-
-        // Resolve Java path
-        let mut java_path = None;
-        if let Some(java_override) = &instance.settings.java_path_override {
-            if !java_override.is_empty() && java_override != "java" {
-                // Check if it's a managed version ID
-                let settings = self.config_manager.load().await?;
-                if let Some(managed) = settings.managed_java_versions.iter().find(|v| v.id == *java_override) {
-                    java_path = Some(managed.path.clone());
-                } else {
-                    // Check if it's a valid path on disk
-                    let path = std::path::Path::new(java_override);
-                    if path.exists() {
-                        java_path = Some(path.to_path_buf());
-                    }
-                }
-            }
-        }
-
-        let ram_unit = match instance.settings.ram_unit.as_str() {
-            "GB" => "G",
-            "MB" => "M",
-            u => u,
-        };
-
-        let mut config = ServerConfig {
-            name: instance.name.clone(),
-            max_memory: format!("{}{}", instance.settings.ram, ram_unit),
-            min_memory: "1G".to_string(), // Could also be made configurable
-            jar_path: final_jar_path,
-            run_script,
-            args,
-            working_dir: instance.path.clone(),
-            java_path,
-            crash_handling: instance.settings.crash_handling.clone(),
-            stop_timeout: 30,
-        };
-
-        // Check for run scripts (modern Forge/NeoForge)
-        let run_script = if cfg!(windows) { "run.bat" } else { "run.sh" };
-        if instance.path.join(run_script).exists() {
-            config.run_script = Some(run_script.to_string());
-            config.jar_path = None;
-        }
-
+        // Update server config after potential installation
+        let config = self.build_server_config(&instance).await;
         server.update_config(config).await;
         Ok(server)
     }
