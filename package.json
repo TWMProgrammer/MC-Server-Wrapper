@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e-slow": "playwright test --project=e2e-slow"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",

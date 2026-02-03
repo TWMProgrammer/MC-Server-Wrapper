@@ -66,6 +66,15 @@ test('Server Full Lifecycle Flow', async () => {
     await versionRow.click();
     console.log('Version 1.20.1 selected');
 
+    // Toggle off "Start Server after creation"
+    console.log('Toggling off "Start Server after creation"...');
+    const toggleButton = page.locator('button').filter({ hasText: 'Start Server' }).filter({ hasText: 'After Creation' });
+    await toggleButton.click();
+    
+    // Verify toggle state changed
+    await expect(toggleButton).not.toHaveClass(/bg-primary\/10/);
+    console.log('Toggle verified off');
+
     // Click Create
     console.log('Clicking Create Instance...');
     await page.click('button:has-text("Create Instance")');
@@ -86,6 +95,8 @@ test('Server Full Lifecycle Flow', async () => {
     console.log('Selecting instance in sidebar...');
     await instanceCard.click();
     console.log('Instance selected');
+    // Ensure the instance is fully loaded before clicking start
+    await page.waitForSelector('button:has-text("Start Server")', { state: 'visible' });
 
     // Click Start button
     console.log('Clicking "Start Server"...');

@@ -73,8 +73,19 @@ test('Server Full Lifecycle Flow', async () => {
     console.log('Version 1.20.1 selected');
     await delay(500);
 
+    // Toggle off "Start Server after creation"
+    console.log('Toggling off "Start Server after creation"...');
+    const toggleButton = page.locator('button').filter({ hasText: 'Start Server' }).filter({ hasText: 'After Creation' });
+    await toggleButton.click();
+    
+    // Verify toggle state changed (it should now have the "text-gray-400" or similar class indicating it's off)
+    // or just check that the bg-primary/10 class is gone if possible, but simpler is to check for the absence of the "active" style
+    await expect(toggleButton).not.toHaveClass(/bg-primary\/10/);
+    console.log('Toggle verified off');
+    await delay(500);
+
     // Click Create
-    console.log('Clicking Create Instance...');
+    console.log('Clicking "Create Instance"...');
     await page.click('button:has-text("Create Instance")');
 
     // Verify modal closes
