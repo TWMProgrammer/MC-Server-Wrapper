@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashSet;
 use commands::AppState;
+use anyhow::Context;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -37,8 +38,7 @@ pub fn run() {
       let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
       let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
 
-      let _tray = TrayIconBuilder::new()
-          .icon(app.default_window_icon().unwrap().clone())
+      let mut tray_builder = TrayIconBuilder::new()
           .menu(&menu)
           .on_menu_event(|app, event| {
               match event.id.as_ref() {
@@ -62,8 +62,13 @@ pub fn run() {
                       let _ = window.set_focus();
                   }
               }
-          })
-          .build(app)?;
+          });
+
+      if let Some(icon) = app.default_window_icon() {
+          tray_builder = tray_builder.icon(icon.clone());
+      }
+
+      let _tray = tray_builder.build(app)?;
 
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -78,8 +83,10 @@ pub fn run() {
 
       // Initialize Directories next to the executable
       let exe_path = std::env::current_exe()
-          .map(|p| p.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| p))
-          .expect("failed to get exe directory");
+          .context("failed to get exe path")?
+          .parent()
+          .context("failed to get exe directory")?
+          .to_path_buf();
 
       // Check for folder clutter
       let has_clutter = tauri::async_runtime::block_on(async {
@@ -104,24 +111,24 @@ pub fn run() {
       }
 
       let app_dirs = tauri::async_runtime::block_on(async {
-          mc_server_wrapper_core::init::init_directories(&exe_path).await.expect("failed to initialize directories")
-      });
+          mc_server_wrapper_core::init::init_directories(&exe_path).await
+      }).context("failed to initialize directories")?;
       
       // Initialize GlobalConfigManager
       let config_manager = Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
       
       // Initialize JavaManager
-      let java_manager = Arc::new(JavaManager::new().expect("failed to initialize java manager"));
+      let java_manager = Arc::new(JavaManager::new().context("failed to initialize java manager")?);
 
       // Initialize InstanceManager using the 'server' directory
       let instance_manager = Arc::new(tauri::async_runtime::block_on(async {
-          InstanceManager::new(app_dirs.server).await.expect("failed to initialize instance manager")
-      }));
+          InstanceManager::new(app_dirs.server).await
+      }).context("failed to initialize instance manager")?);
 
       let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager), Arc::clone(&config_manager)));
       let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
       let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
-          let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.expect("failed to initialize scheduler manager");
+          let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.context("failed to initialize scheduler manager")?;
           
           // Load existing schedules
           let instances = instance_manager.list_instances().await.unwrap_or_default();
@@ -132,8 +139,8 @@ pub fn run() {
                   }
               }
           }
-          sm
-      }));
+          Ok::<SchedulerManager, anyhow::Error>(sm)
+      })?);
 
       app.manage(instance_manager);
       app.manage(server_manager);
