@@ -1,0 +1,70 @@
+import { Search, List, LayoutGrid, RefreshCw } from 'lucide-react'
+
+interface InstalledModFiltersProps {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  viewMode: 'table' | 'grid';
+  setViewMode: (mode: 'table' | 'grid') => void;
+  onCheckUpdates: () => void;
+  onRefresh: () => void;
+  loading: boolean;
+  checkingUpdates: boolean;
+}
+
+export function InstalledModFilters({
+  searchQuery,
+  setSearchQuery,
+  viewMode,
+  setViewMode,
+  onCheckUpdates,
+  onRefresh,
+  loading,
+  checkingUpdates
+}: InstalledModFiltersProps) {
+  return (
+    <div className="flex items-center gap-4 flex-1">
+      <div className="relative flex-1 max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+        <input
+          type="text"
+          placeholder="Search installed mods..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:border-primary/50 transition-colors"
+        />
+      </div>
+      <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/5">
+        <button
+          onClick={() => setViewMode('table')}
+          className={`p-1.5 rounded-lg transition-all ${viewMode === 'table' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+          title="Table View"
+        >
+          <List size={18} />
+        </button>
+        <button
+          onClick={() => setViewMode('grid')}
+          className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
+          title="Grid View"
+        >
+          <LayoutGrid size={18} />
+        </button>
+      </div>
+      <button
+        onClick={onCheckUpdates}
+        disabled={checkingUpdates || loading}
+        className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition-all border border-primary/20 disabled:opacity-50"
+      >
+        <RefreshCw size={18} className={checkingUpdates ? 'animate-spin' : ''} />
+        <span className="font-medium">{checkingUpdates ? 'Checking...' : 'Check for Updates'}</span>
+      </button>
+      <button
+        onClick={onRefresh}
+        disabled={loading}
+        className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 rounded-xl transition-all border border-white/5"
+        title="Refresh list"
+      >
+        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+      </button>
+    </div>
+  )
+}
