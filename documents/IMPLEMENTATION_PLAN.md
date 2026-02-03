@@ -170,8 +170,8 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 
 ### Phase 5: Quality & Reliability
 - [ ] **Automated Testing Suite**
-    - [ ] Unit tests for `mc_server_wrapper_core` (Config, Managers, Downloader).
-    - [ ] Integration tests for Tauri commands in `src-tauri`.
+    - [x] Unit tests for `mc_server_wrapper_core` (Config, Managers, Downloader).
+    - [x] Integration tests for Tauri commands in `src-tauri`.
     - [ ] Frontend unit & component tests using `Vitest` and `React Testing Library`.
     - [ ] E2E tests for critical user flows (Create Instance, Start/Stop Server).
 - [ ] **Robust Error Handling**
