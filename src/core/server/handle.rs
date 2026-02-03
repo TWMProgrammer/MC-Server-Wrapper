@@ -37,6 +37,10 @@ impl ServerHandle {
         *self.status.lock().await
     }
 
+    pub async fn get_stop_timeout(&self) -> u64 {
+        self.config.lock().await.stop_timeout
+    }
+
     pub async fn get_usage(&self) -> ResourceUsage {
         self.usage.lock().await.clone()
     }

@@ -14,6 +14,7 @@ pub struct ServerConfig {
     pub min_memory: String,
     pub auto_restart: bool,
     pub working_dir: PathBuf,
+    pub stop_timeout: u64,
 }
 
 impl Default for ServerConfig {
@@ -28,6 +29,7 @@ impl Default for ServerConfig {
             min_memory: "1G".to_string(),
             auto_restart: true,
             working_dir: PathBuf::from("."),
+            stop_timeout: 30,
         }
     }
 }

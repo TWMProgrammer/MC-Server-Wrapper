@@ -1,0 +1,79 @@
+use mc_server_wrapper_core::instance::{InstanceManager, InstanceMetadata};
+use tempfile::tempdir;
+use anyhow::Result;
+
+#[tokio::test]
+async fn test_instance_manager_init() -> Result<()> {
+    let dir = tempdir()?;
+    let manager: InstanceManager = InstanceManager::new(dir.path()).await?;
+    assert!(dir.path().exists());
+    assert_eq!(manager.list_instances().await?.len(), 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_create_instance() -> Result<()> {
+    let dir = tempdir()?;
+    let manager: InstanceManager = InstanceManager::new(dir.path()).await?;
+    
+    let metadata = manager.create_instance("Test Server", "1.20.1").await?;
+    assert_eq!(metadata.name, "Test Server");
+    assert_eq!(metadata.version, "1.20.1");
+    assert!(metadata.path.exists());
+    
+    let instances: Vec<InstanceMetadata> = manager.list_instances().await?;
+    assert_eq!(instances.len(), 1);
+    assert_eq!(instances[0].id, metadata.id);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_delete_instance() -> Result<()> {
+    let dir = tempdir()?;
+    let manager: InstanceManager = InstanceManager::new(dir.path()).await?;
+    
+    let metadata = manager.create_instance("To Delete", "1.20.1").await?;
+    assert!(metadata.path.exists());
+    
+    manager.delete_instance(metadata.id).await?;
+    assert!(!metadata.path.exists());
+    assert_eq!(manager.list_instances().await?.len(), 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_clone_instance() -> Result<()> {
+    let dir = tempdir()?;
+    let manager: InstanceManager = InstanceManager::new(dir.path()).await?;
+    
+    let original = manager.create_instance("Original", "1.20.1").await?;
+    let cloned = manager.clone_instance(original.id, "Cloned").await?;
+    
+    assert_eq!(cloned.name, "Cloned");
+    assert_eq!(cloned.version, original.version);
+    assert_ne!(cloned.id, original.id);
+    assert!(cloned.path.exists());
+    
+    let instances: Vec<InstanceMetadata> = manager.list_instances().await?;
+    assert_eq!(instances.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_update_settings() -> Result<()> {
+    let dir = tempdir()?;
+    let manager: InstanceManager = InstanceManager::new(dir.path()).await?;
+    
+    let metadata = manager.create_instance("Settings Test", "1.20.1").await?;
+    let mut new_settings = metadata.settings.clone();
+    new_settings.ram = 4;
+    new_settings.description = Some("Updated description".to_string());
+    
+    manager.update_settings(metadata.id, Some("New Name".to_string()), new_settings.clone()).await?;
+    
+    let updated: InstanceMetadata = manager.get_instance(metadata.id).await?.unwrap();
+    assert_eq!(updated.name, "New Name");
+    assert_eq!(updated.settings.ram, 4);
+    assert_eq!(updated.settings.description, Some("Updated description".to_string()));
+    Ok(())
+}

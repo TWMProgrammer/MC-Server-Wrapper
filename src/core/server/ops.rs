@@ -256,10 +256,11 @@ impl ServerHandle {
         }
 
         *status = ServerStatus::Stopping;
-        {
+        let stop_timeout = {
             let config = self.config.lock().await;
             info!("Stopping server: {}", config.name);
-        }
+            config.stop_timeout
+        };
 
         if let Err(e) = self.send_command("stop").await {
             warn!("Failed to send stop command: {}. Falling back to kill.", e);
@@ -273,14 +274,35 @@ impl ServerHandle {
         tokio::spawn(async move {
             let mut child_lock = child_arc.lock().await;
             if let Some(mut child) = child_lock.take() {
-                let wait_timeout = Duration::from_secs(30);
-                match tokio::time::timeout(wait_timeout, child.wait()).await {
+                let wait_timeout = Duration::from_secs(stop_timeout);
+            match tokio::time::timeout(wait_timeout, child.wait()).await {
                     Ok(Ok(exit_status)) => {
                         info!("Server exited gracefully with status: {}", exit_status);
                     }
                     _ => {
                         warn!("Server failed to exit gracefully. Killing process.");
-                        let _ = child.kill().await;
+                        #[cfg(target_os = "windows")]
+                        {
+                            if let Some(pid) = child.id() {
+                                info!("Using taskkill to terminate process tree for PID {}", pid);
+                                let mut kill_cmd = tokio::process::Command::new("taskkill");
+                                kill_cmd.arg("/F").arg("/T").arg("/PID").arg(pid.to_string());
+                                match kill_cmd.output().await {
+                                    Ok(output) => {
+                                        if !output.status.success() {
+                                            warn!("taskkill exited with error: {}", String::from_utf8_lossy(&output.stderr));
+                                        } else {
+                                            info!("Successfully killed process tree for PID {}", pid);
+                                        }
+                                    }
+                                    Err(e) => warn!("Failed to run taskkill: {}", e),
+                                }
+                            }
+                        }
+                        #[cfg(not(target_os = "windows"))]
+                        {
+                            let _ = child.kill().await;
+                        }
                     }
                 }
             }

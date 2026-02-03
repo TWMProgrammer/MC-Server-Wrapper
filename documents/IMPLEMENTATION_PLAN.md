@@ -166,6 +166,19 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [ ] Log rotation and cleanup policies.
     - [ ] Advanced performance profiling tools for the server process.
 
+### Phase 5: Quality & Reliability
+- [ ] **Automated Testing Suite**
+    - [ ] Unit tests for `mc_server_wrapper_core` (Config, Managers, Downloader).
+    - [ ] Integration tests for Tauri commands in `src-tauri`.
+    - [ ] Frontend unit & component tests using `Vitest` and `React Testing Library`.
+    - [ ] E2E tests for critical user flows (Create Instance, Start/Stop Server).
+- [ ] **Robust Error Handling**
+    - [ ] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
+    - [ ] Implement React Error Boundaries in the frontend.
+- [ ] **Production Observability**
+    - [ ] Persistent file logging for production builds.
+    - [ ] Crash reporting integration.
+
 ---
 
 ## 🛠️ Industry Standards & Best Practices

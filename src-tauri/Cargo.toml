@@ -32,3 +32,10 @@ zip = "2.0"
 tauri-plugin-dialog = "2.0.0-rc.0"
 tauri-plugin-opener = "2.0.0-rc.0"
 sevenz-rust = "0.6.1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[[test]]
+name = "tauri_tests"
+path = "../tests/tauri/mod.rs"

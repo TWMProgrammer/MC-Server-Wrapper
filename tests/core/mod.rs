@@ -1,0 +1,6 @@
+mod instance_tests;
+mod downloader_tests;
+mod config_files_tests;
+mod backup_tests;
+mod scheduler_tests;
+mod server_process_tests;

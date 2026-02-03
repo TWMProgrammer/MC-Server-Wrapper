@@ -181,6 +181,7 @@ impl ServerManager {
             working_dir: instance.path.clone(),
             java_path,
             auto_restart: true,
+            stop_timeout: 30,
         };
 
         // Check for run scripts (modern Forge/NeoForge)
@@ -224,11 +225,15 @@ impl ServerManager {
         };
 
         if let Some(server) = server {
+            // Get stop_timeout from config
+            let stop_timeout = server.get_stop_timeout().await;
+
             server.stop().await?;
             
-            // Wait for it to stop (max 30 seconds)
+            // Wait for it to stop (max stop_timeout + 5 seconds buffer)
             let mut attempts = 0;
-            while attempts < 30 {
+            let max_attempts = stop_timeout + 5; 
+            while attempts < max_attempts {
                 let status = server.get_status().await;
                 if status == ServerStatus::Stopped {
                     break;

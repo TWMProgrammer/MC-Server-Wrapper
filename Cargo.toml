@@ -35,3 +35,13 @@ urlencoding = "2.1"
 tauri-plugin-opener = "2.0.0-rc.0"
 flate2 = "1.1.8"
 tar = "0.4.44"
+
+[dev-dependencies]
+mockall = "0.13"
+tempfile = "3.10"
+wiremock = "0.6"
+tokio-test = "0.4"
+
+[[test]]
+name = "core_tests"
+path = "tests/core/mod.rs"
