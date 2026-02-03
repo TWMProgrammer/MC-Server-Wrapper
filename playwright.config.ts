@@ -14,6 +14,13 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
   },
+  webServer: {
+    command: 'npm run dev',
+    port: 3000,
+    reuseExistingServer: !process.env.CI,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
   projects: [
     {
       name: 'chromium',
