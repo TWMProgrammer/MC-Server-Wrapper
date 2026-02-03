@@ -23,8 +23,8 @@ After making any code modifications, you **MUST** verify the integrity of the co
 ## 🏗️ Project Architecture Rules
 
 ### **1. Core Logic First**
-- Always implement logic in the [core](file:///c%3A/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/src/core) module before exposing it via the CLI or UI.
-- Ensure modules are properly declared in [mod.rs](file:///c%3A/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/src/core/mod.rs).
+- Always implement logic in the [core](file:///c:/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/src/core) module before exposing it via the CLI or UI.
+- Ensure modules are properly declared in [mod.rs](file:///c:/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/src/core/mod.rs).
 
 ### **2. Safety & Error Handling**
 - Use `anyhow::Result` for fallible operations.
@@ -73,5 +73,14 @@ After making any code modifications, you **MUST** verify the integrity of the co
 ## 📝 Workflow Requirements
 
 - **Task Management**: Always use `TodoWrite` to plan and track your progress.
-- **Implementation Plan**: Keep [IMPLEMENTATION_PLAN.md](file:///c%3A/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/documents/IMPLEMENTATION_PLAN.md) updated as you complete phases.
+- **Implementation Plan**: Keep [IMPLEMENTATION_PLAN.md](file:///c:/Users/Administrator/Desktop/Devving/Minecraft/MC%20Server%20Wrapper/documents/IMPLEMENTATION_PLAN.md) updated as you complete phases.
 - **Persistence**: Do not stop until the user's query is completely resolved and verified.
+
+### **2. Markdown & Documentation**
+- **Clickable Links**: 
+    - **Internal Links**: Prefer relative paths (e.g., `[basename](../path/to/file)`) for links within the same repository. This is more robust and prevents line-wrapping issues.
+    - **Absolute Links**: Use the `file:///` protocol only when absolute paths are strictly necessary.
+- **Link Format**: 
+    - **Spaces**: Encode spaces as `%20`.
+    - **Basenames**: Use the file's basename (e.g., `java_manager.rs`) as the link text, not the full path.
+- **Progress Tracking**: Use `- [ ]` and `- [x]` for all planning and audit documents.
