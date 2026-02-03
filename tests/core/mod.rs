@@ -7,3 +7,4 @@ mod server_process_tests;
 mod lifecycle_tests;
 mod players_tests;
 mod java_tests;
+mod auto_restart_tests;

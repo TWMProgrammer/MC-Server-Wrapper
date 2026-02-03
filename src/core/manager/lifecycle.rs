@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::Duration;
 use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::info;
@@ -180,7 +179,7 @@ impl ServerManager {
             args,
             working_dir: instance.path.clone(),
             java_path,
-            auto_restart: true,
+            crash_handling: instance.settings.crash_handling.clone(),
             stop_timeout: 30,
         };
 
@@ -225,22 +224,7 @@ impl ServerManager {
         };
 
         if let Some(server) = server {
-            // Get stop_timeout from config
-            let stop_timeout = server.get_stop_timeout().await;
-
             server.stop().await?;
-            
-            // Wait for it to stop (max stop_timeout + 5 seconds buffer)
-            let mut attempts = 0;
-            let max_attempts = stop_timeout + 5; 
-            while attempts < max_attempts {
-                let status = server.get_status().await;
-                if status == ServerStatus::Stopped {
-                    break;
-                }
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                attempts += 1;
-            }
         }
         
         self.start_server(instance_id).await?;

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use anyhow::Result;
 use tokio::fs;
+use super::instance::CrashHandlingMode;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerConfig {
@@ -12,7 +13,7 @@ pub struct ServerConfig {
     pub java_path: Option<PathBuf>,
     pub max_memory: String,
     pub min_memory: String,
-    pub auto_restart: bool,
+    pub crash_handling: CrashHandlingMode,
     pub working_dir: PathBuf,
     pub stop_timeout: u64,
 }
@@ -27,7 +28,7 @@ impl Default for ServerConfig {
             java_path: None,
             max_memory: "2G".to_string(),
             min_memory: "1G".to_string(),
-            auto_restart: true,
+            crash_handling: CrashHandlingMode::Nothing,
             working_dir: PathBuf::from("."),
             stop_timeout: 30,
         }

@@ -6,6 +6,7 @@ use super::types::{ServerStatus, ResourceUsage, ProgressPayload};
 use super::super::config::ServerConfig;
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct ServerHandle {
     pub(crate) config: Arc<Mutex<ServerConfig>>,
     pub(crate) child: Arc<Mutex<Option<Child>>>,

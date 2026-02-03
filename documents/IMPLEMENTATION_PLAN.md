@@ -93,6 +93,8 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [x] **Process Interaction**
     - [x] Implement `send_command` via `stdin`.
     - [x] Graceful shutdown (send "stop", wait for exit).
+    - [x] **Robust State Machine**: Implemented `lifecycle_loop` for managing `Stopped` -> `Starting` -> `Running` -> `Stopping` -> `Stopped` transitions.
+    - [x] **Auto-Restart**: Integrated crash detection and automatic recovery logic.
 - [x] **Data Safety**
     - [x] Automated backup triggers (on stop/scheduled).
     - [x] Compression support (zip/tar.gz).

@@ -560,12 +560,18 @@ pub async fn create_instance_full(
 #[tauri::command]
 pub async fn update_instance_settings(
     instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
     instance_id: String,
     name: Option<String>,
     settings: InstanceSettings,
 ) -> Result<(), String> {
     let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
-    instance_manager.update_settings(id, name, settings).await.map_err(|e| e.to_string())
+    instance_manager.update_settings(id, name, settings).await.map_err(|e| e.to_string())?;
+    
+    // If the server is already loaded in memory, update its config
+    let _ = server_manager.prepare_server(id).await;
+    
+    Ok(())
 }
 
 #[tauri::command]
