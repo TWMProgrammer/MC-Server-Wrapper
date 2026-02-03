@@ -297,7 +297,9 @@ pub async fn install_plugin(
         }
         PluginProvider::Spiget => {
             let client = SpigetClient::new();
-            let fname = client.download_resource(project_id, &plugins_dir).await?;
+            let fname = client
+                .download_resource(project_id, &plugins_dir, game_version, loader)
+                .await?;
             (fname, None)
         }
     };
