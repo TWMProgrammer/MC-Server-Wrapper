@@ -18,7 +18,7 @@ import {
   Cpu
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Project, ModProvider, SortOrder, SearchOptions, Instance } from '../types'
+import { Project, ModProvider, SortOrder, SearchOptions, Instance, ResolvedDependency } from '../types'
 import { useToast } from '../hooks/useToast'
 import { ModDetailsModal } from './ModDetailsModal'
 import { ModReviewModal } from './ModReviewModal'
@@ -62,7 +62,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
   const [showReview, setShowReview] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
   const [isResolvingDeps, setIsResolvingDeps] = useState(false)
-  const [resolvedDeps, setResolvedDeps] = useState<Project[]>([])
+  const [resolvedDeps, setResolvedDeps] = useState<ResolvedDependency[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('Downloads')
   const [page, setPage] = useState(1)
@@ -144,7 +144,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
 
   const handleReview = async () => {
     setIsResolvingDeps(true)
-    const allDeps: Map<string, Project> = new Map()
+    const allDeps: Map<string, ResolvedDependency> = new Map()
     const seenIds = new Set(Array.from(selectedMods.keys()))
     const queue = Array.from(selectedMods.values())
 
@@ -152,16 +152,17 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
       while (queue.length > 0) {
         const mod = queue.shift()!
 
-        const deps = await invoke<Project[]>('get_mod_dependencies', {
+        const deps = await invoke<ResolvedDependency[]>('get_mod_dependencies', {
+          instanceId,
           projectId: mod.id,
           provider: mod.provider
         })
 
         for (const dep of deps) {
-          if (!seenIds.has(dep.id)) {
-            allDeps.set(dep.id, dep)
-            seenIds.add(dep.id)
-            queue.push(dep)
+          if (!seenIds.has(dep.project.id)) {
+            allDeps.set(dep.project.id, dep)
+            seenIds.add(dep.project.id)
+            queue.push(dep.project)
           }
         }
       }

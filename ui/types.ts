@@ -162,6 +162,11 @@ export interface Project {
   categories?: string[];
 }
 
+export interface ResolvedDependency {
+  project: Project;
+  dependency_type: string;
+}
+
 export interface InstalledMod {
   name: string;
   filename: string;

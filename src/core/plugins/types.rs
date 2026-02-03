@@ -39,6 +39,12 @@ pub struct Project {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ResolvedDependency {
+    pub project: Project,
+    pub dependency_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Dependency {
     pub project_id: Option<String>,
     pub version_id: Option<String>,

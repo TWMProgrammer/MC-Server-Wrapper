@@ -1,5 +1,5 @@
 use mc_server_wrapper_core::instance::InstanceManager;
-use mc_server_wrapper_core::plugins::{self, InstalledPlugin, Project, PluginProvider, SearchOptions, PluginUpdate};
+use mc_server_wrapper_core::plugins::{self, InstalledPlugin, Project, PluginProvider, SearchOptions, PluginUpdate, ResolvedDependency};
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -116,7 +116,7 @@ pub async fn search_plugins(
 pub async fn get_plugin_dependencies(
     project_id: String,
     provider: PluginProvider,
-) -> Result<Vec<Project>, String> {
+) -> Result<Vec<ResolvedDependency>, String> {
     plugins::get_plugin_dependencies(&project_id, provider).await.map_err(|e| e.to_string())
 }
 

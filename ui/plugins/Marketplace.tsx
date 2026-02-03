@@ -17,7 +17,7 @@ import {
   Layers
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Project, PluginProvider, SortOrder, SearchOptions, Instance } from '../types'
+import { Project, PluginProvider, SortOrder, SearchOptions, Instance, ResolvedDependency } from '../types'
 import { useToast } from '../hooks/useToast'
 import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
@@ -58,7 +58,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [showReview, setShowReview] = useState(false)
   const [isInstalling, setIsInstalling] = useState(false)
   const [isResolvingDeps, setIsResolvingDeps] = useState(false)
-  const [resolvedDeps, setResolvedDeps] = useState<Project[]>([])
+  const [resolvedDeps, setResolvedDeps] = useState<ResolvedDependency[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
   const [page, setPage] = useState(1)
@@ -138,22 +138,22 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
   const handleReview = async () => {
     setIsResolvingDeps(true)
-    const allDeps: Map<string, Project> = new Map()
+    const allDeps: Map<string, ResolvedDependency> = new Map()
     const seenIds = new Set(Array.from(selectedPlugins.keys()))
     const queue = Array.from(selectedPlugins.values())
 
     try {
       while (queue.length > 0) {
         const plugin = queue.shift()!
-        const deps = await invoke<Project[]>('get_plugin_dependencies', {
+        const deps = await invoke<ResolvedDependency[]>('get_plugin_dependencies', {
           projectId: plugin.id,
           provider: plugin.provider
         })
         for (const dep of deps) {
-          if (!seenIds.has(dep.id)) {
-            allDeps.set(dep.id, dep)
-            seenIds.add(dep.id)
-            queue.push(dep) // Add to queue to find its dependencies
+          if (!seenIds.has(dep.project.id)) {
+            allDeps.set(dep.project.id, dep)
+            seenIds.add(dep.project.id)
+            queue.push(dep.project) // Add to queue to find its dependencies
           }
         }
       }

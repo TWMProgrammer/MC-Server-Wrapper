@@ -441,15 +441,21 @@ pub async fn search_mods(options: &SearchOptions, provider: Option<ModProvider>,
 }
 
 /// Gets dependencies for a mod.
-pub async fn get_mod_dependencies(project_id: &str, provider: ModProvider, curseforge_api_key: Option<String>) -> Result<Vec<Project>> {
+pub async fn get_mod_dependencies(
+    project_id: &str,
+    provider: ModProvider,
+    game_version: Option<&str>,
+    loader: Option<&str>,
+    curseforge_api_key: Option<String>,
+) -> Result<Vec<ResolvedDependency>> {
     match provider {
         ModProvider::Modrinth => {
             let client = ModrinthClient::new();
-            client.get_dependencies(project_id).await
+            client.get_dependencies(project_id, game_version, loader).await
         }
         ModProvider::CurseForge => {
             let client = CurseForgeClient::new(curseforge_api_key);
-            client.get_dependencies(project_id).await
+            client.get_dependencies(project_id, game_version, loader).await
         }
     }
 }

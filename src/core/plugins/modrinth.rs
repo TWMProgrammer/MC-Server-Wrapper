@@ -4,7 +4,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use tracing::info;
-use super::types::{Project, ProjectVersion, PluginProvider};
+use super::types::{Project, ProjectVersion, PluginProvider, ResolvedDependency};
 
 pub struct ModrinthClient {
     client: reqwest::Client,
@@ -126,24 +126,48 @@ impl ModrinthClient {
         })
     }
 
-    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<Project>> {
+    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<ResolvedDependency>> {
         let url = format!("https://api.modrinth.com/v2/project/{}/dependencies", project_id);
         let response = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
         
         let projects_json = response["projects"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
+        let versions_json = response["versions"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
         
-        let projects = projects_json.iter().map(|h| Project {
-            id: h["id"].as_str().unwrap_or_default().to_string(),
-            slug: h["slug"].as_str().unwrap_or_default().to_string(),
-            title: h["title"].as_str().unwrap_or_default().to_string(),
-            description: h["description"].as_str().unwrap_or_default().to_string(),
-            downloads: h["downloads"].as_u64().unwrap_or(0),
-            icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
-            author: String::new(),
-            provider: PluginProvider::Modrinth,
-        }).collect();
+        let mut resolved_deps = Vec::new();
+        
+        for h in projects_json {
+            // Check if this project is actually a plugin
+            let project_type = h["project_type"].as_str().unwrap_or_default();
+            if project_type != "plugin" {
+                continue;
+            }
 
-        Ok(projects)
+            let id = h["id"].as_str().unwrap_or_default().to_string();
+            
+            // Find the dependency type from the versions array
+            // The versions array contains objects with 'project_id' and 'dependency_type'
+            let dependency_type = versions_json.iter()
+                .find(|v| v["project_id"].as_str() == Some(&id))
+                .and_then(|v| v["dependency_type"].as_str())
+                .unwrap_or("required")
+                .to_string();
+
+            resolved_deps.push(ResolvedDependency {
+                project: Project {
+                    id,
+                    slug: h["slug"].as_str().unwrap_or_default().to_string(),
+                    title: h["title"].as_str().unwrap_or_default().to_string(),
+                    description: h["description"].as_str().unwrap_or_default().to_string(),
+                    downloads: h["downloads"].as_u64().unwrap_or(0),
+                    icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
+                    author: String::new(),
+                    provider: PluginProvider::Modrinth,
+                },
+                dependency_type,
+            });
+        }
+
+        Ok(resolved_deps)
     }
 
     pub async fn get_versions(

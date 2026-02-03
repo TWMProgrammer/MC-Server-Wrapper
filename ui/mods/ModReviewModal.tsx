@@ -1,13 +1,13 @@
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Check, Download, RefreshCw, Package, AlertCircle } from 'lucide-react'
-import { Project } from '../types'
+import { Project, ResolvedDependency } from '../types'
 import { useState, useEffect } from 'react'
 import { useAppSettings } from '../hooks/useAppSettings'
 
 interface ModReviewModalProps {
   selectedMods: Project[];
-  preFetchedDependencies?: Project[];
+  preFetchedDependencies?: ResolvedDependency[];
   instanceId: string;
   onClose: () => void;
   onConfirm: (mods: Project[]) => Promise<void>;
@@ -22,15 +22,17 @@ export function ModReviewModal({
   onConfirm,
   isInstalling
 }: ModReviewModalProps) {
-  const [dependencies, setDependencies] = useState<Project[]>(preFetchedDependencies)
+  const [dependencies, setDependencies] = useState<ResolvedDependency[]>(preFetchedDependencies)
   const [selectedForInstall, setSelectedForInstall] = useState<Set<string>>(new Set())
   const { settings } = useAppSettings()
 
   useEffect(() => {
-    // Initialize with all selected mods and pre-fetched dependencies immediately
+    // Initialize with all selected mods and required dependencies
     const allIds = new Set([
       ...selectedMods.map(m => m.id),
-      ...preFetchedDependencies.map(m => m.id)
+      ...preFetchedDependencies
+        .filter(d => d.dependency_type === 'required')
+        .map(d => d.project.id)
     ])
     setSelectedForInstall(allIds)
     setDependencies(preFetchedDependencies)
@@ -49,7 +51,9 @@ export function ModReviewModal({
   const handleConfirm = () => {
     const modsToInstall = [
       ...selectedMods.filter(m => selectedForInstall.has(m.id)),
-      ...dependencies.filter(m => selectedForInstall.has(m.id))
+      ...dependencies
+        .map(d => d.project)
+        .filter(p => selectedForInstall.has(p.id))
     ]
     onConfirm(modsToInstall)
   }
@@ -125,38 +129,79 @@ export function ModReviewModal({
               </div>
             </div>
 
-            {(dependencies.length > 0) && (
+            {dependencies.some(d => d.dependency_type === 'required') && (
               <div>
                 <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  Dependencies
+                  Mandatory Dependencies
                 </h4>
                 <div className="space-y-2">
-                  {dependencies.map(dep => (
+                  {dependencies.filter(d => d.dependency_type === 'required').map(dep => (
                     <div
-                      key={dep.id}
-                      onClick={() => toggleSelection(dep.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedForInstall.has(dep.id)
+                      key={dep.project.id}
+                      onClick={() => toggleSelection(dep.project.id)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedForInstall.has(dep.project.id)
                         ? 'bg-blue-500/10 border-blue-500/30'
                         : 'bg-white/5 border-white/5 opacity-50'
                         }`}
                     >
-                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${selectedForInstall.has(dep.id) ? 'bg-blue-500 border-blue-500' : 'border-white/20'
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${selectedForInstall.has(dep.project.id) ? 'bg-blue-500 border-blue-500' : 'border-white/20'
                         }`}>
-                        {selectedForInstall.has(dep.id) && <Check size={14} className="text-white" />}
+                        {selectedForInstall.has(dep.project.id) && <Check size={14} className="text-white" />}
                       </div>
-                      {dep.icon_url ? (
-                        <img src={dep.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                      {dep.project.icon_url ? (
+                        <img src={dep.project.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-500">
                           <Package size={16} />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium truncate block">{dep.title}</span>
+                        <span className="font-medium truncate block">{dep.project.title}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-tight">Required Dependency</span>
-                          <span className={`text-[10px] font-bold uppercase tracking-tight ${dep.provider === 'Modrinth' ? 'text-green-500' : 'text-orange-500'}`}>
-                            {dep.provider}
+                          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-tight">Required</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-tight ${dep.project.provider === 'Modrinth' ? 'text-green-500' : 'text-orange-500'}`}>
+                            {dep.project.provider}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {dependencies.some(d => d.dependency_type === 'optional') && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2 text-gray-500">
+                  Optional Dependencies
+                </h4>
+                <div className="space-y-2">
+                  {dependencies.filter(d => d.dependency_type === 'optional').map(dep => (
+                    <div
+                      key={dep.project.id}
+                      onClick={() => toggleSelection(dep.project.id)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedForInstall.has(dep.project.id)
+                        ? 'bg-white/10 border-white/20'
+                        : 'bg-white/5 border-white/5 opacity-50'
+                        }`}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${selectedForInstall.has(dep.project.id) ? 'bg-gray-500 border-gray-500' : 'border-white/20'
+                        }`}>
+                        {selectedForInstall.has(dep.project.id) && <Check size={14} className="text-white" />}
+                      </div>
+                      {dep.project.icon_url ? (
+                        <img src={dep.project.icon_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-500">
+                          <Package size={16} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium truncate block">{dep.project.title}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Optional</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-tight ${dep.project.provider === 'Modrinth' ? 'text-green-500' : 'text-orange-500'}`}>
+                            {dep.project.provider}
                           </span>
                         </div>
                       </div>

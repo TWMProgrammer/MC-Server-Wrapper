@@ -247,7 +247,7 @@ pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProv
 }
 
 /// Gets dependencies for a plugin.
-pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider) -> Result<Vec<Project>> {
+pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider) -> Result<Vec<ResolvedDependency>> {
     match provider {
         PluginProvider::Modrinth => {
             let client = ModrinthClient::new();

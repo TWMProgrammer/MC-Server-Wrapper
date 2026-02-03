@@ -1,4 +1,4 @@
-use super::types::{Project, ModProvider, SearchOptions, SortOrder, ProjectVersion, ProjectFile};
+use super::types::{Project, ModProvider, SearchOptions, SortOrder, ProjectVersion, ProjectFile, ResolvedDependency};
 use anyhow::{Result, anyhow};
 use std::path::Path;
 use tokio::fs;
@@ -121,7 +121,7 @@ impl CurseForgeClient {
         })
     }
 
-    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<Project>> {
+    pub async fn get_dependencies(&self, project_id: &str, _game_version: Option<&str>, _loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         let url = format!("https://api.curseforge.com/v1/mods/{}", project_id);
         let response = self.client.get(&url)
@@ -133,18 +133,30 @@ impl CurseForgeClient {
         
         let dependencies = response["data"]["dependencies"].as_array();
         if let Some(deps) = dependencies {
-            let mut project_deps = Vec::new();
+            let mut resolved_deps = Vec::new();
             for dep in deps {
-                // Dependency type 3 is "Required"
-                if dep["relationType"].as_u64() == Some(3) {
-                    if let Some(mod_id) = dep["modId"].as_u64() {
-                        if let Ok(project) = self.get_project(&mod_id.to_string()).await {
-                            project_deps.push(project);
-                        }
+                let relation_type = dep["relationType"].as_u64();
+                
+                // Mapping relation types:
+                // 3: Required
+                // 2: Optional
+                // Others: Incompatible, Embedded, etc.
+                let dep_type = match relation_type {
+                    Some(3) => "required",
+                    Some(2) => "optional",
+                    _ => continue, // Skip others for now
+                };
+
+                if let Some(mod_id) = dep["modId"].as_u64() {
+                    if let Ok(project) = self.get_project(&mod_id.to_string()).await {
+                        resolved_deps.push(ResolvedDependency {
+                            project,
+                            dependency_type: dep_type.to_string(),
+                        });
                     }
                 }
             }
-            Ok(project_deps)
+            Ok(resolved_deps)
         } else {
             Ok(vec![])
         }
@@ -181,6 +193,20 @@ impl CurseForgeClient {
                 gv.iter().filter_map(|s: &serde_json::Value| s.as_str().map(|s| s.to_string()))
                   .filter(|s: &String| s.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
                   .collect()
+            }).unwrap_or_default(),
+            dependencies: v["dependencies"].as_array().map(|deps| {
+                deps.iter().filter_map(|d| {
+                    let relation_type = d["relationType"].as_u64();
+                    if matches!(relation_type, Some(3) | Some(2)) {
+                        Some(super::types::Dependency {
+                            project_id: d["modId"].as_u64().map(|id| id.to_string()),
+                            version_id: None,
+                            dependency_type: if relation_type == Some(3) { "required".to_string() } else { "optional".to_string() },
+                        })
+                    } else {
+                        None
+                    }
+                }).collect()
             }).unwrap_or_default(),
         }).collect();
 

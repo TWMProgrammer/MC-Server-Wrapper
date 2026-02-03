@@ -4,7 +4,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use tracing::info;
-use super::types::{Project, ProjectVersion, ModProvider, SearchOptions, SortOrder};
+use super::types::{Project, ProjectVersion, ModProvider, SearchOptions, SortOrder, ResolvedDependency};
 
 pub struct ModrinthClient {
     client: reqwest::Client,
@@ -135,27 +135,77 @@ impl ModrinthClient {
         })
     }
 
-    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<Project>> {
+    pub async fn get_dependencies(&self, project_id: &str, game_version: Option<&str>, loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
+        // If we have version/loader, find the best version and its specific dependencies
+        if let (Some(gv), Some(l)) = (game_version, loader) {
+            let versions = self.get_versions(project_id).await?;
+            let l_lower = l.to_lowercase();
+            
+            let best_version = versions.into_iter().find(|v| {
+                v.game_versions.contains(&gv.to_string()) && 
+                v.loaders.iter().any(|vl| vl.to_lowercase() == l_lower)
+            });
+
+            if let Some(version) = best_version {
+                let mut resolved = Vec::new();
+                for dep in version.dependencies {
+                    if let Some(dep_project_id) = dep.project_id {
+                        if dep.dependency_type == "required" || dep.dependency_type == "optional" {
+                            if let Ok(project) = self.get_project(&dep_project_id).await {
+                                resolved.push(ResolvedDependency {
+                                    project,
+                                    dependency_type: dep.dependency_type,
+                                });
+                            }
+                        }
+                    }
+                }
+                return Ok(resolved);
+            }
+        }
+
+        // Fallback to project-wide dependencies if no specific version found or version/loader not provided
         let url = format!("{}/project/{}/dependencies", self.base_url, project_id);
         let response = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
         
         let projects_json = response["projects"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
+        let versions_json = response["versions"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
         
-        let projects = projects_json.iter().map(|h| Project {
-            id: h["id"].as_str().unwrap_or_default().to_string(),
-            slug: h["slug"].as_str().unwrap_or_default().to_string(),
-            title: h["title"].as_str().unwrap_or_default().to_string(),
-            description: h["description"].as_str().unwrap_or_default().to_string(),
-            downloads: h["downloads"].as_u64().unwrap_or(0),
-            icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
-            author: String::new(),
-            provider: ModProvider::Modrinth,
-            categories: h["categories"].as_array().map(|cats| {
-                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
-            }),
-        }).collect();
+        let mut resolved_deps = Vec::new();
+        
+        for h in projects_json {
+            let project_type = h["project_type"].as_str().unwrap_or_default();
+            if project_type != "mod" {
+                continue;
+            }
 
-        Ok(projects)
+            let id = h["id"].as_str().unwrap_or_default().to_string();
+            
+            let dependency_type = versions_json.iter()
+                .find(|v| v["project_id"].as_str() == Some(&id))
+                .and_then(|v| v["dependency_type"].as_str())
+                .unwrap_or("required")
+                .to_string();
+
+            resolved_deps.push(ResolvedDependency {
+                project: Project {
+                    id,
+                    slug: h["slug"].as_str().unwrap_or_default().to_string(),
+                    title: h["title"].as_str().unwrap_or_default().to_string(),
+                    description: h["description"].as_str().unwrap_or_default().to_string(),
+                    downloads: h["downloads"].as_u64().unwrap_or(0),
+                    icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
+                    author: String::new(),
+                    provider: ModProvider::Modrinth,
+                    categories: h["categories"].as_array().map(|cats| {
+                        cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+                    }),
+                },
+                dependency_type,
+            });
+        }
+
+        Ok(resolved_deps)
     }
 
     pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {

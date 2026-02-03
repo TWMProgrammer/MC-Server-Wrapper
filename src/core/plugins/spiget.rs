@@ -3,7 +3,7 @@ use std::path::Path;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
-use super::types::{Project, PluginProvider};
+use super::types::{Project, PluginProvider, ResolvedDependency};
 
 pub struct SpigetClient {
     client: reqwest::Client,
@@ -97,7 +97,7 @@ impl SpigetClient {
         Ok(projects)
     }
 
-    pub async fn get_dependencies(&self, resource_id: &str) -> Result<Vec<Project>> {
+    pub async fn get_dependencies(&self, resource_id: &str) -> Result<Vec<ResolvedDependency>> {
         let url = format!("{}/resources/{}/dependencies", self.base_url, resource_id);
         let response = self.client.get(&url).send().await?;
         
@@ -108,18 +108,21 @@ impl SpigetClient {
         let response = response.error_for_status()?;
         let json = response.json::<Vec<serde_json::Value>>().await?;
         
-        let mut projects = Vec::new();
+        let mut resolved_deps = Vec::new();
         for dep in json {
             // Spiget dependencies can be internal (numeric ID) or external (URL/Name)
             // For internal ones, we can fetch the project info
             if let Some(id) = dep["id"].as_u64() {
                 if let Ok(project) = self.get_project(&id.to_string()).await {
-                    projects.push(project);
+                    resolved_deps.push(ResolvedDependency {
+                        project,
+                        dependency_type: "required".to_string(), // Spiget doesn't specify, assume required
+                    });
                 }
             }
         }
 
-        Ok(projects)
+        Ok(resolved_deps)
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
