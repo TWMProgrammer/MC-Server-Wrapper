@@ -1,4 +1,5 @@
 mod commands;
+mod setup;
 
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::manager::ServerManager;
@@ -7,8 +8,6 @@ use mc_server_wrapper_core::scheduler::SchedulerManager;
 use mc_server_wrapper_core::java_manager::JavaManager;
 use mc_server_wrapper_core::app_config::{GlobalConfigManager, CloseBehavior};
 use tauri::Manager;
-use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashSet;
@@ -19,56 +18,8 @@ use anyhow::Context;
 pub fn run() {
   tauri::Builder::default()
     .setup(|app| {
-      // Set window size to 70% of screen resolution
-      if let Some(window) = app.get_webview_window("main") {
-          if let Ok(Some(monitor)) = window.primary_monitor() {
-              let size = monitor.size();
-              let width = (size.width as f64 * 0.7) as u32;
-              let height = (size.height as f64 * 0.7) as u32;
-              let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                  width,
-                  height,
-              }));
-              let _ = window.center();
-          }
-      }
-
-      // System Tray
-      let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-      let show_i = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
-      let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
-
-      let mut tray_builder = TrayIconBuilder::new()
-          .menu(&menu)
-          .on_menu_event(|app, event| {
-              match event.id.as_ref() {
-                  "quit" => {
-                      app.exit(0);
-                  }
-                  "show" => {
-                      if let Some(window) = app.get_webview_window("main") {
-                          let _ = window.show();
-                          let _ = window.set_focus();
-                      }
-                  }
-                  _ => {}
-              }
-          })
-          .on_tray_icon_event(|tray, event| {
-              if let TrayIconEvent::Click { .. } = event {
-                  let app = tray.app_handle();
-                  if let Some(window) = app.get_webview_window("main") {
-                      let _ = window.show();
-                      let _ = window.set_focus();
-                  }
-              }
-          });
-
-      if let Some(icon) = app.default_window_icon() {
-          tray_builder = tray_builder.icon(icon.clone());
-      }
-
-      let _tray = tray_builder.build(app)?;
+      setup::setup_window(app);
+      setup::setup_tray(app).context("failed to setup tray")?;
 
       // Initialize Directories next to the executable
       let exe_path = std::env::current_exe()
@@ -77,54 +28,12 @@ pub fn run() {
           .context("failed to get exe directory")?
           .to_path_buf();
 
-      // Logging
-      let log_level = if cfg!(debug_assertions) {
-        log::LevelFilter::Debug
-      } else {
-        log::LevelFilter::Info
-      };
-
-      app.handle().plugin(
-        tauri_plugin_log::Builder::default()
-          .level(log_level)
-          .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
-          .targets([
-            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-              file_name: Some("app".to_string()),
-            }),
-            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-              path: exe_path.join("logs"),
-              file_name: Some("app".to_string()),
-            }),
-          ])
-          .build(),
-      )?;
+      setup::setup_logging(app, &exe_path).context("failed to setup logging")?;
 
       app.handle().plugin(tauri_plugin_dialog::init())?;
       app.handle().plugin(tauri_plugin_opener::init())?;
 
-      // Check for folder clutter
-      let has_clutter = tauri::async_runtime::block_on(async {
-          mc_server_wrapper_core::init::has_folder_clutter(&exe_path).await.unwrap_or(false)
-      });
-
-      if has_clutter {
-          use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-          
-          let confirmed = tauri::async_runtime::block_on(async {
-              app.dialog()
-                  .message("This folder contains other files and folders, we recommend putting the .exe executable in its OWN folder to avoid clutter and potential issues. Do you want to continue anyway?")
-                  .kind(MessageDialogKind::Warning)
-                  .title("Folder Clutter Detected")
-                  .buttons(MessageDialogButtons::YesNo)
-                  .blocking_show()
-          });
-
-          if !confirmed {
-              app.handle().exit(0);
-          }
-      }
+      setup::check_clutter(app, &exe_path);
 
       let app_dirs = tauri::async_runtime::block_on(async {
           mc_server_wrapper_core::init::init_directories(&exe_path).await
