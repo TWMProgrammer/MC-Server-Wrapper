@@ -7,6 +7,7 @@ use super::types::{Project, PluginProvider};
 
 pub struct SpigetClient {
     client: reqwest::Client,
+    base_url: String,
 }
 
 impl Default for SpigetClient {
@@ -17,11 +18,16 @@ impl Default for SpigetClient {
 
 impl SpigetClient {
     pub fn new() -> Self {
+        Self::with_base_url("https://api.spiget.org/v2".to_string())
+    }
+
+    pub fn with_base_url(base_url: String) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
+            base_url,
         }
     }
 
@@ -48,16 +54,16 @@ impl SpigetClient {
                         "world-management" => "17",
                         _ => cat
                     };
-                    format!("https://api.spiget.org/v2/categories/{}/resources?size={}&page={}&sort=-downloads", cat_id, size, page)
+                    format!("{}/categories/{}/resources?size={}&page={}&sort=-downloads", self.base_url, cat_id, size, page)
                 } else {
-                    format!("https://api.spiget.org/v2/resources?size={}&page={}&sort=-downloads", size, page)
+                    format!("{}/resources?size={}&page={}&sort=-downloads", self.base_url, size, page)
                 }
             } else {
-                format!("https://api.spiget.org/v2/resources?size={}&page={}&sort=-downloads", size, page)
+                format!("{}/resources?size={}&page={}&sort=-downloads", self.base_url, size, page)
             }
         } else {
-            format!("https://api.spiget.org/v2/search/resources/{}?field=name&size={}&page={}", 
-                urlencoding::encode(&options.query), size, page)
+            format!("{}/search/resources/{}?field=name&size={}&page={}", 
+                self.base_url, urlencoding::encode(&options.query), size, page)
         };
 
         let response = self.client.get(&url).send().await?;
@@ -92,7 +98,7 @@ impl SpigetClient {
     }
 
     pub async fn get_dependencies(&self, resource_id: &str) -> Result<Vec<Project>> {
-        let url = format!("https://api.spiget.org/v2/resources/{}/dependencies", resource_id);
+        let url = format!("{}/resources/{}/dependencies", self.base_url, resource_id);
         let response = self.client.get(&url).send().await?;
         
         if response.status() == reqwest::StatusCode::NOT_FOUND {
@@ -117,7 +123,7 @@ impl SpigetClient {
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
-        let url = format!("https://api.spiget.org/v2/resources/{}", id);
+        let url = format!("{}/resources/{}", self.base_url, id);
         let response = self.client.get(&url).send().await?.error_for_status()?;
         let h = response.json::<serde_json::Value>().await?;
         
@@ -142,7 +148,7 @@ impl SpigetClient {
     }
 
     pub async fn get_latest_version(&self, resource_id: &str) -> Result<(String, String)> {
-        let url = format!("https://api.spiget.org/v2/resources/{}/versions/latest", resource_id);
+        let url = format!("{}/resources/{}/versions/latest", self.base_url, resource_id);
         let response = self.client.get(&url).send().await?.error_for_status()?;
         let json = response.json::<serde_json::Value>().await?;
         
@@ -153,7 +159,7 @@ impl SpigetClient {
     }
 
     pub async fn download_resource(&self, resource_id: &str, target_dir: impl AsRef<Path>) -> Result<String> {
-        let url = format!("https://api.spiget.org/v2/resources/{}/download", resource_id);
+        let url = format!("{}/resources/{}/download", self.base_url, resource_id);
         let response = self.client.get(&url).send().await?.error_for_status()?;
         
         // Some resources might redirect to an external site that doesn't return a JAR

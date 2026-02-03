@@ -8,6 +8,7 @@ use super::types::{Project, ProjectVersion, ModProvider, SearchOptions, SortOrde
 
 pub struct ModrinthClient {
     client: reqwest::Client,
+    base_url: String,
 }
 
 impl Default for ModrinthClient {
@@ -18,16 +19,21 @@ impl Default for ModrinthClient {
 
 impl ModrinthClient {
     pub fn new() -> Self {
+        Self::with_base_url("https://api.modrinth.com/v2".to_string())
+    }
+
+    pub fn with_base_url(base_url: String) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
+            base_url,
         }
     }
 
     pub async fn search(&self, options: &SearchOptions) -> Result<Vec<Project>> {
-        let mut url = format!("https://api.modrinth.com/v2/search?query={}", urlencoding::encode(&options.query));
+        let mut url = format!("{}/search?query={}", self.base_url, urlencoding::encode(&options.query));
 
         let mut and_groups: Vec<Vec<String>> = Vec::new();
 
@@ -111,7 +117,7 @@ impl ModrinthClient {
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
-        let url = format!("https://api.modrinth.com/v2/project/{}", id);
+        let url = format!("{}/project/{}", self.base_url, id);
         let h = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
         
         Ok(Project {
@@ -130,7 +136,7 @@ impl ModrinthClient {
     }
 
     pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<Project>> {
-        let url = format!("https://api.modrinth.com/v2/project/{}/dependencies", project_id);
+        let url = format!("{}/project/{}/dependencies", self.base_url, project_id);
         let response = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
         
         let projects_json = response["projects"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
@@ -153,7 +159,7 @@ impl ModrinthClient {
     }
 
     pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {
-        let url = format!("https://api.modrinth.com/v2/project/{}/version", project_id);
+        let url = format!("{}/project/{}/version", self.base_url, project_id);
         let versions = self.client.get(&url).send().await?.json::<Vec<ProjectVersion>>().await?;
         Ok(versions)
     }
