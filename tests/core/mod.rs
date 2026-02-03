@@ -4,3 +4,6 @@ mod config_files_tests;
 mod backup_tests;
 mod scheduler_tests;
 mod server_process_tests;
+mod lifecycle_tests;
+mod players_tests;
+mod java_tests;

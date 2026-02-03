@@ -291,12 +291,20 @@ impl ServerHandle {
                                     Ok(output) => {
                                         if !output.status.success() {
                                             warn!("taskkill exited with error: {}", String::from_utf8_lossy(&output.stderr));
+                                            // Fallback to standard kill if taskkill fails
+                                            let _ = child.kill().await;
                                         } else {
                                             info!("Successfully killed process tree for PID {}", pid);
                                         }
                                     }
-                                    Err(e) => warn!("Failed to run taskkill: {}", e),
+                                    Err(e) => {
+                                        warn!("Failed to run taskkill: {}", e);
+                                        // Fallback to standard kill if taskkill fails
+                                        let _ = child.kill().await;
+                                    }
                                 }
+                            } else {
+                                let _ = child.kill().await;
                             }
                         }
                         #[cfg(not(target_os = "windows"))]

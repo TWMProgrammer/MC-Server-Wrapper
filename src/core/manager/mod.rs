@@ -40,6 +40,10 @@ impl ServerManager {
         &self.mod_loader_client
     }
 
+    pub fn get_instance_manager(&self) -> Arc<InstanceManager> {
+        Arc::clone(&self.instance_manager)
+    }
+
     pub async fn get_server(&self, instance_id: Uuid) -> Option<Arc<ServerHandle>> {
         let servers = self.servers.lock().await;
         servers.get(&instance_id).cloned()

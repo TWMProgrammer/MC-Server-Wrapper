@@ -50,6 +50,10 @@ impl ServerHandle {
         players.iter().cloned().collect()
     }
 
+    pub async fn get_config(&self) -> ServerConfig {
+        self.config.lock().await.clone()
+    }
+
     pub fn subscribe_logs(&self) -> broadcast::Receiver<String> {
         self.log_sender.subscribe()
     }
