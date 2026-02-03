@@ -168,8 +168,8 @@ describe('ModMarketplace', () => {
         render(<ModMarketplace instanceId={instanceId} />);
         await waitFor(() => screen.getByText('Test Mod 1'));
 
-        const modCard = screen.getByText('Test Mod 1').closest('[data-testid="mod-card"]');
-        const selectBtn = within(modCard!).getByText('Select');
+        const modCard = screen.getByText('Test Mod 1').closest('[data-testid="mod-card"]') as HTMLElement;
+        const selectBtn = within(modCard).getByText('Select');
         fireEvent.click(selectBtn);
 
         await waitFor(() => {

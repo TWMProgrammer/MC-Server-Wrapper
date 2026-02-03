@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { BackupInfo } from './types'
 import { useToast } from './hooks/useToast'
 import { ConfirmDropdown } from './components/ConfirmDropdown'
+import { formatSize } from './utils'
 
 interface BackupsTabProps {
   instanceId: string;
@@ -126,14 +127,6 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
   const filteredBackups = backups.filter(b =>
