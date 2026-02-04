@@ -1,27 +1,36 @@
 use super::types::{Project, ModProvider, SearchOptions, SortOrder, ProjectVersion, ProjectFile, ResolvedDependency};
 use anyhow::{Result, anyhow};
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
+use crate::cache::CacheManager;
 
 pub struct CurseForgeClient {
     client: reqwest::Client,
     api_key: Option<String>,
+    cache: Arc<CacheManager>,
 }
 
 impl CurseForgeClient {
-    pub fn new(api_key: Option<String>) -> Self {
+    pub fn new(api_key: Option<String>, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
             api_key,
+            cache,
         }
     }
 
     pub async fn search(&self, options: &SearchOptions) -> Result<Vec<Project>> {
+        let cache_key = format!("curseforge_search_{}", options.cache_key());
+        if let Ok(Some(cached)) = self.cache.get::<Vec<Project>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         
         let mut query_params = vec![
@@ -104,7 +113,7 @@ impl CurseForgeClient {
         
         let data = response["data"].as_array().ok_or_else(|| anyhow!("Invalid response from CurseForge"))?;
         
-        let projects = data.iter().map(|h| Project {
+        let projects: Vec<Project> = data.iter().map(|h| Project {
             id: h["id"].as_u64().unwrap_or(0).to_string(),
             slug: h["slug"].as_str().unwrap_or_default().to_string(),
             title: h["name"].as_str().unwrap_or_default().to_string(),
@@ -118,10 +127,16 @@ impl CurseForgeClient {
             }),
         }).collect();
 
+        let _ = self.cache.set(cache_key, projects.clone()).await;
         Ok(projects)
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
+        let cache_key = format!("curseforge_project_{}", id);
+        if let Ok(Some(cached)) = self.cache.get::<Project>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         let url = format!("https://api.curseforge.com/v1/mods/{}", id);
         let response = self.client.get(&url)
@@ -132,7 +147,7 @@ impl CurseForgeClient {
             .await?;
         
         let h = &response["data"];
-        Ok(Project {
+        let project = Project {
             id: h["id"].as_u64().unwrap_or(0).to_string(),
             slug: h["slug"].as_str().unwrap_or_default().to_string(),
             title: h["name"].as_str().unwrap_or_default().to_string(),
@@ -144,10 +159,18 @@ impl CurseForgeClient {
             categories: h["categories"].as_array().map(|cats| {
                 cats.iter().filter_map(|c| c["name"].as_str().map(|s| s.to_string())).collect()
             }),
-        })
+        };
+
+        let _ = self.cache.set(cache_key, project.clone()).await;
+        Ok(project)
     }
 
-    pub async fn get_dependencies(&self, project_id: &str, _game_version: Option<&str>, _loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
+    pub async fn get_dependencies(&self, project_id: &str, game_version: Option<&str>, loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
+        let cache_key = format!("curseforge_dependencies_{}_v:{:?}_lo:{:?}", project_id, game_version, loader);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ResolvedDependency>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         let url = format!("https://api.curseforge.com/v1/mods/{}", project_id);
         let response = self.client.get(&url)
@@ -182,6 +205,7 @@ impl CurseForgeClient {
                     }
                 }
             }
+            let _ = self.cache.set(cache_key, resolved_deps.clone()).await;
             Ok(resolved_deps)
         } else {
             Ok(vec![])
@@ -194,6 +218,11 @@ impl CurseForgeClient {
         game_version: Option<&str>,
         loader: Option<&str>,
     ) -> Result<Vec<ProjectVersion>> {
+        let cache_key = format!("curseforge_versions_{}_v:{:?}_lo:{:?}", project_id, game_version, loader);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ProjectVersion>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         let url = format!("https://api.curseforge.com/v1/mods/{}/files", project_id);
         
@@ -224,7 +253,7 @@ impl CurseForgeClient {
         
         let data = response["data"].as_array().ok_or_else(|| anyhow!("Invalid response from CurseForge"))?;
         
-        let versions = data.iter().map(|v| ProjectVersion {
+        let versions: Vec<ProjectVersion> = data.iter().map(|v| ProjectVersion {
             id: v["id"].as_u64().unwrap_or(0).to_string(),
             project_id: project_id.to_string(),
             version_number: v["displayName"].as_str().unwrap_or_default().to_string(),
@@ -260,6 +289,7 @@ impl CurseForgeClient {
             }).unwrap_or_default(),
         }).collect();
 
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

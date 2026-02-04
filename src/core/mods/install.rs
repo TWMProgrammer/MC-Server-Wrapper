@@ -1,10 +1,12 @@
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use anyhow::{Result, Context, anyhow};
 use crate::mods::types::{ModProvider, ProjectVersion, ModCache, ModSource, ModUpdate};
 use crate::mods::modrinth::ModrinthClient;
 use crate::mods::curseforge::CurseForgeClient;
 use crate::mods::metadata::list_installed_mods;
+use crate::cache::CacheManager;
 
 /// Uninstalls a mod by removing its file and optionally its configuration folder.
 pub async fn uninstall_mod(instance_path: impl AsRef<Path>, filename: String, delete_config: bool) -> Result<()> {
@@ -53,6 +55,7 @@ pub async fn install_mod(
     game_version: Option<&str>,
     loader: Option<&str>,
     curseforge_api_key: Option<String>,
+    cache: Arc<CacheManager>,
 ) -> Result<String> {
     let mods_dir = instance_path.as_ref().join("mods");
     if !mods_dir.exists() {
@@ -61,7 +64,7 @@ pub async fn install_mod(
 
     let (filename, final_version_id): (String, String) = match provider {
         ModProvider::Modrinth => {
-            let client = ModrinthClient::new();
+            let client = ModrinthClient::new(cache);
             let versions: Vec<ProjectVersion> = client.get_versions(project_id, game_version, loader).await?;
             
             let version = if let Some(vid) = version_id {
@@ -76,7 +79,7 @@ pub async fn install_mod(
             (fname, version.id.clone())
         }
         ModProvider::CurseForge => {
-            let client = CurseForgeClient::new(curseforge_api_key);
+            let client = CurseForgeClient::new(curseforge_api_key, cache);
             let versions: Vec<ProjectVersion> = client.get_versions(project_id, game_version, loader).await?;
             
             let version = if let Some(vid) = version_id {
@@ -121,6 +124,7 @@ pub async fn check_for_updates(
     game_version: Option<&str>,
     loader: Option<&str>,
     curseforge_api_key: Option<String>,
+    cache: Arc<CacheManager>,
 ) -> Result<Vec<ModUpdate>> {
     let installed = list_installed_mods(&instance_path).await?;
     let mut updates = Vec::new();
@@ -129,7 +133,7 @@ pub async fn check_for_updates(
         if let Some(source) = mod_item.source {
             match source.provider {
                 ModProvider::Modrinth => {
-                    let client = ModrinthClient::new();
+                    let client = ModrinthClient::new(Arc::clone(&cache));
                     if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
                         if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
@@ -146,7 +150,7 @@ pub async fn check_for_updates(
                     }
                 }
                 ModProvider::CurseForge => {
-                    let client = CurseForgeClient::new(curseforge_api_key.clone());
+                    let client = CurseForgeClient::new(curseforge_api_key.clone(), Arc::clone(&cache));
                     if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
                         if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
@@ -179,6 +183,7 @@ pub async fn update_mod(
     game_version: Option<&str>,
     loader: Option<&str>,
     curseforge_api_key: Option<String>,
+    cache: Arc<CacheManager>,
 ) -> Result<()> {
     let mods_dir = instance_path.as_ref().join("mods");
     let old_path = mods_dir.join(&filename);
@@ -198,6 +203,7 @@ pub async fn update_mod(
         game_version,
         loader,
         curseforge_api_key,
+        cache,
     ).await {
         Ok(new_filename) => {
             let mut final_filename = new_filename.clone();

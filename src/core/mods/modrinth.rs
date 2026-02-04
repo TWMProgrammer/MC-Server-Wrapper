@@ -1,40 +1,43 @@
 use crate::utils::retry_async;
 use anyhow::{Result, anyhow};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use tracing::info;
 use super::types::{Project, ProjectVersion, ModProvider, SearchOptions, SortOrder, ResolvedDependency};
+use crate::cache::CacheManager;
 
 pub struct ModrinthClient {
     client: reqwest::Client,
     base_url: String,
-}
-
-impl Default for ModrinthClient {
-    fn default() -> Self {
-        Self::new()
-    }
+    cache: Arc<CacheManager>,
 }
 
 impl ModrinthClient {
-    pub fn new() -> Self {
-        Self::with_base_url("https://api.modrinth.com/v2".to_string())
+    pub fn new(cache: Arc<CacheManager>) -> Self {
+        Self::with_base_url("https://api.modrinth.com/v2".to_string(), cache)
     }
 
-    pub fn with_base_url(base_url: String) -> Self {
+    pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url,
+            cache,
         }
     }
 
     pub async fn search(&self, options: &SearchOptions) -> Result<Vec<Project>> {
+        let cache_key = format!("modrinth_mods_search_{}", options.cache_key());
+        if let Ok(Some(cached)) = self.cache.get::<Vec<Project>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let mut url = format!("{}/search?query={}", self.base_url, urlencoding::encode(&options.query));
 
         let mut and_groups: Vec<Vec<String>> = Vec::new();
@@ -115,7 +118,7 @@ impl ModrinthClient {
         
         let hits = response["hits"].as_array().ok_or_else(|| anyhow!("Invalid response from Modrinth: missing 'hits' field"))?;
         
-        let projects = hits.iter().map(|h| Project {
+        let projects: Vec<Project> = hits.iter().map(|h| Project {
             id: h["project_id"].as_str().unwrap_or_default().to_string(),
             slug: h["slug"].as_str().unwrap_or_default().to_string(),
             title: h["title"].as_str().unwrap_or_default().to_string(),
@@ -129,10 +132,16 @@ impl ModrinthClient {
             }),
         }).collect();
 
+        let _ = self.cache.set(cache_key, projects.clone()).await;
         Ok(projects)
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
+        let cache_key = format!("modrinth_mods_project_{}", id);
+        if let Ok(Some(cached)) = self.cache.get::<Project>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("{}/project/{}", self.base_url, id);
         let h = retry_async(
             || async {
@@ -148,7 +157,7 @@ impl ModrinthClient {
             &format!("Get Modrinth project: {}", id)
         ).await?;
         
-        Ok(Project {
+        let project = Project {
             id: h["id"].as_str().unwrap_or_default().to_string(),
             slug: h["slug"].as_str().unwrap_or_default().to_string(),
             title: h["title"].as_str().unwrap_or_default().to_string(),
@@ -160,10 +169,18 @@ impl ModrinthClient {
             categories: h["categories"].as_array().map(|cats: &Vec<serde_json::Value>| {
                 cats.iter().filter_map(|c: &serde_json::Value| c.as_str().map(|s: &str| s.to_string())).collect()
             }),
-        })
+        };
+
+        let _ = self.cache.set(cache_key, project.clone()).await;
+        Ok(project)
     }
 
     pub async fn get_dependencies(&self, project_id: &str, game_version: Option<&str>, loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
+        let cache_key = format!("modrinth_mods_deps_{}_v:{:?}_lo:{:?}", project_id, game_version, loader);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ResolvedDependency>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         // If we have version/loader, find the best version and its specific dependencies
         if let (Some(gv), Some(l)) = (game_version, loader) {
             let versions = self.get_versions(project_id, Some(gv), Some(l)).await?;
@@ -188,6 +205,7 @@ impl ModrinthClient {
                         }
                     }
                 }
+                let _ = self.cache.set(cache_key, resolved.clone()).await;
                 return Ok(resolved);
             }
         }
@@ -245,6 +263,7 @@ impl ModrinthClient {
             });
         }
 
+        let _ = self.cache.set(cache_key, resolved_deps.clone()).await;
         Ok(resolved_deps)
     }
 
@@ -254,6 +273,11 @@ impl ModrinthClient {
         game_version: Option<&str>,
         loader: Option<&str>,
     ) -> Result<Vec<ProjectVersion>> {
+        let cache_key = format!("modrinth_mods_versions_{}_v:{:?}_lo:{:?}", project_id, game_version, loader);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ProjectVersion>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let mut url = format!("{}/project/{}/version", self.base_url, project_id);
         
         let mut query_params = Vec::new();
@@ -282,6 +306,7 @@ impl ModrinthClient {
             Duration::from_secs(2),
             &format!("Get Modrinth versions: {}", project_id)
         ).await?;
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

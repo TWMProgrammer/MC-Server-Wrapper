@@ -14,6 +14,11 @@ pub struct PurpurBuilds {
 
 impl ModLoaderClient {
     pub async fn get_purpur_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let cache_key = format!("purpur_versions_{}", mc_version);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<String>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("https://api.purpurmc.org/v2/purpur/{}", mc_version);
         let response = self.client.get(&url).send().await?;
 
@@ -25,6 +30,7 @@ impl ModLoaderClient {
         let mut versions = purpur_versions.builds.all;
         
         versions.reverse(); // Newest builds first
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

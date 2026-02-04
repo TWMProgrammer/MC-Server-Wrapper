@@ -27,6 +27,21 @@ pub struct SearchOptions {
     pub loader: Option<String>,
 }
 
+impl SearchOptions {
+    pub fn cache_key(&self) -> String {
+        format!(
+            "q:{}_f:{:?}_s:{:?}_o:{:?}_l:{:?}_v:{:?}_lo:{:?}",
+            self.query,
+            self.facets,
+            self.sort,
+            self.offset,
+            self.limit,
+            self.game_version,
+            self.loader
+        )
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub id: String,

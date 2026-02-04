@@ -2,12 +2,15 @@ use wiremock::{MockServer, Mock, ResponseTemplate};
 use wiremock::matchers::{method, path};
 use mc_server_wrapper_core::plugins::spiget::SpigetClient;
 use mc_server_wrapper_core::plugins::types::{SearchOptions, PluginProvider};
+use mc_server_wrapper_core::cache::CacheManager;
+use std::sync::Arc;
 use serde_json::json;
 
 #[tokio::test]
 async fn test_spiget_search_parsing() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
 
     let search_response = json!([
         {
@@ -50,7 +53,8 @@ async fn test_spiget_search_parsing() {
 #[tokio::test]
 async fn test_spiget_get_project_parsing() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
 
     let project_response = json!({
         "id": 12345,
@@ -79,7 +83,8 @@ async fn test_spiget_get_project_parsing() {
 #[tokio::test]
 async fn test_spiget_rate_limit() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
 
     Mock::given(method("GET"))
         .and(path("/resources/12345"))
@@ -94,7 +99,8 @@ async fn test_spiget_rate_limit() {
 #[tokio::test]
 async fn test_spiget_download_resource() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
     let temp_dir = tempfile::tempdir().unwrap();
 
     let project_response = json!({
@@ -133,7 +139,8 @@ async fn test_spiget_download_resource() {
 #[tokio::test]
 async fn test_spiget_download_external_fails() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
     let temp_dir = tempfile::tempdir().unwrap();
 
     let project_response = json!({
@@ -161,7 +168,8 @@ async fn test_spiget_download_external_fails() {
 #[tokio::test]
 async fn test_spiget_network_failure() {
     let mock_server = MockServer::start().await;
-    let client = SpigetClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = SpigetClient::with_base_url(mock_server.uri(), cache);
 
     // Drop the server to simulate a network failure
     drop(mock_server);

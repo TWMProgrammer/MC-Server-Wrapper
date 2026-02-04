@@ -1,44 +1,48 @@
 use anyhow::{Result, anyhow};
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use tracing::info;
 use super::types::{Project, ProjectVersion, ProjectFile, PluginProvider, ResolvedDependency};
+use crate::cache::CacheManager;
 
 pub struct HangarClient {
     client: reqwest::Client,
     base_url: String,
-}
-
-impl Default for HangarClient {
-    fn default() -> Self {
-        Self::new()
-    }
+    cache: Arc<CacheManager>,
 }
 
 impl HangarClient {
-    pub fn new() -> Self {
+    pub fn new(cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url: "https://hangar.papermc.io/api/v1".to_string(),
+            cache,
         }
     }
 
-    pub fn with_base_url(base_url: String) -> Self {
+    pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url,
+            cache,
         }
     }
 
     pub async fn search(&self, options: &super::types::SearchOptions) -> Result<Vec<Project>> {
+        let cache_key = format!("hangar_search_{}", options.cache_key());
+        if let Ok(Some(cached)) = self.cache.get::<Vec<Project>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let mut url = format!("{}/projects?q={}", self.base_url, urlencoding::encode(&options.query));
 
         if let Some(offset) = options.offset {
@@ -66,7 +70,7 @@ impl HangarClient {
         
         let result = response["result"].as_array().ok_or_else(|| anyhow!("Invalid response from Hangar: missing 'result' field"))?;
         
-        let projects = result.iter().map(|h| {
+        let projects: Vec<Project> = result.iter().map(|h| {
             let owner = h["namespace"]["owner"].as_str().unwrap_or_default();
             let slug = h["namespace"]["slug"].as_str().unwrap_or_default();
             Project {
@@ -82,17 +86,23 @@ impl HangarClient {
             }
         }).collect();
 
+        let _ = self.cache.set(cache_key, projects.clone()).await;
         Ok(projects)
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
+        let cache_key = format!("hangar_project_{}", id);
+        if let Ok(Some(cached)) = self.cache.get::<Project>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("{}/projects/{}", self.base_url, id);
         let h: serde_json::Value = self.client.get(&url).send().await?.json().await?;
         
         let owner = h["namespace"]["owner"].as_str().unwrap_or_default();
         let slug = h["namespace"]["slug"].as_str().unwrap_or_default();
 
-        Ok(Project {
+        let project = Project {
             id: id.to_string(),
             slug: slug.to_string(),
             title: h["name"].as_str().unwrap_or_default().to_string(),
@@ -101,10 +111,18 @@ impl HangarClient {
             icon_url: h["avatarUrl"].as_str().map(|s| s.to_string()),
             author: owner.to_string(),
             provider: PluginProvider::Hangar,
-        })
+        };
+
+        let _ = self.cache.set(cache_key, project.clone()).await;
+        Ok(project)
     }
 
     pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<ResolvedDependency>> {
+        let cache_key = format!("hangar_dependencies_{}", project_id);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ResolvedDependency>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         // Hangar dependencies are listed per version. We'll get the latest version and its dependencies.
         let url = format!("{}/projects/{}/versions?limit=1", self.base_url, project_id);
         let response: serde_json::Value = self.client.get(&url).send().await?.json().await?;
@@ -177,15 +195,21 @@ impl HangarClient {
             }
         }
 
+        let _ = self.cache.set(cache_key, resolved_deps.clone()).await;
         Ok(resolved_deps)
     }
 
     pub async fn get_versions(
         &self,
         project_id: &str,
-        _game_version: Option<&str>,
-        _loader: Option<&str>,
+        game_version: Option<&str>,
+        loader: Option<&str>,
     ) -> Result<Vec<ProjectVersion>> {
+        let cache_key = format!("hangar_versions_{}_v:{:?}_lo:{:?}", project_id, game_version, loader);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ProjectVersion>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("{}/projects/{}/versions", self.base_url, project_id);
         let response: serde_json::Value = self.client.get(&url).send().await?.json().await?;
         
@@ -243,6 +267,7 @@ impl HangarClient {
             }
         }
 
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

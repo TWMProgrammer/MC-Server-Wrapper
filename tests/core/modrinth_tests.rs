@@ -2,12 +2,15 @@ use wiremock::{MockServer, Mock, ResponseTemplate};
 use wiremock::matchers::{method, path, query_param};
 use mc_server_wrapper_core::mods::modrinth::ModrinthClient;
 use mc_server_wrapper_core::mods::types::SearchOptions;
+use mc_server_wrapper_core::cache::CacheManager;
+use std::sync::Arc;
 use serde_json::json;
 
 #[tokio::test]
 async fn test_modrinth_search_parsing() {
     let mock_server = MockServer::start().await;
-    let client = ModrinthClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = ModrinthClient::with_base_url(mock_server.uri(), cache);
 
     let search_response = json!({
         "hits": [
@@ -54,7 +57,8 @@ async fn test_modrinth_search_parsing() {
 #[tokio::test]
 async fn test_modrinth_get_project_parsing() {
     let mock_server = MockServer::start().await;
-    let client = ModrinthClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = ModrinthClient::with_base_url(mock_server.uri(), cache);
 
     let project_response = json!({
         "id": "A76uj67l",
@@ -81,7 +85,8 @@ async fn test_modrinth_get_project_parsing() {
 #[tokio::test]
 async fn test_modrinth_rate_limit() {
     let mock_server = MockServer::start().await;
-    let client = ModrinthClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = ModrinthClient::with_base_url(mock_server.uri(), cache);
 
     Mock::given(method("GET"))
         .and(path("/project/A76uj67l"))
@@ -99,7 +104,8 @@ async fn test_modrinth_rate_limit() {
 #[tokio::test]
 async fn test_modrinth_network_failure() {
     let mock_server = MockServer::start().await;
-    let client = ModrinthClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = ModrinthClient::with_base_url(mock_server.uri(), cache);
 
     // Drop the server to simulate a network failure
     drop(mock_server);

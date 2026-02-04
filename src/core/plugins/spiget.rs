@@ -1,39 +1,42 @@
 use anyhow::Result;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
 use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE, USER_AGENT};
 use regex::Regex;
 use super::types::{Project, PluginProvider, ResolvedDependency};
+use crate::cache::CacheManager;
 
 pub struct SpigetClient {
     client: reqwest::Client,
     base_url: String,
-}
-
-impl Default for SpigetClient {
-    fn default() -> Self {
-        Self::new()
-    }
+    cache: Arc<CacheManager>,
 }
 
 impl SpigetClient {
-    pub fn new() -> Self {
-        Self::with_base_url("https://api.spiget.org/v2".to_string())
+    pub fn new(cache: Arc<CacheManager>) -> Self {
+        Self::with_base_url("https://api.spiget.org/v2".to_string(), cache)
     }
 
-    pub fn with_base_url(base_url: String) -> Self {
+    pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url,
+            cache,
         }
     }
 
     pub async fn search(&self, options: &super::types::SearchOptions) -> Result<Vec<Project>> {
+        let cache_key = format!("spiget_search_{}", options.cache_key());
+        if let Ok(Some(cached)) = self.cache.get::<Vec<Project>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let size = options.limit.unwrap_or(20);
         let page = (options.offset.unwrap_or(0) / size) + 1;
         
@@ -80,7 +83,7 @@ impl SpigetClient {
         let response = response.error_for_status()?;
         let json = response.json::<Vec<serde_json::Value>>().await?;
         
-        let projects = json.into_iter().map(|h| Project {
+        let projects: Vec<Project> = json.into_iter().map(|h| Project {
             id: h["id"].as_u64().unwrap_or(0).to_string(),
             slug: h["name"].as_str().unwrap_or_default().to_lowercase().replace(' ', "-"),
             title: h["name"].as_str().unwrap_or_default().to_string(),
@@ -99,10 +102,16 @@ impl SpigetClient {
             provider: PluginProvider::Spiget,
         }).collect();
 
+        let _ = self.cache.set(cache_key, projects.clone()).await;
         Ok(projects)
     }
 
     pub async fn get_dependencies(&self, resource_id: &str) -> Result<Vec<ResolvedDependency>> {
+        let cache_key = format!("spiget_dependencies_{}", resource_id);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<ResolvedDependency>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("{}/resources/{}/dependencies", self.base_url, resource_id);
         let response = self.client.get(&url).send().await?;
         
@@ -127,15 +136,21 @@ impl SpigetClient {
             }
         }
 
+        let _ = self.cache.set(cache_key, resolved_deps.clone()).await;
         Ok(resolved_deps)
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
+        let cache_key = format!("spiget_project_{}", id);
+        if let Ok(Some(cached)) = self.cache.get::<Project>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("{}/resources/{}", self.base_url, id);
         let response = self.client.get(&url).send().await?.error_for_status()?;
         let h = response.json::<serde_json::Value>().await?;
         
-        Ok(Project {
+        let project = Project {
             id: h["id"].as_u64().unwrap_or(0).to_string(),
             slug: h["name"].as_str().unwrap_or_default().to_lowercase().replace(' ', "-"),
             title: h["name"].as_str().unwrap_or_default().to_string(),
@@ -152,7 +167,10 @@ impl SpigetClient {
                 }),
             author: format!("User {}", h["author"]["id"]),
             provider: PluginProvider::Spiget,
-        })
+        };
+
+        let _ = self.cache.set(cache_key, project.clone()).await;
+        Ok(project)
     }
 
     pub async fn get_latest_version(&self, resource_id: &str) -> Result<(String, String)> {

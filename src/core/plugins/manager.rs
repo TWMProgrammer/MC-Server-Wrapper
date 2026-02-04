@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use anyhow::{Result, Context};
 use super::types::*;
@@ -6,6 +7,7 @@ use super::modrinth::ModrinthClient;
 use super::spiget::SpigetClient;
 use super::hangar::HangarClient;
 use super::metadata::{PluginCache, PluginCacheEntry, extract_metadata_sync};
+use crate::cache::CacheManager;
 
 /// Lists all installed plugins in the given instance path.
 pub async fn list_installed_plugins(instance_path: impl AsRef<Path>) -> Result<Vec<InstalledPlugin>> {
@@ -108,27 +110,27 @@ pub async fn toggle_plugin(instance_path: impl AsRef<Path>, filename: String, en
 }
 
 /// Searches for plugins across multiple providers.
-pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProvider>) -> Result<Vec<Project>> {
+pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProvider>, cache: Arc<CacheManager>) -> Result<Vec<Project>> {
     let mut results = Vec::new();
 
     match provider {
         Some(PluginProvider::Modrinth) => {
-            let client = ModrinthClient::new();
+            let client = ModrinthClient::new(cache);
             results.extend(client.search(options).await?);
         }
         Some(PluginProvider::Spiget) => {
-            let client = SpigetClient::new();
+            let client = SpigetClient::new(cache);
             results.extend(client.search(options).await?);
         }
         Some(PluginProvider::Hangar) => {
-            let client = HangarClient::new();
+            let client = HangarClient::new(cache);
             results.extend(client.search(options).await?);
         }
         None => {
             // Search all providers
-            let modrinth = ModrinthClient::new();
-            let spiget = SpigetClient::new();
-            let hangar = HangarClient::new();
+            let modrinth = ModrinthClient::new(Arc::clone(&cache));
+            let spiget = SpigetClient::new(Arc::clone(&cache));
+            let hangar = HangarClient::new(cache);
 
             let (m_res, s_res, h_res) = tokio::join!(
                 modrinth.search(options),
@@ -146,18 +148,18 @@ pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProv
 }
 
 /// Gets dependencies for a plugin.
-pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider) -> Result<Vec<ResolvedDependency>> {
+pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider, cache: Arc<CacheManager>) -> Result<Vec<ResolvedDependency>> {
     match provider {
         PluginProvider::Modrinth => {
-            let client = ModrinthClient::new();
+            let client = ModrinthClient::new(cache);
             client.get_dependencies(project_id).await
         }
         PluginProvider::Spiget => {
-            let client = SpigetClient::new();
+            let client = SpigetClient::new(cache);
             client.get_dependencies(project_id).await
         }
         PluginProvider::Hangar => {
-            let client = HangarClient::new();
+            let client = HangarClient::new(cache);
             client.get_dependencies(project_id).await
         }
     }
@@ -180,6 +182,7 @@ pub async fn check_for_updates(
     instance_path: impl AsRef<Path>,
     game_version: Option<&str>,
     loader: Option<&str>,
+    cache: Arc<CacheManager>,
 ) -> Result<Vec<PluginUpdate>> {
     let installed = list_installed_plugins(&instance_path).await?;
     let mut updates = Vec::new();
@@ -188,7 +191,7 @@ pub async fn check_for_updates(
         if let Some(source) = plugin.source {
             match source.provider {
                 PluginProvider::Modrinth => {
-                    let client = ModrinthClient::new();
+                    let client = ModrinthClient::new(Arc::clone(&cache));
                     if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
                         if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
@@ -205,7 +208,7 @@ pub async fn check_for_updates(
                     }
                 }
                 PluginProvider::Spiget => {
-                    let client = SpigetClient::new();
+                    let client = SpigetClient::new(Arc::clone(&cache));
                     if let Ok((latest_id, latest_name)) = client.get_latest_version(&source.project_id).await {
                         if Some(latest_id.clone()) != source.current_version_id {
                             updates.push(PluginUpdate {
@@ -220,7 +223,7 @@ pub async fn check_for_updates(
                     }
                 }
                 PluginProvider::Hangar => {
-                    let client = HangarClient::new();
+                    let client = HangarClient::new(Arc::clone(&cache));
                     if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
                         if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {

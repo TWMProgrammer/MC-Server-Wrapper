@@ -1,5 +1,6 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods::{self, InstalledMod, Project, ModProvider, SearchOptions, ModConfig, ModUpdate, ResolvedDependency};
+use mc_server_wrapper_core::manager::ServerManager;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -74,22 +75,23 @@ pub async fn bulk_uninstall_mods(
 
 #[tauri::command]
 pub async fn search_mods(
+    server_manager: State<'_, Arc<ServerManager>>,
     options: SearchOptions,
     provider: Option<ModProvider>,
 ) -> Result<Vec<Project>, String> {
     // Get CurseForge API key from environment if available
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
-    mods::search_mods(&options, provider, cf_api_key).await.map_err(|e| e.to_string())
+    mods::search_mods(&options, provider, cf_api_key, server_manager.get_cache()).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_mod_dependencies(
-    instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
     project_id: String,
     provider: ModProvider,
 ) -> Result<Vec<ResolvedDependency>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
@@ -99,7 +101,8 @@ pub async fn get_mod_dependencies(
         provider, 
         Some(&instance.version), 
         instance.mod_loader.as_deref(), 
-        cf_api_key
+        cf_api_key,
+        server_manager.get_cache()
     ).await.map_err(|e| e.to_string())
 }
 
@@ -135,13 +138,13 @@ pub async fn list_mod_config_files(
 
 #[tauri::command]
 pub async fn install_mod(
-    instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
     project_id: String,
     provider: ModProvider,
     version_id: Option<String>,
 ) -> Result<String, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
@@ -153,7 +156,8 @@ pub async fn install_mod(
         version_id.as_deref(), 
         Some(&instance.version),
         instance.mod_loader.as_deref(),
-        cf_api_key
+        cf_api_key,
+        server_manager.get_cache()
     )
         .await
         .map_err(|e| e.to_string())
@@ -161,10 +165,10 @@ pub async fn install_mod(
 
 #[tauri::command]
 pub async fn check_for_mod_updates(
-    instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
 ) -> Result<Vec<ModUpdate>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
@@ -174,19 +178,20 @@ pub async fn check_for_mod_updates(
         Some(&instance.version),
         instance.mod_loader.as_deref(),
         cf_api_key,
+        server_manager.get_cache()
     ).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn update_mod(
-    instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
     filename: String,
     project_id: String,
     provider: ModProvider,
     latest_version_id: String,
 ) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
     let instance = instances.iter().find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
 
@@ -200,5 +205,6 @@ pub async fn update_mod(
         Some(&instance.version),
         instance.mod_loader.as_deref(),
         cf_api_key,
+        server_manager.get_cache()
     ).await.map_err(|e| e.to_string())
 }

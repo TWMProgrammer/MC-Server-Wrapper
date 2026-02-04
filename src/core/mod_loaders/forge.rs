@@ -9,6 +9,11 @@ pub struct ForgePromotions {
 
 impl ModLoaderClient {
     pub async fn get_forge_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let cache_key = format!("forge_versions_{}", mc_version);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<String>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
         let response = self.client.get(url).send().await?;
 
@@ -32,6 +37,7 @@ impl ModLoaderClient {
         versions.dedup();
         versions.reverse(); // Newest first
 
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

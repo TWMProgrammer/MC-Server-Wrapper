@@ -20,6 +20,11 @@ pub struct FabricInstallerVersion {
 
 impl ModLoaderClient {
     pub async fn get_fabric_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let cache_key = format!("fabric_versions_{}", mc_version);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<String>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}", mc_version);
         let response = self.client.get(&url).send().await?;
         
@@ -32,18 +37,27 @@ impl ModLoaderClient {
         }
 
         let loaders: Vec<FabricLoaderVersion> = response.json().await?;
-        let versions = loaders.into_iter()
+        let versions: Vec<String> = loaders.into_iter()
             .map(|l| l.loader.version)
             .collect();
         
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 
     pub async fn get_fabric_installer_versions(&self) -> Result<Vec<String>> {
+        let cache_key = "fabric_installer_versions".to_string();
+        if let Ok(Some(cached)) = self.cache.get::<Vec<String>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = "https://meta.fabricmc.net/v2/versions/installer";
         let response = self.client.get(url).send().await?;
         let installers: Vec<FabricInstallerVersion> = response.json().await?;
-        Ok(installers.into_iter().map(|i| i.version).collect())
+        let versions: Vec<String> = installers.into_iter().map(|i| i.version).collect();
+        
+        let _ = self.cache.set(cache_key, versions.clone()).await;
+        Ok(versions)
     }
 
     pub async fn download_fabric_installer<F>(&self, installer_version: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 

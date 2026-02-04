@@ -1,6 +1,7 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods::{self, modrinth::ModrinthClient, types::SearchOptions};
 use mc_server_wrapper_core::database::Database;
+use mc_server_wrapper_core::cache::CacheManager;
 use tempfile::tempdir;
 use anyhow::Result;
 use tokio::fs;
@@ -43,7 +44,8 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
 
     // 1. User searches for a mod (e.g., "Sodium").
     let mock_server = MockServer::start().await;
-    let client = ModrinthClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = ModrinthClient::with_base_url(mock_server.uri(), cache.clone());
 
     let search_response = json!({
         "hits": [

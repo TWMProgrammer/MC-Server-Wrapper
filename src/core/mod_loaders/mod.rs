@@ -7,6 +7,8 @@ pub mod proxy;
 pub mod bedrock;
 
 use crate::utils::retry_async;
+use crate::cache::CacheManager;
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, anyhow};
 use futures_util::StreamExt;
@@ -23,16 +25,18 @@ pub struct ModLoader {
 pub struct ModLoaderClient {
     pub(crate) client: reqwest::Client,
     pub(crate) cache_dir: Option<PathBuf>,
+    pub(crate) cache: Arc<CacheManager>,
 }
 
 impl ModLoaderClient {
-    pub fn new(cache_dir: Option<PathBuf>) -> Self {
+    pub fn new(cache_dir: Option<PathBuf>, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
                 .user_agent("mc-server-wrapper")
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
             cache_dir,
+            cache,
         }
     }
 

@@ -7,6 +7,7 @@ use super::instance::{InstanceManager, InstanceMetadata};
 use super::app_config::GlobalConfigManager;
 use super::downloader::VersionDownloader;
 use super::mod_loaders::ModLoaderClient;
+use super::cache::CacheManager;
 use super::server::ServerHandle;
 
 mod lifecycle;
@@ -17,17 +18,20 @@ pub struct ServerManager {
     pub(crate) config_manager: Arc<GlobalConfigManager>,
     pub(crate) downloader: VersionDownloader,
     pub(crate) mod_loader_client: ModLoaderClient,
+    pub(crate) cache: Arc<CacheManager>,
     pub(crate) servers: Arc<Mutex<HashMap<Uuid, Arc<ServerHandle>>>>,
 }
 
 impl ServerManager {
     pub fn new(instance_manager: Arc<InstanceManager>, config_manager: Arc<GlobalConfigManager>) -> Self {
         let cache_dir = instance_manager.get_base_dir().join("cache");
+        let cache = Arc::new(CacheManager::default());
         Self {
             instance_manager,
             config_manager,
             downloader: VersionDownloader::new(Some(cache_dir.clone())),
-            mod_loader_client: ModLoaderClient::new(Some(cache_dir)),
+            mod_loader_client: ModLoaderClient::new(Some(cache_dir), Arc::clone(&cache)),
+            cache,
             servers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -42,6 +46,10 @@ impl ServerManager {
 
     pub fn get_instance_manager(&self) -> Arc<InstanceManager> {
         Arc::clone(&self.instance_manager)
+    }
+
+    pub fn get_cache(&self) -> Arc<CacheManager> {
+        Arc::clone(&self.cache)
     }
 
     pub async fn get_server(&self, instance_id: Uuid) -> Option<Arc<ServerHandle>> {

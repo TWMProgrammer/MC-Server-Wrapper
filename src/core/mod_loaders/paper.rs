@@ -30,6 +30,11 @@ pub struct PaperDownload {
 
 impl ModLoaderClient {
     pub async fn get_paper_versions(&self, mc_version: &str) -> Result<Vec<String>> {
+        let cache_key = format!("paper_versions_{}", mc_version);
+        if let Ok(Some(cached)) = self.cache.get::<Vec<String>>(&cache_key).await {
+            return Ok(cached);
+        }
+
         let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds", mc_version);
         let response = self.client.get(&url).send().await?;
 
@@ -43,6 +48,7 @@ impl ModLoaderClient {
             .collect();
         
         versions.reverse(); // Newest builds first
+        let _ = self.cache.set(cache_key, versions.clone()).await;
         Ok(versions)
     }
 

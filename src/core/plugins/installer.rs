@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 use anyhow::{Result, Context};
 use super::types::*;
@@ -6,6 +7,7 @@ use super::modrinth::ModrinthClient;
 use super::spiget::SpigetClient;
 use super::hangar::HangarClient;
 use super::metadata::PluginCache;
+use crate::cache::CacheManager;
 
 /// Installs a plugin from a provider.
 pub async fn install_plugin(
@@ -15,12 +17,13 @@ pub async fn install_plugin(
     version_id: Option<&str>,
     game_version: Option<&str>,
     loader: Option<&str>,
+    cache: Arc<CacheManager>,
 ) -> Result<String> {
     let plugins_dir = instance_path.as_ref().join("plugins");
     
     let (filename, vid) = match provider {
         PluginProvider::Modrinth => {
-            let client = ModrinthClient::new();
+            let client = ModrinthClient::new(cache);
             let versions = client.get_versions(project_id, game_version, loader).await?;
             let version = if let Some(vid) = version_id {
                 versions.iter().find(|v| v.id == vid)
@@ -43,14 +46,14 @@ pub async fn install_plugin(
             (fname, Some(version.id.clone()))
         }
         PluginProvider::Spiget => {
-            let client = SpigetClient::new();
+            let client = SpigetClient::new(cache);
             let fname = client
                 .download_resource(project_id, &plugins_dir, game_version, loader)
                 .await?;
             (fname, None)
         }
         PluginProvider::Hangar => {
-            let client = HangarClient::new();
+            let client = HangarClient::new(cache);
             let versions = client.get_versions(project_id, game_version, loader).await?;
             let version = if let Some(vid) = version_id {
                 versions.iter().find(|v| v.id == vid)
@@ -130,6 +133,7 @@ pub async fn update_plugin(
     project_id: String,
     provider: PluginProvider,
     latest_version_id: String,
+    cache: Arc<CacheManager>,
 ) -> Result<()> {
     let plugins_dir = instance_path.as_ref().join("plugins");
     let old_path = plugins_dir.join(&filename);
@@ -141,7 +145,7 @@ pub async fn update_plugin(
     }
 
     // 2. Download new version
-    match install_plugin(&instance_path, &project_id, provider, Some(&latest_version_id), None, None).await {
+    match install_plugin(&instance_path, &project_id, provider, Some(&latest_version_id), None, None, cache).await {
         Ok(new_filename) => {
             let mut final_filename = new_filename.clone();
 

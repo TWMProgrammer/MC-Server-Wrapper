@@ -2,12 +2,15 @@ use wiremock::{MockServer, Mock, ResponseTemplate};
 use wiremock::matchers::{method, path, query_param};
 use mc_server_wrapper_core::plugins::hangar::HangarClient;
 use mc_server_wrapper_core::plugins::types::SearchOptions;
+use mc_server_wrapper_core::cache::CacheManager;
+use std::sync::Arc;
 use serde_json::json;
 
 #[tokio::test]
 async fn test_hangar_search_parsing() {
     let mock_server = MockServer::start().await;
-    let client = HangarClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = HangarClient::with_base_url(mock_server.uri(), cache);
 
     let search_response = json!({
         "result": [
@@ -62,7 +65,8 @@ async fn test_hangar_search_parsing() {
 #[tokio::test]
 async fn test_hangar_get_dependencies() {
     let mock_server = MockServer::start().await;
-    let client = HangarClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = HangarClient::with_base_url(mock_server.uri(), cache);
 
     // Mock for version response
     let version_response = json!({
@@ -134,7 +138,8 @@ async fn test_hangar_get_dependencies() {
 #[tokio::test]
 async fn test_hangar_get_project() {
     let mock_server = MockServer::start().await;
-    let client = HangarClient::with_base_url(mock_server.uri());
+    let cache = Arc::new(CacheManager::default());
+    let client = HangarClient::with_base_url(mock_server.uri(), cache);
 
     let project_response = json!({
         "name": "ProtocolLib",
