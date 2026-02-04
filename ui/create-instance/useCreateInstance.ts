@@ -3,8 +3,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Instance } from '../types'
 import { VersionManifest, ModLoader, Tab } from './types'
+import { useToast } from '../hooks/useToast'
 
 export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instance) => void, onClose: () => void) {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>('custom');
   const [selectedServerType, setSelectedServerType] = useState<string | null>(null);
   const [manifest, setManifest] = useState<VersionManifest | null>(null);
@@ -26,6 +28,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [importServerType, setImportServerType] = useState<string>('vanilla');
   const [availableJars, setAvailableJars] = useState<string[]>([]);
   const [selectedJar, setSelectedJar] = useState<string | null>(null);
+  const [availableScripts, setAvailableScripts] = useState<string[]>([]);
+  const [selectedScript, setSelectedScript] = useState<string | null>(null);
   const [serverPropertiesExists, setServerPropertiesExists] = useState<boolean>(true);
   const [rootWithinZip, setRootWithinZip] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<{ current: number, total: number, message: string } | null>(null);
@@ -44,6 +48,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setImportServerType('vanilla');
     setAvailableJars([]);
     setSelectedJar(null);
+    setAvailableScripts([]);
+    setSelectedScript(null);
     setServerPropertiesExists(true);
     setRootWithinZip(null);
     setImportProgress(null);
@@ -237,10 +243,11 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       const instance = await invoke<Instance>('create_instance_full', {
         name,
         version,
-        modLoader,
-        loaderVersion,
-        startAfterCreation,
+        mod_loader: modLoader,
+        loader_version: loaderVersion,
+        start_after_creation: startAfterCreation,
       });
+      showToast(`Successfully created instance "${name}"`, 'success');
       onCreated(instance);
       resetForm();
       onClose();
@@ -269,7 +276,9 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
         jarName: selectedJar,
         serverType: importServerType,
         rootWithinZip,
+        scriptPath: selectedScript,
       });
+      showToast(`Successfully imported instance "${name}"`, 'success');
       onCreated(instance);
       resetForm();
       onClose();
@@ -315,6 +324,10 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setAvailableJars,
     selectedJar,
     setSelectedJar,
+    availableScripts,
+    setAvailableScripts,
+    selectedScript,
+    setSelectedScript,
     serverPropertiesExists,
     setServerPropertiesExists,
     rootWithinZip,

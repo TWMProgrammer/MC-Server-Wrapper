@@ -1,4 +1,4 @@
-import { HardDrive, Cpu, Network } from 'lucide-react'
+import { HardDrive, Cpu } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { Instance, InstanceSettings } from '../types'
 import { Select } from '../components/Select'
@@ -47,7 +47,7 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
         {/* Children components like IconSettings are passed or handled separately in parent */}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-black/10 dark:border-white/10">
+      <div className="pt-4 border-t border-black/10 dark:border-white/10">
         {/* Resources */}
         <div className="space-y-4">
           <h3 className="text-lg font-bold flex items-center gap-2">
@@ -55,25 +55,49 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
             Resources
           </h3>
           <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-500 dark:text-white/40">Allocated RAM</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={settings.ram}
-                  onChange={(e) => updateSetting('ram', parseInt(e.target.value) || 0)}
-                  className="w-full min-w-0 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                />
-                <Select
-                  value={settings.ram_unit}
-                  onChange={(value) => updateSetting('ram_unit', value)}
-                  options={[
-                    { value: 'G', label: 'GB' },
-                    { value: 'M', label: 'MB' }
-                  ]}
-                  className="w-28 shrink-0"
-                  size="sm"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-white/40">Minimum RAM</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={settings.min_ram}
+                    onChange={(e) => updateSetting('min_ram', parseInt(e.target.value) || 0)}
+                    className="w-full min-w-0 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  />
+                  <Select
+                    value={settings.min_ram_unit}
+                    onChange={(value) => updateSetting('min_ram_unit', value)}
+                    options={[
+                      { value: 'G', label: 'GB' },
+                      { value: 'M', label: 'MB' }
+                    ]}
+                    className="w-28 shrink-0"
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-500 dark:text-white/40">Maximum RAM</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={settings.max_ram}
+                    onChange={(e) => updateSetting('max_ram', parseInt(e.target.value) || 0)}
+                    className="w-full min-w-0 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  />
+                  <Select
+                    value={settings.max_ram_unit}
+                    onChange={(value) => updateSetting('max_ram_unit', value)}
+                    options={[
+                      { value: 'G', label: 'GB' },
+                      { value: 'M', label: 'MB' }
+                    ]}
+                    className="w-28 shrink-0"
+                    size="sm"
+                  />
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -85,40 +109,6 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
                 className="w-full bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
               />
             </div>
-          </div>
-        </div>
-
-        {/* Automation */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <Network size={20} className="text-primary" />
-            Automation & Safety
-          </h3>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
-              <input
-                type="checkbox"
-                checked={settings.force_save_all}
-                onChange={(e) => updateSetting('force_save_all', e.target.checked)}
-                className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
-              />
-              <div>
-                <p className="font-medium">Force 'save-all'</p>
-                <p className="text-xs text-gray-500 dark:text-white/40">Run 'save-all' command before stopping the server.</p>
-              </div>
-            </label>
-            <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
-              <input
-                type="checkbox"
-                checked={settings.autostart}
-                onChange={(e) => updateSetting('autostart', e.target.checked)}
-                className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
-              />
-              <div>
-                <p className="font-medium">Autostart</p>
-                <p className="text-xs text-gray-500 dark:text-white/40">Automatically start this server when the application launches.</p>
-              </div>
-            </label>
           </div>
         </div>
       </div>

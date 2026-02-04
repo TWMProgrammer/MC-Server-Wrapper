@@ -17,6 +17,10 @@ interface ImportSourceProps {
   setAvailableJars: (jars: string[]) => void;
   selectedJar: string | null;
   setSelectedJar: (jar: string | null) => void;
+  availableScripts: string[];
+  setAvailableScripts: (scripts: string[]) => void;
+  selectedScript: string | null;
+  setSelectedScript: (script: string | null) => void;
   serverPropertiesExists: boolean;
   setServerPropertiesExists: (exists: boolean) => void;
   rootWithinZip: string | null;
@@ -32,6 +36,10 @@ export function ImportSource({
   setAvailableJars,
   selectedJar,
   setSelectedJar,
+  availableScripts,
+  setAvailableScripts,
+  selectedScript,
+  setSelectedScript,
   serverPropertiesExists,
   setServerPropertiesExists,
   rootWithinZip,
@@ -56,12 +64,23 @@ export function ImportSource({
         setImportServerType('vanilla');
       }
 
-      const jars = await invoke<string[]>('list_jars_in_source', { sourcePath: path, rootWithinZip: root });
+      const [jars, scripts] = await Promise.all([
+        invoke<string[]>('list_jars_in_source', { sourcePath: path, rootWithinZip: root }),
+        invoke<string[]>('list_scripts_in_source', { sourcePath: path, rootWithinZip: root })
+      ]);
+
       setAvailableJars(jars);
       if (jars.length === 1) {
         setSelectedJar(jars[0]);
       } else if (!jars.includes(selectedJar || '')) {
         setSelectedJar(null);
+      }
+
+      setAvailableScripts(scripts);
+      if (scripts.length === 1) {
+        setSelectedScript(scripts[0]);
+      } else if (!scripts.includes(selectedScript || '')) {
+        setSelectedScript(null);
       }
 
       const exists = await invoke<boolean>('check_server_properties_exists', { sourcePath: path, rootWithinZip: root });
@@ -208,6 +227,23 @@ export function ImportSource({
                     loading={loading}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Import RAM from Script (Optional)</label>
+                <Select
+                  value={selectedScript || ''}
+                  onChange={setSelectedScript}
+                  options={[
+                    { value: '', label: 'No script (use default RAM)' },
+                    ...availableScripts.map(script => ({ value: script, label: script }))
+                  ]}
+                  placeholder="Select a .bat or .cmd file..."
+                  loading={loading}
+                />
+                <p className="text-[10px] text-gray-500 ml-1">
+                  Selecting a startup script will attempt to parse its RAM settings (-Xms, -Xmx) and apply them to this instance.
+                </p>
               </div>
 
               {availableJars.length === 0 && !loading && (

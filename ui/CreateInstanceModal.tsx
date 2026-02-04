@@ -47,7 +47,11 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     importProgress,
     startAfterCreation,
     setStartAfterCreation,
-    nameExists
+    nameExists,
+    availableScripts,
+    setAvailableScripts,
+    selectedScript,
+    setSelectedScript
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
@@ -257,6 +261,10 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                       setServerPropertiesExists={setServerPropertiesExists}
                       rootWithinZip={rootWithinZip}
                       setRootWithinZip={setRootWithinZip}
+                      availableScripts={availableScripts}
+                      setAvailableScripts={setAvailableScripts}
+                      selectedScript={selectedScript}
+                      setSelectedScript={setSelectedScript}
                     />
                   </motion.div>
                 ) : (

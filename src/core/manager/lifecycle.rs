@@ -91,7 +91,12 @@ impl ServerManager {
             }
         }
 
-        let ram_unit = match instance.settings.ram_unit.as_str() {
+        let min_ram_unit = match instance.settings.min_ram_unit.as_str() {
+            "GB" => "G",
+            "MB" => "M",
+            u => u,
+        };
+        let max_ram_unit = match instance.settings.max_ram_unit.as_str() {
             "GB" => "G",
             "MB" => "M",
             u => u,
@@ -99,8 +104,8 @@ impl ServerManager {
 
         ServerConfig {
             name: instance.name.clone(),
-            max_memory: format!("{}{}", instance.settings.ram, ram_unit),
-            min_memory: "1G".to_string(),
+            max_memory: format!("{}{}", instance.settings.max_ram, max_ram_unit),
+            min_memory: format!("{}{}", instance.settings.min_ram, min_ram_unit),
             jar_path: final_jar_path,
             run_script: final_run_script,
             args,

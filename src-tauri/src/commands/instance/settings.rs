@@ -75,8 +75,10 @@ pub async fn get_startup_preview(
     settings: InstanceSettings,
 ) -> CommandResult<String> {
     let mut line = settings.startup_line.clone();
-    line = line.replace("{ram}", &settings.ram.to_string());
-    line = line.replace("{unit}", &settings.ram_unit);
+    line = line.replace("{min_ram}", &settings.min_ram.to_string());
+    line = line.replace("{min_unit}", &settings.min_ram_unit);
+    line = line.replace("{max_ram}", &settings.max_ram.to_string());
+    line = line.replace("{max_unit}", &settings.max_ram_unit);
     
     Ok(line)
 }

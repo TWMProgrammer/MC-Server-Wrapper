@@ -30,6 +30,7 @@ pub async fn import_instance(
     jar_name: String,
     server_type: String,
     root_within_zip: Option<String>,
+    script_path: Option<String>,
 ) -> CommandResult<InstanceMetadata> {
     let path = PathBuf::from(source_path);
     let mod_loader = if server_type == "vanilla" || server_type == "custom" {
@@ -39,7 +40,7 @@ pub async fn import_instance(
     };
     
     let app_handle_clone = app_handle.clone();
-    instance_manager.import_instance(&name, path, jar_name, mod_loader, root_within_zip, move |current, total, message| {
+    instance_manager.import_instance(&name, path, jar_name, mod_loader, root_within_zip, script_path, move |current, total, message| {
         let _ = app_handle_clone.emit("import-progress", ImportProgressPayload {
             current,
             total,
@@ -119,6 +120,86 @@ pub async fn list_jars_in_source(source_path: String, root_within_zip: Option<St
     }
 
     Ok(jars)
+}
+
+#[tauri::command]
+pub async fn list_scripts_in_source(source_path: String, root_within_zip: Option<String>) -> CommandResult<Vec<String>> {
+    let path = PathBuf::from(&source_path);
+    let mut scripts = Vec::new();
+
+    if path.is_dir() {
+        let mut entries = tokio::fs::read_dir(&path).await.map_err(AppError::from)?;
+        while let Some(entry) = entries.next_entry().await.map_err(AppError::from)? {
+            let entry_path = entry.path();
+            if entry_path.is_file() {
+                if let Some(extension) = entry_path.extension() {
+                    let ext = extension.to_string_lossy().to_lowercase();
+                    if ext == "bat" || ext == "cmd" || ext == "sh" {
+                        if let Some(file_name) = entry_path.file_name() {
+                            scripts.push(file_name.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    } else if path.is_file() {
+        let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+        if extension == "zip" {
+            let file = std::fs::File::open(&path).map_err(AppError::from)?;
+            let mut archive = zip::ZipArchive::new(file).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+            
+            let root = root_within_zip.map(|r| {
+                if r.ends_with('/') { r } else { format!("{}/", r) }
+            });
+
+            for i in 0..archive.len() {
+                let file = archive.by_index(i).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+                let name = file.name();
+                
+                if let Some(ref root_path) = root {
+                    if !name.starts_with(root_path) {
+                        continue;
+                    }
+                    let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+                    let lower_name = relative_name.to_lowercase();
+                    if !file.is_dir() && (lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh")) && !relative_name.contains('/') {
+                        scripts.push(relative_name.to_string());
+                    }
+                } else if !file.is_dir() {
+                    let lower_name = name.to_lowercase();
+                    if lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh") {
+                        scripts.push(name.to_string());
+                    }
+                }
+            }
+        } else if extension == "7z" {
+            let root = root_within_zip.as_deref().map(|r| {
+                if r.ends_with('/') { r.to_string() } else { format!("{}/", r) }
+            });
+
+            sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
+                let name = entry.name();
+                if let Some(ref root_path) = root {
+                    if !name.starts_with(root_path) {
+                        return Ok(true);
+                    }
+                    let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+                    let lower_name = relative_name.to_lowercase();
+                    if !entry.is_directory() && (lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh")) && !relative_name.contains('/') {
+                        scripts.push(relative_name.to_string());
+                    }
+                } else if !entry.is_directory() {
+                    let lower_name = name.to_lowercase();
+                    if lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh") {
+                        scripts.push(name.to_string());
+                    }
+                }
+                Ok(true)
+            }).map_err(|e| AppError::Config(e.to_string()))?;
+        }
+    }
+
+    Ok(scripts)
 }
 
 #[tauri::command]

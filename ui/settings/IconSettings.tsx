@@ -1,4 +1,4 @@
-import { Upload, HardDrive, Trash2 } from 'lucide-react'
+import { Upload, HardDrive, Trash2, Network } from 'lucide-react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useToast } from '../hooks/useToast'
@@ -7,10 +7,11 @@ import { InstanceSettings } from '../types'
 interface IconSettingsProps {
   tempIconPath: string | undefined;
   setTempIconPath: (path: string | undefined) => void;
+  settings: InstanceSettings;
   updateSetting: <K extends keyof InstanceSettings>(key: K, value: InstanceSettings[K]) => void;
 }
 
-export function IconSettings({ tempIconPath, setTempIconPath, updateSetting }: IconSettingsProps) {
+export function IconSettings({ tempIconPath, setTempIconPath, settings, updateSetting }: IconSettingsProps) {
   const { showToast } = useToast()
 
   const handleIconUpload = async () => {
@@ -85,6 +86,40 @@ export function IconSettings({ tempIconPath, setTempIconPath, updateSetting }: I
           >
             Upload Image
           </button>
+        </div>
+      </div>
+
+      {/* Automation */}
+      <div className="space-y-4 pt-8 border-t border-black/10 dark:border-white/10">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          <Network size={20} className="text-primary" />
+          Automation & Safety
+        </h3>
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={settings.force_save_all}
+              onChange={(e) => updateSetting('force_save_all', e.target.checked)}
+              className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
+            />
+            <div>
+              <p className="font-medium">Force 'save-all'</p>
+              <p className="text-xs text-gray-500 dark:text-white/40">Run 'save-all' command before stopping the server.</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/[0.03] rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={settings.autostart}
+              onChange={(e) => updateSetting('autostart', e.target.checked)}
+              className="w-5 h-5 rounded-lg border-black/10 dark:border-white/10 text-primary focus:ring-primary"
+            />
+            <div>
+              <p className="font-medium">Autostart</p>
+              <p className="text-xs text-gray-500 dark:text-white/40">Automatically start this server when the application launches.</p>
+            </div>
+          </label>
         </div>
       </div>
     </div>

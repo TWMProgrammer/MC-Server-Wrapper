@@ -17,9 +17,9 @@ export function Dashboard({
   history,
   settings
 }: DashboardProps) {
-  const ramUnit = currentInstance.settings.ram_unit;
+  const ramUnit = currentInstance.settings.max_ram_unit;
   const isGigabytes = ramUnit === 'G' || ramUnit === 'GB';
-  const totalRamBytes = currentInstance.settings.ram * (isGigabytes ? 1024 * 1024 * 1024 : 1024 * 1024);
+  const totalRamBytes = currentInstance.settings.max_ram * (isGigabytes ? 1024 * 1024 * 1024 : 1024 * 1024);
 
   const formatMemory = (bytes: number) => {
     if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}GB`;

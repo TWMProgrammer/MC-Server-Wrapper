@@ -18,8 +18,10 @@ export interface Instance {
 
 export interface InstanceSettings {
   description?: string;
-  ram: number;
-  ram_unit: string;
+  min_ram: number;
+  min_ram_unit: string;
+  max_ram: number;
+  max_ram_unit: string;
   port: number;
   force_save_all: boolean;
   autostart: boolean;

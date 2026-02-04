@@ -132,6 +132,7 @@ pub fn run() -> anyhow::Result<()> {
         commands::instance::list_archive_contents,
         commands::instance::detect_server_type,
         commands::instance::list_jars_in_source,
+        commands::instance::list_scripts_in_source,
         commands::instance::check_server_properties_exists,
         commands::instance::delete_instance,
         commands::instance::delete_instance_by_name,

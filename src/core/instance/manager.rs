@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 use anyhow::{Result, Context};
 use tokio::fs;
-use tracing::{info, warn};
+use tracing::{info, warn, error};
 use chrono::Utc;
 use std::sync::Arc;
 use sqlx::{sqlite::SqliteRow, Row};
@@ -57,10 +57,23 @@ impl InstanceManager {
     }
 
     async fn save_instance_to_db(&self, instance: &InstanceMetadata) -> Result<()> {
-        let settings_json = serde_json::to_string(&instance.settings)?;
-        let schedules_json = serde_json::to_string(&instance.schedules)?;
+        info!("Saving instance to DB: {} (ID: {})", instance.name, instance.id);
+        let settings_json = match serde_json::to_string(&instance.settings) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to serialize settings for instance {}: {}", instance.name, e);
+                return Err(e.into());
+            }
+        };
+        let schedules_json = match serde_json::to_string(&instance.schedules) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to serialize schedules for instance {}: {}", instance.name, e);
+                return Err(e.into());
+            }
+        };
 
-        sqlx::query(
+        match sqlx::query(
             "INSERT OR REPLACE INTO instances (id, name, version, mod_loader, loader_version, created_at, last_run, path, settings, schedules)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
@@ -75,27 +88,38 @@ impl InstanceManager {
         .bind(settings_json)
         .bind(schedules_json)
         .execute(self.db.pool())
-        .await?;
-
-        Ok(())
+        .await {
+            Ok(_) => {
+                info!("Successfully saved instance to DB: {}", instance.name);
+                Ok(())
+            },
+            Err(e) => {
+                error!("Failed to execute INSERT OR REPLACE query for instance {}: {}", instance.name, e);
+                Err(anyhow::anyhow!("Failed to save instance to database: {}", e))
+            }
+        }
     }
 
     fn row_to_metadata(&self, row: SqliteRow) -> Result<InstanceMetadata> {
         let id_str: String = row.try_get("id")?;
-        let id = Uuid::parse_str(&id_str)?;
+        let id = Uuid::parse_str(&id_str).context(format!("Failed to parse UUID from DB: {}", id_str))?;
         let name: String = row.try_get("name")?;
         let version: String = row.try_get("version")?;
         let mod_loader: Option<String> = row.try_get("mod_loader")?;
         let loader_version: Option<String> = row.try_get("loader_version")?;
         let created_at_str: String = row.try_get("created_at")?;
-        let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)?.with_timezone(&Utc);
+        let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)
+            .context(format!("Failed to parse created_at for instance {}: {}", name, created_at_str))?
+            .with_timezone(&Utc);
         let last_run_str: Option<String> = row.try_get("last_run")?;
         let last_run = last_run_str.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
         let path: String = row.try_get("path")?;
         let settings_json: String = row.try_get("settings")?;
-        let settings = serde_json::from_str(&settings_json)?;
+        let settings = serde_json::from_str(&settings_json)
+            .context(format!("Failed to parse settings JSON for instance {}: {}", name, settings_json))?;
         let schedules_json: String = row.try_get("schedules")?;
-        let schedules = serde_json::from_str(&schedules_json)?;
+        let schedules = serde_json::from_str(&schedules_json)
+            .context(format!("Failed to parse schedules JSON for instance {}: {}", name, schedules_json))?;
 
         Ok(InstanceMetadata {
             id,
@@ -149,7 +173,7 @@ impl InstanceManager {
         Ok(metadata)
     }
 
-    pub async fn import_instance<F>(&self, name: &str, source_path: PathBuf, jar_name: String, mod_loader: Option<String>, root_within_zip: Option<String>, on_progress: F) -> Result<InstanceMetadata> 
+    pub async fn import_instance<F>(&self, name: &str, source_path: PathBuf, jar_name: String, mod_loader: Option<String>, root_within_zip: Option<String>, script_path: Option<String>, on_progress: F) -> Result<InstanceMetadata> 
     where F: Fn(u64, u64, String) + Send + Sync + 'static
     {
         let id = Uuid::new_v4();
@@ -172,7 +196,23 @@ impl InstanceManager {
         }
 
         let mut settings = InstanceSettings::default();
-        settings.startup_line = format!("java -Xmx{{ram}}{{unit}} -jar {} nogui", jar_name);
+        
+        // Parse script if provided
+        if let Some(script) = script_path {
+            let script_full_path = instance_path.join(&script);
+            if script_full_path.exists() {
+                if let Ok(content) = fs::read_to_string(script_full_path).await {
+                    if let Some((min, min_u, max, max_u)) = self.parse_ram_from_script(&content) {
+                        settings.min_ram = min;
+                        settings.min_ram_unit = min_u;
+                        settings.max_ram = max;
+                        settings.max_ram_unit = max_u;
+                    }
+                }
+            }
+        }
+
+        settings.startup_line = format!("java -Xms{{min_ram}}{{min_unit}} -Xmx{{max_ram}}{{max_unit}} -jar {} nogui", jar_name);
 
         // Check for server-icon.png
         let icon_path = instance_path.join("server-icon.png");
@@ -203,6 +243,14 @@ impl InstanceManager {
         self.save_instance_to_db(&metadata).await?;
 
         info!("Imported instance: {} (ID: {})", name, id);
+        
+        // Double check it's in the DB
+        match self.get_instance(id).await {
+            Ok(Some(_)) => info!("Verified instance {} exists in DB after import", name),
+            Ok(None) => error!("CRITICAL: Instance {} NOT found in DB immediately after save!", name),
+            Err(e) => error!("Error verifying instance {} in DB: {}", name, e),
+        }
+
         Ok(metadata)
     }
 
@@ -419,5 +467,37 @@ impl InstanceManager {
         }
 
         "Imported".to_string()
+    }
+
+    fn parse_ram_from_script(&self, content: &str) -> Option<(u32, String, u32, String)> {
+        let xms_regex = Regex::new(r"-Xms(\d+)([gGmMkK])").ok()?;
+        let xmx_regex = Regex::new(r"-Xmx(\d+)([gGmMkK])").ok()?;
+
+        let min = xms_regex.captures(content).and_then(|caps| {
+            let val = caps[1].parse::<u32>().ok()?;
+            let unit = caps[2].to_uppercase();
+            Some((val, unit))
+        });
+
+        let max = xmx_regex.captures(content).and_then(|caps| {
+            let val = caps[1].parse::<u32>().ok()?;
+            let unit = caps[2].to_uppercase();
+            Some((val, unit))
+        });
+
+        match (min, max) {
+            (Some((min_val, min_unit)), Some((max_val, max_unit))) => {
+                Some((min_val, min_unit, max_val, max_unit))
+            }
+            (None, Some((max_val, max_unit))) => {
+                // If only Xmx is found, use a reasonable default for Xms (e.g., 512M or 1G)
+                Some((1, "G".to_string(), max_val, max_unit))
+            }
+            (Some((min_val, min_unit)), None) => {
+                // If only Xms is found, use it for Xmx too or a default
+                Some((min_val, min_unit.clone(), min_val, min_unit))
+            }
+            _ => None,
+        }
     }
 }
