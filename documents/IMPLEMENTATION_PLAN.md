@@ -177,8 +177,8 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [x] Integration tests for Tauri commands in `src-tauri`.
   - [x] Frontend unit & component tests using `Vitest` and `React Testing Library`.
   - [x] E2E tests for critical user flows (Create Instance, Start/Stop Server) using `Playwright`.
-- [/] **Robust Error Handling**
-  - [ ] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
+- [x] **Robust Error Handling**
+  - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
   - [x] Implement React Error Boundaries in the frontend.
 - [x] **Production Observability**
   - [x] Persistent file logging for production builds using `tauri-plugin-log`.

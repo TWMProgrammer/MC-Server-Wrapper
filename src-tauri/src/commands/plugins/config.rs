@@ -26,7 +26,7 @@ pub async fn list_plugin_configs(
     // Attempt to find the config directory by checking multiple possible names
     
     let base_name_from_file = if plugin_filename.ends_with(".jar.disabled") {
-        plugin_filename.strip_suffix(".jar.disabled").unwrap()
+        plugin_filename.strip_suffix(".jar.disabled").unwrap_or(&plugin_filename)
     } else {
         plugin_filename.strip_suffix(".jar").unwrap_or(&plugin_filename)
     };

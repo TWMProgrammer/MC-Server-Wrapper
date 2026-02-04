@@ -15,7 +15,7 @@ use commands::AppState;
 use anyhow::Context;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() -> anyhow::Result<()> {
   log::info!("Starting MineCraft Server Wrapper v{}", env!("CARGO_PKG_VERSION"));
   tauri::Builder::default()
     .setup(|app| {
@@ -62,7 +62,13 @@ pub fn run() {
           let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.context("failed to initialize scheduler manager")?;
           
           // Load existing schedules
-          let instances = instance_manager.list_instances().await.unwrap_or_default();
+          let instances = match instance_manager.list_instances().await {
+              Ok(list) => list,
+              Err(e) => {
+                  log::error!("Failed to list instances for scheduler: {}", e);
+                  Vec::new()
+              }
+          };
           for instance in instances {
               for task in instance.schedules {
                   if task.enabled {
@@ -92,7 +98,10 @@ pub fn run() {
             
             // We need to block on this because on_window_event is sync
             let settings = tauri::async_runtime::block_on(async {
-                config_manager.load().await.unwrap_or_default()
+                config_manager.load().await.unwrap_or_else(|e| {
+                    log::error!("Failed to load app settings on close: {}", e);
+                    Default::default()
+                })
             });
 
             match settings.close_behavior {
@@ -196,5 +205,7 @@ pub fn run() {
         commands::mods::update_mod,
     ])
     .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .context("error while running tauri application")?;
+
+  Ok(())
 }

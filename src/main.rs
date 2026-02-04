@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     
     // 0. Initialize Directories
     let current_exe = std::env::current_exe()?;
-    let exe_dir = current_exe.parent().expect("Failed to get exe directory");
+    let exe_dir = current_exe.parent().ok_or_else(|| anyhow::anyhow!("Failed to get exe directory"))?;
     let app_dirs = crate::core::init::init_directories(exe_dir).await?;
 
     // 1. Handle Configuration
