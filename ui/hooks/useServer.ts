@@ -108,8 +108,8 @@ export function useServer() {
           ...inst,
           server_type: inst.server_type || server_type,
           ip: inst.ip || '127.0.0.1',
-          port: inst.port || 25565,
-          description: inst.description || 'There is no description for this server.',
+          port: inst.port || inst.settings.port || 25565,
+          description: inst.description || inst.settings.description || 'There is no description for this server.',
           max_players: inst.max_players || 20
         }
       })

@@ -5,6 +5,7 @@ use chrono::Utc;
 use super::manager::InstanceManager;
 use super::types::InstanceSettings;
 use super::super::scheduler::ScheduledTask;
+use super::super::server_properties::{read_server_properties, write_server_properties};
 
 impl InstanceManager {
     pub async fn update_last_run(&self, id: Uuid) -> Result<()> {
@@ -52,8 +53,25 @@ impl InstanceManager {
     }
 
     pub async fn update_settings(&self, id: Uuid, name: Option<String>, settings: InstanceSettings) -> Result<()> {
+        let instance = self.get_instance(id).await?
+            .context("Instance not found")?;
+
         let settings_json = serde_json::to_string(&settings)?;
         
+        // Update server.properties if it exists
+        let mut props = read_server_properties(&instance.path).await?;
+        let mut props_changed = false;
+
+        let port_str = settings.port.to_string();
+        if props.get("server-port") != Some(&port_str) {
+            props.insert("server-port".to_string(), port_str);
+            props_changed = true;
+        }
+
+        if props_changed {
+            write_server_properties(&instance.path, &props).await?;
+        }
+
         if let Some(new_name) = name {
             sqlx::query("UPDATE instances SET name = ?, settings = ? WHERE id = ?")
                 .bind(&new_name)

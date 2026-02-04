@@ -41,7 +41,14 @@ export function InstanceSettingsTab({ instance, onUpdate }: InstanceSettingsTabP
 
   // Update local state when instance changes
   useEffect(() => {
-    setSettings(instance.settings)
+    const initialSettings = { ...instance.settings };
+    
+    // Dynamically update port if it's available from server.properties
+    if (instance.port) {
+      initialSettings.port = instance.port;
+    }
+
+    setSettings(initialSettings)
     setName(instance.name)
     setTempIconPath(instance.settings.icon_path)
     loadBatFiles()

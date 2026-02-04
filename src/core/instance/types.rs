@@ -78,4 +78,13 @@ pub struct InstanceMetadata {
     pub schedules: Vec<ScheduledTask>,
     #[serde(default)]
     pub settings: InstanceSettings,
+    // Dynamic properties from server.properties
+    #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub port: Option<u16>,
+    #[serde(default)]
+    pub max_players: Option<u32>,
+    #[serde(default)]
+    pub description: Option<String>,
 }

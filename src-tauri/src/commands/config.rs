@@ -113,5 +113,19 @@ pub async fn save_server_properties(
     let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
         .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
     
-    config_files::save_config_file(&instance.path, "server.properties", config_files::ConfigFormat::Properties, properties).await.map_err(AppError::from)
+    // Save the properties file
+    config_files::save_config_file(&instance.path, "server.properties", config_files::ConfigFormat::Properties, properties.clone()).await.map_err(AppError::from)?;
+
+    // If the port changed, update the instance settings in the DB
+    if let Some(port_str) = properties.get("server-port") {
+        if let Ok(port) = port_str.parse::<u16>() {
+            if port != instance.settings.port {
+                let mut new_settings = instance.settings.clone();
+                new_settings.port = port;
+                instance_manager.update_settings(id, None, new_settings).await.map_err(AppError::from)?;
+            }
+        }
+    }
+
+    Ok(())
 }

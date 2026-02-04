@@ -11,6 +11,7 @@ use super::types::InstanceMetadata;
 use super::archive::{extract_zip, extract_7z, copy_dir_all};
 use super::types::InstanceSettings;
 use crate::database::Database;
+use crate::server_properties::read_server_properties;
 
 pub struct InstanceManager {
     pub(crate) base_dir: PathBuf,
@@ -105,6 +106,10 @@ impl InstanceManager {
             path: PathBuf::from(path),
             settings,
             schedules,
+            ip: None,
+            port: None,
+            max_players: None,
+            description: None,
         })
     }
 
@@ -128,6 +133,10 @@ impl InstanceManager {
             path: instance_path,
             schedules: vec![],
             settings: InstanceSettings::default(),
+            ip: None,
+            port: None,
+            max_players: None,
+            description: None,
         };
 
         self.save_instance_to_db(&metadata).await?;
@@ -178,6 +187,10 @@ impl InstanceManager {
             path: instance_path,
             schedules: vec![],
             settings,
+            ip: None,
+            port: None,
+            max_players: None,
+            description: None,
         };
 
         self.save_instance_to_db(&metadata).await?;
@@ -193,7 +206,9 @@ impl InstanceManager {
 
         let mut instances = Vec::new();
         for row in rows {
-            instances.push(self.row_to_metadata(row)?);
+            let mut metadata = self.row_to_metadata(row)?;
+            let _ = self.enrich_metadata(&mut metadata).await; // Ignore errors for individual instances
+            instances.push(metadata);
         }
         Ok(instances)
     }
@@ -205,7 +220,11 @@ impl InstanceManager {
             .await?;
 
         match row {
-            Some(row) => Ok(Some(self.row_to_metadata(row)?)),
+            Some(row) => {
+                let mut metadata = self.row_to_metadata(row)?;
+                self.enrich_metadata(&mut metadata).await?;
+                Ok(Some(metadata))
+            },
             None => Ok(None),
         }
     }
@@ -217,9 +236,43 @@ impl InstanceManager {
             .await?;
 
         match row {
-            Some(row) => Ok(Some(self.row_to_metadata(row)?)),
+            Some(row) => {
+                let mut metadata = self.row_to_metadata(row)?;
+                self.enrich_metadata(&mut metadata).await?;
+                Ok(Some(metadata))
+            },
             None => Ok(None),
         }
+    }
+
+    async fn enrich_metadata(&self, metadata: &mut InstanceMetadata) -> Result<()> {
+        let props = match read_server_properties(&metadata.path).await {
+            Ok(p) => p,
+            Err(_) => return Ok(()),
+        };
+        if !props.is_empty() {
+            if let Some(ip) = props.get("server-ip") {
+                if !ip.trim().is_empty() {
+                    metadata.ip = Some(ip.clone());
+                }
+            }
+            if let Some(port_str) = props.get("server-port") {
+                if let Ok(port) = port_str.parse::<u16>() {
+                    metadata.port = Some(port);
+                }
+            }
+            if let Some(max_players_str) = props.get("max-players") {
+                if let Ok(max_players) = max_players_str.parse::<u32>() {
+                    metadata.max_players = Some(max_players);
+                }
+            }
+            if let Some(motd) = props.get("motd") {
+                if !motd.trim().is_empty() {
+                    metadata.description = Some(motd.clone());
+                }
+            }
+        }
+        Ok(())
     }
 
     pub async fn delete_instance(&self, id: Uuid) -> Result<()> {
@@ -271,6 +324,10 @@ impl InstanceManager {
             path: new_path,
             schedules: instance.schedules.clone(),
             settings: instance.settings.clone(),
+            ip: None,
+            port: None,
+            max_players: None,
+            description: None,
         };
 
         self.save_instance_to_db(&new_metadata).await?;
