@@ -96,10 +96,15 @@ export function Select({
         >
           <motion.div
             ref={dropdownRef}
-            initial={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
+            initial={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: isUp ? -4 : 4, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
+            exit={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
+            transition={{ 
+              type: "spring",
+              damping: 25,
+              stiffness: 300,
+              opacity: { duration: 0.15 }
+            }}
             className={cn(
               "bg-white dark:bg-[#121214] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/5"
             )}

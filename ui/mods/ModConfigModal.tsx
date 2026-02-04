@@ -256,9 +256,9 @@ export function ModConfigModal({ mod, instanceId, onClose }: ModConfigModalProps
         />
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
           className={cn(
             "bg-surface border border-white/10 shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300",
             isMaximized ? "w-full h-full" : "w-[80%] h-[90%] rounded-3xl"

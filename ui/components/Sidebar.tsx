@@ -16,14 +16,14 @@ interface SidebarProps {
   settings: AppSettings;
 }
 
-export function Sidebar({ 
-  instances, 
-  selectedInstanceId, 
-  onSelectInstance, 
-  onCreateNew, 
-  onOpenSettings, 
+export function Sidebar({
+  instances,
+  selectedInstanceId,
+  onSelectInstance,
+  onCreateNew,
+  onOpenSettings,
   onInstancesUpdated,
-  settings 
+  settings
 }: SidebarProps) {
   return (
     <div className="w-72 bg-sidebar-bg border-r border-black/5 dark:border-white/5 flex flex-col h-full shadow-2xl z-10 transition-colors duration-300">
@@ -78,8 +78,8 @@ export function Sidebar({
                       selectedInstanceId === inst.id && "bg-white/20 text-white"
                     )}>
                       {inst.settings.icon_path ? (
-                        <img 
-                          src={convertFileSrc(inst.settings.icon_path)} 
+                        <img
+                          src={convertFileSrc(inst.settings.icon_path)}
                           alt={inst.name}
                           className="w-full h-full object-cover"
                         />

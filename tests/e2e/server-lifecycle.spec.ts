@@ -11,7 +11,7 @@ test('Server Full Lifecycle Flow', async () => {
   test.setTimeout(240000); // Increased timeout for the full flow
   
   // Path to your Tauri binary
-  const appPath = path.join(__dirname, '..', '..', 'src-tauri', 'target', 'debug', 'app.exe');
+  const appPath = path.join(__dirname, '..', '..', 'src-tauri', 'target', 'debug', 'mc-server-wrapper.exe');
   
   // Start the Tauri app with a remote debugging port
   const tauriProcess = spawn(appPath, [], {
