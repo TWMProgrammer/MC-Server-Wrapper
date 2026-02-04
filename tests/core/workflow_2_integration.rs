@@ -122,7 +122,7 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
         .await;
 
     // Get versions and download
-    let versions = client.get_versions("A76uj67l").await?;
+    let versions = client.get_versions("A76uj67l", None, None).await?;
     let version = &versions[0];
     
     let mods_dir = instance_path.join("mods");

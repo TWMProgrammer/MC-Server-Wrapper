@@ -138,9 +138,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [x] **Plugin/Mod Downloader**
     - [x] Modrinth API integration for mods and plugins.
     - [x] Spigot (Spiget) API integration.
-    - [x] CurseForge API support.
-    - [x] Dependency resolution for complex mods.
-- [x] **Resource Monitoring**
+141→    - [x] CurseForge API support.
+142→    - [x] Hangar API integration for Paper/Velocity plugins.
+143→    - [x] Dependency resolution for complex mods and plugins (Modrinth, CurseForge, Hangar).
+144→- [x] **Resource Monitoring**
     - [x] Live CPU/RAM usage tracking.
     - [x] Disk I/O monitoring.
     - [x] Historical usage graphs with `recharts`.

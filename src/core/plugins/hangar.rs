@@ -8,6 +8,7 @@ use super::types::{Project, ProjectVersion, ProjectFile, PluginProvider, Resolve
 
 pub struct HangarClient {
     client: reqwest::Client,
+    base_url: String,
 }
 
 impl Default for HangarClient {
@@ -23,11 +24,22 @@ impl HangarClient {
                 .user_agent("mc-server-wrapper/0.1.0")
                 .build()
                 .expect("Failed to create reqwest client"),
+            base_url: "https://hangar.papermc.io/api/v1".to_string(),
+        }
+    }
+
+    pub fn with_base_url(base_url: String) -> Self {
+        Self {
+            client: reqwest::Client::builder()
+                .user_agent("mc-server-wrapper/0.1.0")
+                .build()
+                .expect("Failed to create reqwest client"),
+            base_url,
         }
     }
 
     pub async fn search(&self, options: &super::types::SearchOptions) -> Result<Vec<Project>> {
-        let mut url = format!("https://hangar.papermc.io/api/v1/projects?q={}", urlencoding::encode(&options.query));
+        let mut url = format!("{}/projects?q={}", self.base_url, urlencoding::encode(&options.query));
 
         if let Some(offset) = options.offset {
             url.push_str(&format!("&offset={}", offset));
@@ -74,7 +86,7 @@ impl HangarClient {
     }
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
-        let url = format!("https://hangar.papermc.io/api/v1/projects/{}", id);
+        let url = format!("{}/projects/{}", self.base_url, id);
         let h: serde_json::Value = self.client.get(&url).send().await?.json().await?;
         
         let owner = h["namespace"]["owner"].as_str().unwrap_or_default();
@@ -94,17 +106,78 @@ impl HangarClient {
 
     pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<ResolvedDependency>> {
         // Hangar dependencies are listed per version. We'll get the latest version and its dependencies.
-        let _versions = self.get_versions(project_id, None, None).await?;
+        let url = format!("{}/projects/{}/versions?limit=1", self.base_url, project_id);
+        let response: serde_json::Value = self.client.get(&url).send().await?.json().await?;
         
-        // This is a simplified implementation as Hangar's dependency resolution can be complex
-        // and might involve other providers. For now, we'll return an empty list or 
-        // implement it if Hangar provides a simple way to get them.
-        // Hangar version response has 'pluginDependencies'
-        
-        // Actually, let's fetch the version details to get dependencies properly if needed.
-        // But the ProjectVersion struct we have doesn't easily support Hangar's format.
-        
-        Ok(vec![])
+        let result = response["result"].as_array().ok_or_else(|| anyhow!("Invalid response from Hangar"))?;
+        if result.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let latest_version = &result[0];
+        let mut resolved_deps = Vec::new();
+
+        // Check for plugin dependencies in PAPER platform
+        if let Some(plugin_deps) = latest_version["pluginDependencies"].get("PAPER") {
+            if let Some(deps_array) = plugin_deps.as_array() {
+                for dep in deps_array {
+                    let name = dep["name"].as_str().unwrap_or("Unknown").to_string();
+                    let required = dep["required"].as_bool().unwrap_or(true);
+                    let dependency_type = if required { "required" } else { "optional" }.to_string();
+
+                    if let Some(namespace) = dep.get("namespace") {
+                        let owner = namespace["owner"].as_str().unwrap_or_default();
+                        let slug = namespace["slug"].as_str().unwrap_or_default();
+                        
+                        if !owner.is_empty() && !slug.is_empty() {
+                            let dep_project_id = format!("{}/{}", owner, slug);
+                            // We could fetch the full project info here, but for performance 
+                            // we'll try to use what we have or just fetch it if needed.
+                            // Since ResolvedDependency needs a full Project object, 
+                            // let's fetch it to be safe and consistent with other providers.
+                            if let Ok(project) = self.get_project(&dep_project_id).await {
+                                resolved_deps.push(ResolvedDependency {
+                                    project,
+                                    dependency_type,
+                                });
+                            } else {
+                                // Fallback to partial project if fetch fails
+                                resolved_deps.push(ResolvedDependency {
+                                    project: Project {
+                                        id: dep_project_id,
+                                        slug: slug.to_string(),
+                                        title: name,
+                                        description: String::new(),
+                                        downloads: 0,
+                                        icon_url: None,
+                                        author: owner.to_string(),
+                                        provider: PluginProvider::Hangar,
+                                    },
+                                    dependency_type,
+                                });
+                            }
+                        }
+                    } else if let Some(external_url) = dep["externalUrl"].as_str() {
+                        // External dependency
+                        resolved_deps.push(ResolvedDependency {
+                            project: Project {
+                                id: external_url.to_string(),
+                                slug: name.to_lowercase().replace(' ', "-"),
+                                title: name,
+                                description: format!("External dependency: {}", external_url),
+                                downloads: 0,
+                                icon_url: None,
+                                author: "External".to_string(),
+                                provider: PluginProvider::Hangar,
+                            },
+                            dependency_type,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(resolved_deps)
     }
 
     pub async fn get_versions(
@@ -113,7 +186,7 @@ impl HangarClient {
         _game_version: Option<&str>,
         _loader: Option<&str>,
     ) -> Result<Vec<ProjectVersion>> {
-        let url = format!("https://hangar.papermc.io/api/v1/projects/{}/versions", project_id);
+        let url = format!("{}/projects/{}/versions", self.base_url, project_id);
         let response: serde_json::Value = self.client.get(&url).send().await?.json().await?;
         
         let result = response["result"].as_array().ok_or_else(|| anyhow!("Invalid response from Hangar"))?;
