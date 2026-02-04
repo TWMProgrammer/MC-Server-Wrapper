@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Settings,
   Puzzle,
@@ -142,19 +141,8 @@ export function TabRenderer({
   };
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="h-full"
-        >
-          {renderTabContent()}
-        </motion.div>
-      </AnimatePresence>
+    <div className="h-full flex flex-col overflow-hidden">
+      {renderTabContent()}
     </div>
   );
 }
