@@ -29,10 +29,11 @@ impl ServerHandle {
         let online_players = Arc::clone(&self.online_players);
         let log_sender = self.log_sender.clone();
         let progress_sender = self.progress_sender.clone();
+        let start_time = Arc::clone(&self.start_time);
 
         tokio::spawn(async move {
             Self::lifecycle_loop(
-                config, status, child, stdin, usage, online_players, log_sender, progress_sender
+                config, status, child, stdin, usage, online_players, log_sender, progress_sender, start_time
             ).await;
         });
 
@@ -48,6 +49,7 @@ impl ServerHandle {
         online_players_arc: Arc<Mutex<HashSet<String>>>,
         log_sender: broadcast::Sender<String>,
         _progress_sender: broadcast::Sender<ProgressPayload>,
+        start_time_arc: Arc<Mutex<Option<std::time::Instant>>>,
     ) {
         loop {
             let config = config_arc.lock().await.clone();
@@ -79,9 +81,10 @@ impl ServerHandle {
             {
                 *child_arc.lock().await = Some(child);
                 *stdin_arc.lock().await = Some(stdin);
+                *start_time_arc.lock().await = Some(std::time::Instant::now());
             }
 
-            let monitor_handle = tokio::spawn(Self::monitor_resources(pid, Arc::clone(&usage_arc)));
+            let monitor_handle = tokio::spawn(Self::monitor_resources(pid, Arc::clone(&usage_arc), Arc::clone(&start_time_arc), Arc::clone(&online_players_arc)));
             let stdout_handle = tokio::spawn(Self::process_stdout(stdout, log_sender.clone(), Arc::clone(&status_arc), Arc::clone(&online_players_arc)));
             let stderr_handle = tokio::spawn(Self::process_stderr(stderr, log_sender.clone()));
 
@@ -91,6 +94,15 @@ impl ServerHandle {
             let _ = tokio::time::timeout(Duration::from_millis(500), stdout_handle).await;
             let _ = tokio::time::timeout(Duration::from_millis(500), stderr_handle).await;
             monitor_handle.abort();
+
+            {
+                *start_time_arc.lock().await = None;
+                let mut usage = usage_arc.lock().await;
+                usage.cpu_usage = 0.0;
+                usage.memory_usage = 0;
+                usage.uptime = 0;
+                usage.player_count = 0;
+            }
 
             let mut status = status_arc.lock().await;
             let exited_cleanly = exit_status.as_ref().map(|s| s.success()).unwrap_or(false);

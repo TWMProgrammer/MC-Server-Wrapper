@@ -10,8 +10,15 @@ use std::collections::HashSet;
 use super::super::handle::ServerHandle;
 use super::super::types::{ServerStatus, ResourceUsage};
 
+use std::time::Instant;
+
 impl ServerHandle {
-    pub(crate) async fn monitor_resources(pid: u32, usage_arc: Arc<Mutex<ResourceUsage>>) {
+    pub(crate) async fn monitor_resources(
+        pid: u32, 
+        usage_arc: Arc<Mutex<ResourceUsage>>,
+        start_time_arc: Arc<Mutex<Option<Instant>>>,
+        players_arc: Arc<Mutex<HashSet<String>>>
+    ) {
         let mut sys = System::new_all();
         let pid = Pid::from(pid as usize);
         loop {
@@ -23,6 +30,14 @@ impl ServerHandle {
                 let disk = process.disk_usage();
                 usage.disk_read = disk.read_bytes;
                 usage.disk_write = disk.written_bytes;
+
+                // Update uptime
+                if let Some(start_time) = *start_time_arc.lock().await {
+                    usage.uptime = start_time.elapsed().as_secs();
+                }
+
+                // Update player count
+                usage.player_count = players_arc.lock().await.len() as u32;
             } else {
                 break;
             }

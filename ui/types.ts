@@ -40,6 +40,8 @@ export interface ResourceUsage {
   memory_usage: number;
   disk_read: number;
   disk_write: number;
+  uptime: number;
+  player_count: number;
   timestamp?: number;
 }
 

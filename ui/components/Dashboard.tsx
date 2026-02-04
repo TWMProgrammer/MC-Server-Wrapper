@@ -26,6 +26,13 @@ export function Dashboard({
     return `${(bytes / 1024 / 1024).toFixed(0)}MB`;
   };
 
+  const formatUptime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const stats = [
     {
       label: 'CPU Usage',
@@ -45,14 +52,14 @@ export function Dashboard({
     },
     {
       label: 'Players Online',
-      value: `0 / ${currentInstance.max_players}`,
+      value: `${usage?.player_count || 0} / ${currentInstance.max_players}`,
       icon: Users,
       color: 'text-accent-amber',
       bg: 'bg-accent-amber/10',
     },
     {
       label: 'Server Uptime',
-      value: '00:00:00',
+      value: formatUptime(usage?.uptime || 0),
       icon: Clock,
       color: 'text-accent-indigo',
       bg: 'bg-accent-indigo/10',
@@ -85,22 +92,26 @@ export function Dashboard({
                 <stat.icon size={20} />
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden transition-colors duration-300">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: stat.label === 'CPU Usage'
-                      ? `${usage?.cpu_usage || 0}%`
-                      : stat.label === 'Memory Usage'
-                        ? `${((usage?.memory_usage || 0) / totalRamBytes) * 100}%`
-                        : '0%'
-                  }}
-                  transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                  className={`h-full ${stat.color.replace('text-', 'bg-')} opacity-80 shadow-[0_0_10px_rgba(0,0,0,0.2)]`}
-                />
+            {stat.label !== 'Server Uptime' && (
+              <div className="mt-4 flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden transition-colors duration-300">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: stat.label === 'CPU Usage'
+                        ? `${usage?.cpu_usage || 0}%`
+                        : stat.label === 'Memory Usage'
+                          ? `${((usage?.memory_usage || 0) / (totalRamBytes || 1)) * 100}%`
+                          : stat.label === 'Players Online'
+                            ? `${((usage?.player_count || 0) / (currentInstance.max_players || 1)) * 100}%`
+                            : '0%'
+                    }}
+                    transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                    className={`h-full ${stat.color.replace('text-', 'bg-')} opacity-80 shadow-[0_0_10px_rgba(0,0,0,0.2)]`}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         ))}
       </div>

@@ -17,6 +17,8 @@ pub struct ResourceUsage {
     pub memory_usage: u64,
     pub disk_read: u64,
     pub disk_write: u64,
+    pub uptime: u64,
+    pub player_count: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]

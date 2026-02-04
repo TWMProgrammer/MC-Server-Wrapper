@@ -1,7 +1,7 @@
-import { Database, Network, Beaker, Users, Tag, Play, Square, Settings2, FolderOpen, Loader2, RotateCcw } from 'lucide-react'
+import { Database, Network, Beaker, Users, Tag, Play, Square, Settings2, FolderOpen, Loader2, RotateCcw, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { Instance, TabId, TransitionType } from '../types'
+import { Instance, TabId, TransitionType, ResourceUsage } from '../types'
 import { cn } from '../utils'
 import { InstanceFolderDropdown } from '../InstanceFolderDropdown'
 import { InstanceSettingsDropdown } from '../InstanceSettingsDropdown'
@@ -11,6 +11,7 @@ interface HeaderProps {
   status: string;
   isTransitioning?: TransitionType | null;
   activeTab: TabId;
+  usage: ResourceUsage | null;
   tabs: { id: TabId; label: string; icon: any }[];
   onStartServer: () => void;
   onStopServer: () => void;
@@ -24,6 +25,7 @@ export function Header({
   status,
   isTransitioning = null,
   activeTab,
+  usage,
   tabs,
   onStartServer,
   onStopServer,
@@ -31,6 +33,14 @@ export function Header({
   onSetActiveTab,
   onInstancesUpdated
 }: HeaderProps) {
+  const formatUptime = (seconds: number) => {
+    if (seconds <= 0) return '00:00:00';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="px-8 pt-8 pb-0 bg-surface/50 border-b border-gray-100 dark:border-white/5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
       <div className="flex items-start justify-between mb-8">
@@ -95,7 +105,11 @@ export function Header({
               </div>
               <div className="flex items-center gap-2 text-sm font-medium hover:text-gray-900 dark:hover:text-gray-200 transition-colors cursor-default">
                 <Users size={16} className="text-primary/60" />
-                <span>0/{currentInstance.max_players} players</span>
+                <span>{usage?.player_count ?? 0}/{currentInstance.max_players} players</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-medium hover:text-gray-900 dark:hover:text-gray-200 transition-colors cursor-default">
+                <Clock size={16} className="text-primary/60" />
+                <span>{formatUptime(usage?.uptime || 0)}</span>
               </div>
               {currentInstance.description && (
                 <div className="flex items-center gap-2 text-sm font-medium hover:text-gray-900 dark:hover:text-gray-200 transition-colors cursor-default">

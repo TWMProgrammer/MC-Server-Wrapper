@@ -109,6 +109,7 @@ function App() {
                 status={status}
                 isTransitioning={selectedInstanceId ? isTransitioning[selectedInstanceId] : null}
                 activeTab={activeTab}
+                usage={usage}
                 tabs={tabs}
                 onStartServer={() => startServer()}
                 onStopServer={() => stopServer()}

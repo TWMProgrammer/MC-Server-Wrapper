@@ -5,6 +5,8 @@ use tokio::process::{Child, ChildStdin};
 use super::types::{ServerStatus, ResourceUsage, ProgressPayload};
 use super::super::config::ServerConfig;
 
+use std::time::Instant;
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct ServerHandle {
@@ -16,6 +18,7 @@ pub struct ServerHandle {
     pub(crate) online_players: Arc<Mutex<HashSet<String>>>,
     pub(crate) log_sender: broadcast::Sender<String>,
     pub(crate) progress_sender: broadcast::Sender<ProgressPayload>,
+    pub(crate) start_time: Arc<Mutex<Option<Instant>>>,
 }
 
 impl ServerHandle {
@@ -31,6 +34,7 @@ impl ServerHandle {
             online_players: Arc::new(Mutex::new(HashSet::new())),
             log_sender,
             progress_sender,
+            start_time: Arc::new(Mutex::new(None)),
         }
     }
 
