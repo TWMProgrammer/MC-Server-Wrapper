@@ -84,59 +84,68 @@ export function Select({
     <AnimatePresence>
       {isOpen && (
         <div
+          className="fixed inset-0 z-[100] overflow-hidden pointer-events-none"
           style={{
-            position: 'fixed',
-            top: isUp ? `${coords.top - 8}px` : `${coords.top + (size === 'sm' ? 36 : 42)}px`,
-            left: `${coords.left}px`,
-            width: `${coords.width}px`,
-            zIndex: 9999,
-            transform: `scale(${settings.scaling}) ${isUp ? 'translateY(-100%)' : ''}`,
-            transformOrigin: isUp ? 'bottom left' : 'top left',
+            width: `${100 / settings.scaling}%`,
+            height: `${100 / settings.scaling}%`,
+            transform: `scale(${settings.scaling})`,
+            transformOrigin: 'top left',
           }}
         >
-          <motion.div
-            ref={dropdownRef}
-            initial={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
-            transition={{ 
-              type: "spring",
-              damping: 25,
-              stiffness: 300,
-              opacity: { duration: 0.15 }
+          <div
+            className="pointer-events-auto"
+            style={{
+              position: 'absolute',
+              top: isUp ? `${(coords.top / settings.scaling) - 8}px` : `${(coords.top / settings.scaling) + (size === 'sm' ? 36 : 42)}px`,
+              left: `${coords.left / settings.scaling}px`,
+              width: `${coords.width / settings.scaling}px`,
+              transform: isUp ? 'translateY(-100%)' : '',
             }}
-            className={cn(
-              "bg-white dark:bg-[#121214] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/5"
-            )}
           >
-            <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-black/10 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
-              {options.length === 0 ? (
-                <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-white/30 font-medium italic">
-                  No options available
-                </div>
-              ) : options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value)
-                    setIsOpen(false)
-                  }}
-                  className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all group",
-                    value === option.value
-                      ? "bg-primary/20 text-primary font-bold"
-                      : "text-gray-600 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/[0.05] hover:text-gray-900 dark:hover:text-white"
-                  )}
-                >
-                  <span className="truncate">{option.label}</span>
-                  {value === option.value && (
-                    <Check size={14} className="shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
+            <motion.div
+              ref={dropdownRef}
+              initial={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: isUp ? 8 : -8, scale: 0.98 }}
+              transition={{
+                type: "spring",
+                damping: 25,
+                stiffness: 300,
+                opacity: { duration: 0.15 }
+              }}
+              className={cn(
+                "bg-white dark:bg-[#121214] border border-black/10 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/5"
+              )}
+            >
+              <div className="max-h-60 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-black/10 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {options.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-gray-500 dark:text-white/30 font-medium italic">
+                    No options available
+                  </div>
+                ) : options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value)
+                      setIsOpen(false)
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all group",
+                      value === option.value
+                        ? "bg-primary/20 text-primary font-bold"
+                        : "text-gray-600 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/[0.05] hover:text-gray-900 dark:hover:text-white"
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {value === option.value && (
+                      <Check size={14} className="shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>

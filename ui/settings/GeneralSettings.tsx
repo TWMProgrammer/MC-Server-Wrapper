@@ -54,7 +54,7 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
             <Cpu size={20} className="text-primary" />
             Resources
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-500 dark:text-white/40">Allocated RAM</label>
               <div className="flex gap-2">
@@ -62,7 +62,7 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
                   type="number"
                   value={settings.ram}
                   onChange={(e) => updateSetting('ram', parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full min-w-0 bg-black/5 dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 />
                 <Select
                   value={settings.ram_unit}
@@ -71,7 +71,7 @@ export function GeneralSettings({ instance, name, setName, settings, updateSetti
                     { value: 'G', label: 'GB' },
                     { value: 'M', label: 'MB' }
                   ]}
-                  className="w-24"
+                  className="w-28 shrink-0"
                   size="sm"
                 />
               </div>
