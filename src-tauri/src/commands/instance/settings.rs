@@ -4,6 +4,9 @@ use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use super::super::CommandResult;
+use mc_server_wrapper_core::errors::AppError;
+
 #[tauri::command]
 pub async fn update_instance_settings(
     instance_manager: State<'_, Arc<InstanceManager>>,
@@ -11,9 +14,9 @@ pub async fn update_instance_settings(
     instance_id: String,
     name: Option<String>,
     settings: InstanceSettings,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
-    instance_manager.update_settings(id, name, settings).await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    instance_manager.update_settings(id, name, settings).await.map_err(AppError::from)?;
     
     // If the server is already loaded in memory, update its config
     let _ = server_manager.prepare_server(id).await;
@@ -25,15 +28,15 @@ pub async fn update_instance_settings(
 pub async fn list_bat_files(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
-) -> Result<Vec<String>, String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+) -> CommandResult<Vec<String>> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
     
     let mut bat_files = Vec::new();
-    let mut entries = tokio::fs::read_dir(&instance.path).await.map_err(|e| e.to_string())?;
+    let mut entries = tokio::fs::read_dir(&instance.path).await.map_err(AppError::from)?;
     
-    while let Some(entry) = entries.next_entry().await.map_err(|e| e.to_string())? {
+    while let Some(entry) = entries.next_entry().await.map_err(AppError::from)? {
         let path = entry.path();
         if path.is_file() {
             if let Some(extension) = path.extension() {
@@ -55,13 +58,13 @@ pub async fn update_instance_jar(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
     source_path: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
     
     let dest_path = instance.path.join("server.jar");
-    tokio::fs::copy(source_path, dest_path).await.map_err(|e| e.to_string())?;
+    tokio::fs::copy(source_path, dest_path).await.map_err(AppError::from)?;
     
     Ok(())
 }
@@ -70,7 +73,7 @@ pub async fn update_instance_jar(
 pub async fn get_startup_preview(
     _instance_id: String,
     settings: InstanceSettings,
-) -> Result<String, String> {
+) -> CommandResult<String> {
     let mut line = settings.startup_line.clone();
     line = line.replace("{ram}", &settings.ram.to_string());
     line = line.replace("{unit}", &settings.ram_unit);

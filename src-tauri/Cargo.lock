@@ -2582,6 +2582,7 @@ dependencies = [
  "sysinfo",
  "tar",
  "tauri-plugin-opener",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-cron-scheduler",
  "toml 0.8.2",

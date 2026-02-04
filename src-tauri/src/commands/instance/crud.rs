@@ -3,11 +3,11 @@ use mc_server_wrapper_core::manager::ServerManager;
 use tauri::{State, Emitter};
 use std::sync::Arc;
 use uuid::Uuid;
-use super::super::{AppState, server::{ensure_server_logs_forwarded, LogPayload}};
+use super::super::{AppState, server::{ensure_server_logs_forwarded, LogPayload}, CommandResult, AppError};
 
 #[tauri::command]
-pub async fn list_instances(instance_manager: State<'_, Arc<InstanceManager>>) -> Result<Vec<InstanceMetadata>, String> {
-    instance_manager.list_instances().await.map_err(|e: anyhow::Error| e.to_string())
+pub async fn list_instances(instance_manager: State<'_, Arc<InstanceManager>>) -> CommandResult<Vec<InstanceMetadata>> {
+    instance_manager.list_instances().await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -15,16 +15,16 @@ pub async fn create_instance(
     instance_manager: State<'_, Arc<InstanceManager>>,
     name: String,
     version: String,
-) -> Result<InstanceMetadata, String> {
-    instance_manager.create_instance(&name, &version).await.map_err(|e: anyhow::Error| e.to_string())
+) -> CommandResult<InstanceMetadata> {
+    instance_manager.create_instance(&name, &version).await.map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn check_instance_name_exists(
     instance_manager: State<'_, Arc<InstanceManager>>,
     name: String,
-) -> Result<bool, String> {
-    let instance = instance_manager.get_instance_by_name(&name).await.map_err(|e| e.to_string())?;
+) -> CommandResult<bool> {
+    let instance = instance_manager.get_instance_by_name(&name).await.map_err(AppError::from)?;
     Ok(instance.is_some())
 }
 
@@ -33,23 +33,23 @@ pub async fn delete_instance(
     instance_manager: State<'_, Arc<InstanceManager>>,
     app_state: State<'_, AppState>,
     instance_id: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
     
     // Remove from subscribed servers so if a new instance is created with same ID (unlikely) it can be re-subscribed
     let mut subscribed = app_state.subscribed_servers.lock().await;
     subscribed.remove(&id);
     drop(subscribed);
 
-    instance_manager.delete_instance(id).await.map_err(|e: anyhow::Error| e.to_string())
+    instance_manager.delete_instance(id).await.map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn delete_instance_by_name(
     instance_manager: State<'_, Arc<InstanceManager>>,
     name: String,
-) -> Result<(), String> {
-    instance_manager.delete_instance_by_name(&name).await.map_err(|e| e.to_string())
+) -> CommandResult<()> {
+    instance_manager.delete_instance_by_name(&name).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -57,42 +57,42 @@ pub async fn clone_instance(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
     new_name: String,
-) -> Result<mc_server_wrapper_core::instance::InstanceMetadata, String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
-    instance_manager.clone_instance(id, &new_name).await.map_err(|e: anyhow::Error| e.to_string())
+) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    instance_manager.clone_instance(id, &new_name).await.map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn open_instance_folder(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
-    if let Some(instance) = instance_manager.get_instance(id).await.map_err(|e: anyhow::Error| e.to_string())? {
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    if let Some(instance) = instance_manager.get_instance(id).await.map_err(AppError::from)? {
         #[cfg(target_os = "windows")]
         {
             std::process::Command::new("explorer")
                 .arg(instance.path)
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         #[cfg(target_os = "macos")]
         {
             std::process::Command::new("open")
                 .arg(instance.path)
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         #[cfg(target_os = "linux")]
         {
             std::process::Command::new("xdg-open")
                 .arg(instance.path)
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         Ok(())
     } else {
-        Err("Instance not found".to_string())
+        Err(AppError::NotFound("Instance not found".to_string()))
     }
 }
 
@@ -106,8 +106,8 @@ pub async fn create_instance_full(
     mod_loader: Option<String>,
     loader_version: Option<String>,
     start_after_creation: bool,
-) -> Result<mc_server_wrapper_core::instance::InstanceMetadata, String> {
-    let instance = server_manager.create_instance_full(&name, &version, mod_loader, loader_version).await.map_err(|e| e.to_string())?;
+) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
+    let instance = server_manager.create_instance_full(&name, &version, mod_loader, loader_version).await.map_err(AppError::from)?;
     
     // Auto-start or prepare the server
     let instance_id = instance.id.to_string();

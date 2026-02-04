@@ -13,6 +13,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
 use std::collections::HashSet;
 use uuid::Uuid;
+use mc_server_wrapper_core::errors::AppError;
+
+pub type CommandResult<T> = Result<T, AppError>;
 
 #[derive(Clone)]
 pub struct AppState {

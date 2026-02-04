@@ -4,7 +4,7 @@ use uuid::Uuid;
 use anyhow::{Result, anyhow};
 use tracing::info;
 use super::ServerManager;
-use super::super::server::{ServerHandle, ServerStatus, generate_ascii_bar};
+use super::super::server::{ServerHandle, ServerStatus, ResourceUsage, generate_ascii_bar};
 use super::super::config::ServerConfig;
 
 impl ServerManager {
@@ -288,6 +288,42 @@ impl ServerManager {
             server.stop().await?;
         }
         Ok(())
+    }
+
+    pub async fn kill_server(&self, instance_id: Uuid) -> Result<()> {
+        let servers = self.servers.lock().await;
+        if let Some(server) = servers.get(&instance_id) {
+            server.kill().await?;
+        }
+        Ok(())
+    }
+
+    pub async fn send_command(&self, instance_id: Uuid, command: &str) -> Result<()> {
+        let servers = self.servers.lock().await;
+        if let Some(server) = servers.get(&instance_id) {
+            server.send_command(command).await?;
+        } else {
+            return Err(anyhow!("Server not running"));
+        }
+        Ok(())
+    }
+
+    pub async fn get_server_status(&self, instance_id: Uuid) -> ServerStatus {
+        let servers = self.servers.lock().await;
+        if let Some(server) = servers.get(&instance_id) {
+            server.get_status().await
+        } else {
+            ServerStatus::Stopped
+        }
+    }
+
+    pub async fn get_server_usage(&self, instance_id: Uuid) -> Option<ResourceUsage> {
+        let servers = self.servers.lock().await;
+        if let Some(server) = servers.get(&instance_id) {
+            Some(server.get_usage().await)
+        } else {
+            None
+        }
     }
 
     pub async fn restart_server(&self, instance_id: Uuid) -> Result<()> {

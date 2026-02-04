@@ -6,27 +6,28 @@ use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
 use chrono;
+use super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn open_player_list_file(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
     list_type: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
-    if let Some(instance) = instance_manager.get_instance(id).await.map_err(|e: anyhow::Error| e.to_string())? {
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    if let Some(instance) = instance_manager.get_instance(id).await.map_err(AppError::from)? {
         let file_name = match list_type.as_str() {
             "whitelist" => "whitelist.json",
             "ops" => "ops.json",
             "banned-players" => "banned-players.json",
             "banned-ips" => "banned-ips.json",
-            _ => return Err("Invalid list type".to_string()),
+            _ => return Err(AppError::Validation("Invalid list type".to_string())),
         };
         let file_path = instance.path.join(file_name);
         
         // Create the file if it doesn't exist, so the editor can open it
         if !file_path.exists() {
-            tokio::fs::write(&file_path, "[]").await.map_err(|e| e.to_string())?;
+            tokio::fs::write(&file_path, "[]").await.map_err(AppError::from)?;
         }
 
         #[cfg(target_os = "windows")]
@@ -35,25 +36,25 @@ pub async fn open_player_list_file(
                 .arg("-Command")
                 .arg(format!("Start-Process '{}'", file_path.to_string_lossy()))
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         #[cfg(target_os = "macos")]
         {
             std::process::Command::new("open")
                 .arg(file_path)
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         #[cfg(target_os = "linux")]
         {
             std::process::Command::new("xdg-open")
                 .arg(file_path)
                 .spawn()
-                .map_err(|e| e.to_string())?;
+                .map_err(AppError::from)?;
         }
         Ok(())
     } else {
-        Err("Instance not found".to_string())
+        Err(AppError::NotFound("Instance not found".to_string()))
     }
 }
 
@@ -61,8 +62,8 @@ pub async fn open_player_list_file(
 pub async fn get_online_players(
     server_manager: State<'_, Arc<ServerManager>>,
     instance_id: String,
-) -> Result<Vec<String>, String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+) -> CommandResult<Vec<String>> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
     if let Some(server) = server_manager.get_server(id).await {
         Ok(server.get_online_players().await)
     } else {
@@ -74,16 +75,16 @@ pub async fn get_online_players(
 pub async fn get_players(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: String,
-) -> Result<players::AllPlayerLists, String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e| e.to_string())?;
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+) -> CommandResult<players::AllPlayerLists> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
     
-    let whitelist = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
-    let ops = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
-    let banned_players = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
-    let banned_ips = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
-    let user_cache = players::read_usercache(&instance.path).await.map_err(|e| e.to_string())?;
+    let whitelist = players::read_whitelist(&instance.path).await.map_err(AppError::from)?;
+    let ops = players::read_ops(&instance.path).await.map_err(AppError::from)?;
+    let banned_players = players::read_banned_players(&instance.path).await.map_err(AppError::from)?;
+    let banned_ips = players::read_banned_ips(&instance.path).await.map_err(AppError::from)?;
+    let user_cache = players::read_usercache(&instance.path).await.map_err(AppError::from)?;
     
     Ok(players::AllPlayerLists {
         whitelist,
@@ -101,8 +102,8 @@ pub async fn add_player(
     instance_id: String,
     list_type: String,
     username: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
 
     // Check if server is running and use console commands if possible
     if let Some(server) = server_manager.get_server(id).await {
@@ -111,34 +112,34 @@ pub async fn add_player(
                 "whitelist" => format!("whitelist add {}", username),
                 "ops" => format!("op {}", username),
                 "banned-players" => format!("ban {} Banned by admin", username),
-                _ => return Err("Invalid list type".to_string()),
+                _ => return Err(AppError::Validation("Invalid list type".to_string())),
             };
-            return server.send_command(&command).await.map_err(|e| e.to_string());
+            return server.send_command(&command).await.map_err(AppError::from);
         }
     }
 
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
 
-    let (uuid, name) = players::fetch_player_uuid(&username).await.map_err(|e| e.to_string())?;
+    let (uuid, name) = players::fetch_player_uuid(&username).await.map_err(AppError::from)?;
 
     match list_type.as_str() {
         "whitelist" => {
-            let mut list = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_whitelist(&instance.path).await.map_err(AppError::from)?;
             if !list.iter().any(|p| p.uuid == uuid) {
                 list.push(players::PlayerEntry { uuid, name });
-                players::write_whitelist(&instance.path, &list).await.map_err(|e| e.to_string())?;
+                players::write_whitelist(&instance.path, &list).await.map_err(AppError::from)?;
             }
         },
         "ops" => {
-            let mut list = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_ops(&instance.path).await.map_err(AppError::from)?;
             if !list.iter().any(|p| p.uuid == uuid) {
                 list.push(players::OpEntry { uuid, name, level: 4, bypasses_player_limit: false });
-                players::write_ops(&instance.path, &list).await.map_err(|e| e.to_string())?;
+                players::write_ops(&instance.path, &list).await.map_err(AppError::from)?;
             }
         },
         "banned-players" => {
-            let mut list = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_banned_players(&instance.path).await.map_err(AppError::from)?;
             if !list.iter().any(|p| p.uuid == uuid) {
                 list.push(players::BannedPlayerEntry {
                     uuid,
@@ -148,10 +149,10 @@ pub async fn add_player(
                     expires: "forever".to_string(),
                     reason: "Banned by admin".to_string(),
                 });
-                players::write_banned_players(&instance.path, &list).await.map_err(|e| e.to_string())?;
+                players::write_banned_players(&instance.path, &list).await.map_err(AppError::from)?;
             }
         },
-        _ => return Err("Invalid list type".to_string()),
+        _ => return Err(AppError::Validation("Invalid list type".to_string())),
     }
     Ok(())
 }
@@ -162,21 +163,21 @@ pub async fn add_banned_ip(
     server_manager: State<'_, Arc<ServerManager>>,
     instance_id: String,
     ip: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
 
     // Check if server is running and use console commands if possible
     if let Some(server) = server_manager.get_server(id).await {
         if server.get_status().await == ServerStatus::Running {
             let command = format!("ban-ip {} Banned by admin", ip);
-            return server.send_command(&command).await.map_err(|e| e.to_string());
+            return server.send_command(&command).await.map_err(AppError::from);
         }
     }
 
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
 
-    let mut list = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+    let mut list = players::read_banned_ips(&instance.path).await.map_err(AppError::from)?;
     if !list.iter().any(|p| p.ip == ip) {
         list.push(players::BannedIpEntry {
             ip,
@@ -185,7 +186,7 @@ pub async fn add_banned_ip(
             expires: "forever".to_string(),
             reason: "Banned by admin".to_string(),
         });
-        players::write_banned_ips(&instance.path, &list).await.map_err(|e| e.to_string())?;
+        players::write_banned_ips(&instance.path, &list).await.map_err(AppError::from)?;
     }
     Ok(())
 }
@@ -197,8 +198,8 @@ pub async fn remove_player(
     instance_id: String,
     list_type: String,
     identifier: String,
-) -> Result<(), String> {
-    let id = Uuid::parse_str(&instance_id).map_err(|e: uuid::Error| e.to_string())?;
+) -> CommandResult<()> {
+    let id = Uuid::parse_str(&instance_id).map_err(AppError::from)?;
 
     // Check if server is running and use console commands if possible
     if let Some(server) = server_manager.get_server(id).await {
@@ -208,37 +209,37 @@ pub async fn remove_player(
                 "ops" => format!("deop {}", identifier),
                 "banned-players" => format!("pardon {}", identifier),
                 "banned-ips" => format!("pardon-ip {}", identifier),
-                _ => return Err("Invalid list type".to_string()),
+                _ => return Err(AppError::Validation("Invalid list type".to_string())),
             };
-            return server.send_command(&command).await.map_err(|e| e.to_string());
+            return server.send_command(&command).await.map_err(AppError::from);
         }
     }
 
-    let instance = instance_manager.get_instance(id).await.map_err(|e| e.to_string())?
-        .ok_or_else(|| "Instance not found".to_string())?;
+    let instance = instance_manager.get_instance(id).await.map_err(AppError::from)?
+        .ok_or_else(|| AppError::NotFound("Instance not found".to_string()))?;
 
     match list_type.as_str() {
         "whitelist" => {
-            let mut list = players::read_whitelist(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_whitelist(&instance.path).await.map_err(AppError::from)?;
             list.retain(|p| p.uuid != identifier && p.name != identifier);
-            players::write_whitelist(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            players::write_whitelist(&instance.path, &list).await.map_err(AppError::from)?;
         },
         "ops" => {
-            let mut list = players::read_ops(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_ops(&instance.path).await.map_err(AppError::from)?;
             list.retain(|p| p.uuid != identifier && p.name != identifier);
-            players::write_ops(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            players::write_ops(&instance.path, &list).await.map_err(AppError::from)?;
         },
         "banned-players" => {
-            let mut list = players::read_banned_players(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_banned_players(&instance.path).await.map_err(AppError::from)?;
             list.retain(|p| p.uuid != identifier && p.name != identifier);
-            players::write_banned_players(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            players::write_banned_players(&instance.path, &list).await.map_err(AppError::from)?;
         },
         "banned-ips" => {
-            let mut list = players::read_banned_ips(&instance.path).await.map_err(|e| e.to_string())?;
+            let mut list = players::read_banned_ips(&instance.path).await.map_err(AppError::from)?;
             list.retain(|p| p.ip != identifier);
-            players::write_banned_ips(&instance.path, &list).await.map_err(|e| e.to_string())?;
+            players::write_banned_ips(&instance.path, &list).await.map_err(AppError::from)?;
         },
-        _ => return Err("Invalid list type".to_string()),
+        _ => return Err(AppError::Validation("Invalid list type".to_string())),
     }
     Ok(())
 }

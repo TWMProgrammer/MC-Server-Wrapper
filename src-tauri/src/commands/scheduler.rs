@@ -3,6 +3,7 @@ use uuid::Uuid;
 use std::sync::Arc;
 use mc_server_wrapper_core::scheduler::{SchedulerManager, ScheduledTask, ScheduleType};
 use mc_server_wrapper_core::instance::InstanceManager;
+use super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn add_scheduled_task(
@@ -11,16 +12,16 @@ pub async fn add_scheduled_task(
     cron: String,
     scheduler: State<'_, Arc<SchedulerManager>>,
     instance_manager: State<'_, Arc<InstanceManager>>,
-) -> Result<ScheduledTask, String> {
+) -> CommandResult<ScheduledTask> {
     let task = ScheduledTask::new(instance_id, task_type, cron);
     
     // Save to instance metadata
     instance_manager.add_schedule(instance_id, task.clone()).await
-        .map_err(|e| e.to_string())?;
+        .map_err(AppError::from)?;
     
     // Add to running scheduler
     scheduler.add_task(task.clone()).await
-        .map_err(|e| e.to_string())?;
+        .map_err(AppError::from)?;
     
     Ok(task)
 }
@@ -31,14 +32,14 @@ pub async fn remove_scheduled_task(
     task_id: Uuid,
     scheduler: State<'_, Arc<SchedulerManager>>,
     instance_manager: State<'_, Arc<InstanceManager>>,
-) -> Result<(), String> {
+) -> CommandResult<()> {
     // Remove from running scheduler
     scheduler.remove_task(task_id).await
-        .map_err(|e| e.to_string())?;
+        .map_err(AppError::from)?;
     
     // Remove from instance metadata
     instance_manager.remove_schedule(instance_id, task_id).await
-        .map_err(|e| e.to_string())?;
+        .map_err(AppError::from)?;
     
     Ok(())
 }
@@ -47,6 +48,6 @@ pub async fn remove_scheduled_task(
 pub async fn list_scheduled_tasks(
     instance_id: Uuid,
     scheduler: State<'_, Arc<SchedulerManager>>,
-) -> Result<Vec<ScheduledTask>, String> {
+) -> CommandResult<Vec<ScheduledTask>> {
     Ok(scheduler.list_tasks(instance_id).await)
 }

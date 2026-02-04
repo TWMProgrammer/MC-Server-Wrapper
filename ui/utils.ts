@@ -22,3 +22,11 @@ export function getParentDir(path: string): string {
   parts.pop();
   return parts.join('/');
 }
+
+export function formatError(err: any): string {
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && 'message' in err) {
+    return err.message as string;
+  }
+  return String(err);
+}

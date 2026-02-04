@@ -3,14 +3,15 @@ use mc_server_wrapper_core::manager::ServerManager;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+use super::super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn search_plugins(
     server_manager: State<'_, Arc<ServerManager>>,
     options: SearchOptions,
     provider: Option<PluginProvider>,
-) -> Result<Vec<Project>, String> {
-    plugins::search_plugins(&options, provider, server_manager.get_cache()).await.map_err(|e| e.to_string())
+) -> CommandResult<Vec<Project>> {
+    plugins::search_plugins(&options, provider, server_manager.get_cache()).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -18,8 +19,8 @@ pub async fn get_plugin_dependencies(
     server_manager: State<'_, Arc<ServerManager>>,
     project_id: String,
     provider: PluginProvider,
-) -> Result<Vec<ResolvedDependency>, String> {
-    plugins::get_plugin_dependencies(&project_id, provider, server_manager.get_cache()).await.map_err(|e| e.to_string())
+) -> CommandResult<Vec<ResolvedDependency>> {
+    plugins::get_plugin_dependencies(&project_id, provider, server_manager.get_cache()).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -29,10 +30,10 @@ pub async fn install_plugin(
     project_id: String,
     provider: PluginProvider,
     version_id: Option<String>,
-) -> Result<String, String> {
-    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<String> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     plugins::install_plugin(
         &instance.path, 
@@ -44,5 +45,5 @@ pub async fn install_plugin(
         server_manager.get_cache()
     )
         .await
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }

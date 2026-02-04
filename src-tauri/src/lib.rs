@@ -140,6 +140,7 @@ pub fn run() {
         commands::instance::list_bat_files,
         commands::server::start_server,
         commands::server::stop_server,
+        commands::server::kill_server,
         commands::server::get_server_status,
         commands::server::get_server_usage,
         commands::server::send_command,

@@ -3,17 +3,18 @@ use mc_server_wrapper_core::plugins::{self, InstalledPlugin};
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+use super::super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn list_installed_plugins(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: Uuid,
-) -> Result<Vec<InstalledPlugin>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<InstalledPlugin>> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    plugins::list_installed_plugins(&instance.path).await.map_err(|e| e.to_string())
+    plugins::list_installed_plugins(&instance.path).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -22,12 +23,12 @@ pub async fn toggle_plugin(
     instance_id: Uuid,
     filename: String,
     enable: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    plugins::toggle_plugin(&instance.path, filename, enable).await.map_err(|e| e.to_string())
+    plugins::toggle_plugin(&instance.path, filename, enable).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -36,12 +37,12 @@ pub async fn bulk_toggle_plugins(
     instance_id: Uuid,
     filenames: Vec<String>,
     enable: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    plugins::bulk_toggle_plugins(&instance.path, filenames, enable).await.map_err(|e| e.to_string())
+    plugins::bulk_toggle_plugins(&instance.path, filenames, enable).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -50,12 +51,12 @@ pub async fn uninstall_plugin(
     instance_id: Uuid,
     filename: String,
     delete_config: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    plugins::uninstall_plugin(&instance.path, filename, delete_config).await.map_err(|e| e.to_string())
+    plugins::uninstall_plugin(&instance.path, filename, delete_config).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -64,10 +65,10 @@ pub async fn bulk_uninstall_plugins(
     instance_id: Uuid,
     filenames: Vec<String>,
     delete_config: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    plugins::bulk_uninstall_plugins(&instance.path, filenames, delete_config).await.map_err(|e| e.to_string())
+    plugins::bulk_uninstall_plugins(&instance.path, filenames, delete_config).await.map_err(AppError::from)
 }

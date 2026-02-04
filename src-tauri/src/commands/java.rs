@@ -3,12 +3,13 @@ use mc_server_wrapper_core::app_config::{ManagedJavaVersion, GlobalConfigManager
 use tauri::{State, Window, Emitter};
 use std::sync::Arc;
 use std::path::Path;
+use super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn get_managed_java_versions(
     java_manager: State<'_, Arc<JavaManager>>,
-) -> Result<Vec<ManagedJavaVersion>, String> {
-    java_manager.discover_installed_versions().await.map_err(|e| e.to_string())
+) -> CommandResult<Vec<ManagedJavaVersion>> {
+    java_manager.discover_installed_versions().await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -17,9 +18,9 @@ pub async fn download_java_version(
     config_manager: State<'_, Arc<GlobalConfigManager>>,
     window: Window,
     major_version: u32,
-) -> Result<ManagedJavaVersion, String> {
+) -> CommandResult<ManagedJavaVersion> {
     let release = java_manager.get_latest_release(major_version).await
-        .map_err(|e| e.to_string())?;
+        .map_err(AppError::from)?;
     
     let release_name = release.release_name.clone();
     
@@ -29,16 +30,16 @@ pub async fn download_java_version(
             "downloaded": downloaded,
             "total": total,
         }));
-    }).await.map_err(|e| e.to_string())?;
+    }).await.map_err(AppError::from)?;
 
     // Update app settings with the new version
-    let mut settings = config_manager.load().await.map_err(|e| e.to_string())?;
+    let mut settings = config_manager.load().await.map_err(AppError::from)?;
     
     // Remove if already exists (update)
     settings.managed_java_versions.retain(|v| v.id != version_info.id);
     settings.managed_java_versions.push(version_info.clone());
     
-    config_manager.save(&settings).await.map_err(|e| e.to_string())?;
+    config_manager.save(&settings).await.map_err(AppError::from)?;
 
     Ok(version_info)
 }
@@ -48,13 +49,13 @@ pub async fn delete_java_version(
     java_manager: State<'_, Arc<JavaManager>>,
     config_manager: State<'_, Arc<GlobalConfigManager>>,
     id: String,
-) -> Result<(), String> {
-    java_manager.delete_version(&id).await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    java_manager.delete_version(&id).await.map_err(AppError::from)?;
 
     // Update app settings
-    let mut settings = config_manager.load().await.map_err(|e| e.to_string())?;
+    let mut settings = config_manager.load().await.map_err(AppError::from)?;
     settings.managed_java_versions.retain(|v| v.id != id);
-    config_manager.save(&settings).await.map_err(|e| e.to_string())?;
+    config_manager.save(&settings).await.map_err(AppError::from)?;
 
     Ok(())
 }
@@ -63,7 +64,7 @@ pub async fn delete_java_version(
 pub async fn validate_custom_java(
     java_manager: State<'_, Arc<JavaManager>>,
     path: String,
-) -> Result<ManagedJavaVersion, String> {
+) -> CommandResult<ManagedJavaVersion> {
     let path = Path::new(&path);
     
     // If it's just the executable, we need to check if its parent/parent is a JDK root
@@ -76,5 +77,5 @@ pub async fn validate_custom_java(
     };
 
     java_manager.identify_java_version(jdk_root).await
-        .ok_or_else(|| "Invalid Java executable or JDK directory".to_string())
+        .ok_or_else(|| AppError::Validation("Invalid Java executable or JDK directory".to_string()))
 }

@@ -2,6 +2,7 @@ use mc_server_wrapper_core::instance::InstanceManager;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+use super::super::{CommandResult, AppError};
 
 #[derive(serde::Serialize)]
 pub struct PluginConfigs {
@@ -15,10 +16,10 @@ pub async fn list_plugin_configs(
     instance_id: Uuid,
     plugin_name: String,
     plugin_filename: String,
-) -> Result<PluginConfigs, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<PluginConfigs> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     let plugins_dir = instance.path.join("plugins");
     
@@ -79,8 +80,8 @@ pub async fn list_plugin_configs(
     let mut stack = vec![(config_dir.clone(), String::new())];
     
     while let Some((dir, prefix)) = stack.pop() {
-        let mut entries = tokio::fs::read_dir(&dir).await.map_err(|e| e.to_string())?;
-        while let Some(entry) = entries.next_entry().await.map_err(|e| e.to_string())? {
+        let mut entries = tokio::fs::read_dir(&dir).await.map_err(AppError::from)?;
+        while let Some(entry) = entries.next_entry().await.map_err(AppError::from)? {
             let path = entry.path();
             let name = entry.file_name().to_string_lossy().to_string();
             let rel_path = if prefix.is_empty() {

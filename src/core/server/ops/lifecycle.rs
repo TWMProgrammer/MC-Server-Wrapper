@@ -213,4 +213,25 @@ impl ServerHandle {
         self.online_players.lock().await.clear();
         Ok(())
     }
+
+    pub async fn kill(&self) -> Result<()> {
+        let mut status = self.status.lock().await;
+        if *status == ServerStatus::Stopped {
+            return Ok(());
+        }
+
+        let mut child_lock = self.child.lock().await;
+        if let Some(mut child) = child_lock.take() {
+            #[cfg(target_os = "windows")]
+            if let Some(pid) = child.id() {
+                let _ = Command::new("taskkill").arg("/F").arg("/T").arg("/PID").arg(pid.to_string()).output().await;
+            }
+            let _ = child.kill().await;
+        }
+
+        *status = ServerStatus::Stopped;
+        *self.stdin.lock().await = None;
+        self.online_players.lock().await.clear();
+        Ok(())
+    }
 }

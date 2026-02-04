@@ -4,17 +4,18 @@ use mc_server_wrapper_core::manager::ServerManager;
 use tauri::State;
 use std::sync::Arc;
 use uuid::Uuid;
+use super::{CommandResult, AppError};
 
 #[tauri::command]
 pub async fn list_installed_mods(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: Uuid,
-) -> Result<Vec<InstalledMod>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<InstalledMod>> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    mods::list_installed_mods(&instance.path).await.map_err(|e| e.to_string())
+    mods::list_installed_mods(&instance.path).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -23,12 +24,12 @@ pub async fn toggle_mod(
     instance_id: Uuid,
     filename: String,
     enable: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    mods::toggle_mod(&instance.path, filename, enable).await.map_err(|e| e.to_string())
+    mods::toggle_mod(&instance.path, filename, enable).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -37,12 +38,12 @@ pub async fn bulk_toggle_mods(
     instance_id: Uuid,
     filenames: Vec<String>,
     enable: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    mods::bulk_toggle_mods(&instance.path, filenames, enable).await.map_err(|e| e.to_string())
+    mods::bulk_toggle_mods(&instance.path, filenames, enable).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -51,12 +52,12 @@ pub async fn uninstall_mod(
     instance_id: Uuid,
     filename: String,
     delete_config: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    mods::uninstall_mod(&instance.path, filename, delete_config).await.map_err(|e| e.to_string())
+    mods::uninstall_mod(&instance.path, filename, delete_config).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -65,12 +66,12 @@ pub async fn bulk_uninstall_mods(
     instance_id: Uuid,
     filenames: Vec<String>,
     delete_config: bool,
-) -> Result<(), String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
-    mods::bulk_uninstall_mods(&instance.path, filenames, delete_config).await.map_err(|e| e.to_string())
+    mods::bulk_uninstall_mods(&instance.path, filenames, delete_config).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -78,10 +79,10 @@ pub async fn search_mods(
     server_manager: State<'_, Arc<ServerManager>>,
     options: SearchOptions,
     provider: Option<ModProvider>,
-) -> Result<Vec<Project>, String> {
+) -> CommandResult<Vec<Project>> {
     // Get CurseForge API key from environment if available
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
-    mods::search_mods(&options, provider, cf_api_key, server_manager.get_cache()).await.map_err(|e| e.to_string())
+    mods::search_mods(&options, provider, cf_api_key, server_manager.get_cache()).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -90,20 +91,20 @@ pub async fn get_mod_dependencies(
     instance_id: Uuid,
     project_id: String,
     provider: ModProvider,
-) -> Result<Vec<ResolvedDependency>, String> {
-    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<ResolvedDependency>> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
     mods::get_mod_dependencies(
         &project_id, 
         provider, 
-        Some(&instance.version), 
+        Some(instance.version.as_str()), 
         instance.mod_loader.as_deref(), 
         cf_api_key,
         server_manager.get_cache()
-    ).await.map_err(|e| e.to_string())
+    ).await.map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -111,14 +112,14 @@ pub async fn get_mod_configs(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: Uuid,
     mod_name: String,
-) -> Result<Vec<ModConfig>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<ModConfig>> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     mods::get_mod_configs(&instance.path, &mod_name)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -126,14 +127,14 @@ pub async fn list_mod_config_files(
     instance_manager: State<'_, Arc<InstanceManager>>,
     instance_id: Uuid,
     rel_path: String,
-) -> Result<Vec<String>, String> {
-    let instances = instance_manager.list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<String>> {
+    let instances = instance_manager.list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     mods::list_mod_config_files(&instance.path, &rel_path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -143,68 +144,71 @@ pub async fn install_mod(
     project_id: String,
     provider: ModProvider,
     version_id: Option<String>,
-) -> Result<String, String> {
-    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<()> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
     mods::install_mod(
         &instance.path, 
         &project_id, 
         provider, 
-        version_id.as_deref(), 
-        Some(&instance.version),
+        version_id.as_deref(),
+        Some(instance.version.as_str()),
         instance.mod_loader.as_deref(),
         cf_api_key,
         server_manager.get_cache()
     )
         .await
-        .map_err(|e| e.to_string())
+        .map(|_| ())
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn check_for_mod_updates(
     server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
-) -> Result<Vec<ModUpdate>, String> {
-    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
+) -> CommandResult<Vec<ModUpdate>> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
     mods::check_for_updates(
         &instance.path,
-        Some(&instance.version),
+        Some(instance.version.as_str()),
         instance.mod_loader.as_deref(),
         cf_api_key,
         server_manager.get_cache()
-    ).await.map_err(|e| e.to_string())
+    ).await.map_err(AppError::from)
 }
 
 #[tauri::command]
 pub async fn update_mod(
     server_manager: State<'_, Arc<ServerManager>>,
     instance_id: Uuid,
-    filename: String,
-    project_id: String,
-    provider: ModProvider,
-    latest_version_id: String,
-) -> Result<(), String> {
-    let instances = server_manager.get_instance_manager().list_instances().await.map_err(|e| e.to_string())?;
+    updates: Vec<ModUpdate>,
+) -> CommandResult<()> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
     let instance = instances.iter().find(|i| i.id == instance_id)
-        .ok_or_else(|| format!("Instance not found: {}", instance_id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
 
     let cf_api_key = std::env::var("CURSEFORGE_API_KEY").ok();
-    mods::update_mod(
-        &instance.path,
-        filename,
-        project_id,
-        provider,
-        latest_version_id,
-        Some(&instance.version),
-        instance.mod_loader.as_deref(),
-        cf_api_key,
-        server_manager.get_cache()
-    ).await.map_err(|e| e.to_string())
+    
+    for update in updates {
+        mods::update_mod(
+            &instance.path,
+            update.filename,
+            update.project_id,
+            update.provider,
+            update.latest_version_id,
+            Some(instance.version.as_str()),
+            instance.mod_loader.as_deref(),
+            cf_api_key.clone(),
+            server_manager.get_cache()
+        ).await.map_err(AppError::from)?;
+    }
+    
+    Ok(())
 }
