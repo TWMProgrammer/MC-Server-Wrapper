@@ -1,7 +1,53 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods;
+use mc_server_wrapper_core::utils::{validate_rel_path, safe_join};
 use tempfile::tempdir;
 use std::fs;
+
+#[tokio::test]
+async fn test_intrusion_attack_protection() {
+    let base_dir = tempdir().unwrap();
+    let base_path = base_dir.path();
+    
+    // Create a "secret" file outside our base path
+    let secret_file = base_path.parent().unwrap().join("top_secret.txt");
+    fs::write(&secret_file, "classified information").unwrap();
+
+    // List of malicious payloads that attempt to "intrude" outside the base directory
+    let malicious_payloads = vec![
+        "../top_secret.txt",
+        "../../top_secret.txt",
+        "some_dir/../../../top_secret.txt",
+        "%2e%2e/top_secret.txt",                // URL encoded ..
+        "%2e%2e%2f%2e%2e%2ftop_secret.txt",     // URL encoded ../../
+        "..\\top_secret.txt",                   // Windows style traversal
+        "C:\\Windows\\System32\\config\\SAM",   // Absolute Windows path
+        "/etc/shadow",                          // Absolute Linux path
+        "\\\\server\\share\\file.txt",          // UNC path
+        "subdir/..%2f..%2fsecret.txt",          // Mixed encoding
+    ];
+
+    for payload in malicious_payloads {
+        // 1. Test validate_rel_path directly
+        let validation_result = validate_rel_path(payload);
+        assert!(
+            validation_result.is_err(),
+            "Payload '{}' should have been rejected by validate_rel_path",
+            payload
+        );
+
+        // 2. Test safe_join which uses validate_rel_path
+        let join_result = safe_join(base_path, payload);
+        assert!(
+            join_result.is_err(),
+            "Payload '{}' should have been rejected by safe_join",
+            payload
+        );
+    }
+
+    // Clean up secret file (optional but good practice)
+    let _ = fs::remove_file(secret_file);
+}
 
 #[tokio::test]
 async fn test_path_traversal_protection_in_mods() {
