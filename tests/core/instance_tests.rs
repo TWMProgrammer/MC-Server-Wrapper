@@ -74,14 +74,16 @@ async fn test_update_settings() -> Result<()> {
     
     let metadata = manager.create_instance("Settings Test", "1.20.1").await?;
     let mut new_settings = metadata.settings.clone();
-    new_settings.ram = 4;
+    new_settings.min_ram = 2;
+    new_settings.max_ram = 4;
     new_settings.description = Some("Updated description".to_string());
     
     manager.update_settings(metadata.id, Some("New Name".to_string()), new_settings.clone()).await?;
     
     let updated: InstanceMetadata = manager.get_instance(metadata.id).await?.unwrap();
     assert_eq!(updated.name, "New Name");
-    assert_eq!(updated.settings.ram, 4);
+    assert_eq!(updated.settings.min_ram, 2);
+    assert_eq!(updated.settings.max_ram, 4);
     assert_eq!(updated.settings.description, Some("Updated description".to_string()));
     Ok(())
 }

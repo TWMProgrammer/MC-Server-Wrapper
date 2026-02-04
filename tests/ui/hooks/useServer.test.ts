@@ -28,7 +28,19 @@ describe('useServer', () => {
 
   it('loads instances on mount', async () => {
     const mockInstances = [
-      { id: '1', name: 'Server 1', status: 'Stopped' }
+      { 
+        id: '1', 
+        name: 'Server 1', 
+        status: 'Stopped',
+        settings: {
+          port: 25565,
+          description: 'Test description',
+          min_ram: 1,
+          min_ram_unit: 'G',
+          max_ram: 2,
+          max_ram_unit: 'G'
+        }
+      }
     ];
     (invoke as any).mockResolvedValue(mockInstances);
 
@@ -49,7 +61,19 @@ describe('useServer', () => {
 
   it('synchronizes server status', async () => {
     const mockInstances = [
-      { id: '1', name: 'Server 1', status: 'Stopped' }
+      { 
+        id: '1', 
+        name: 'Server 1', 
+        status: 'Stopped',
+        settings: {
+          port: 25565,
+          description: 'Test description',
+          min_ram: 1,
+          min_ram_unit: 'G',
+          max_ram: 2,
+          max_ram_unit: 'G'
+        }
+      }
     ];
     (invoke as any).mockImplementation((cmd: string) => {
       if (cmd === 'list_instances') return Promise.resolve(mockInstances);
