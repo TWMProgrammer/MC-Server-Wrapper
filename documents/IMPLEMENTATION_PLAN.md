@@ -149,7 +149,7 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] YAML/JSON editor for plugin configurations.
     - [x] Search and filter within configuration files.
 - [x] **Player Management**
-    - [x] Whitelist and Ops management via JSON/legacy files.
+    - [x] Whitelist and Ops management via console commands (when running) and JSON/legacy files (when offline).
     - [x] Banned players and IPs management.
     - [x] User cache integration for offline/online UUIDs.
 

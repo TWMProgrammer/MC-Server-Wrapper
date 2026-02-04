@@ -89,12 +89,131 @@ mod tests {
         assert!(validate_rel_path("..%5ctraversal").is_err());
         assert!(validate_rel_path("%2e%2e%2fhidden").is_err());
     }
+
+    #[test]
+    fn test_safe_join() {
+        let temp = tempfile::tempdir().unwrap();
+        let base = temp.path();
+        
+        // Canonicalize base for comparison (tempdir might be in a symlinked path on some OS)
+        let canonical_base = base.canonicalize().unwrap();
+
+        // Safe join
+        let joined = safe_join(base, "file.txt").unwrap();
+        assert!(joined.starts_with(&canonical_base));
+        assert!(joined.ends_with("file.txt"));
+
+        // Safe join with existing file
+        let file_path = base.join("existing.txt");
+        std::fs::write(&file_path, "test").unwrap();
+        let joined = safe_join(base, "existing.txt").unwrap();
+        assert!(joined.starts_with(&canonical_base));
+        assert!(joined.exists());
+
+        // Safe join with subdirectory
+        let sub = base.join("sub");
+        std::fs::create_dir(&sub).unwrap();
+        let joined = safe_join(base, "sub/file.txt").unwrap();
+        assert!(joined.starts_with(&canonical_base));
+
+        // Traversal should still be caught by validate_rel_path
+        assert!(safe_join(base, "../outside.txt").is_err());
+        assert!(safe_join(base, "sub/../../outside.txt").is_err());
+    }
+
+    #[test]
+    fn test_normalize_path() {
+        let p = Path::new("/a/b/../c/./d");
+        assert_eq!(normalize_path(p), PathBuf::from("/a/c/d"));
+
+        let p = Path::new("a/b/../c");
+        assert_eq!(normalize_path(p), PathBuf::from("a/c"));
+
+        #[cfg(windows)]
+        {
+            let p = Path::new("C:\\a\\..\\b");
+            assert_eq!(normalize_path(p), PathBuf::from("C:\\b"));
+        }
+    }
 }
 
 /// Safely joins a base path with a relative path, ensuring no traversal.
+/// 
+/// This implementation follows a multi-step hardening process:
+/// 1. Validates the relative path for traversal components and encoding.
+/// 2. Canonicalizes the base path to resolve symlinks.
+/// 3. Joins them and verifies the result stays within the base directory,
+///    handling both existing and non-existing target paths.
 pub fn safe_join(base: impl AsRef<Path>, rel: &str) -> Result<PathBuf> {
     validate_rel_path(rel)?;
-    Ok(base.as_ref().join(rel))
+    
+    let base = base.as_ref();
+    // 1. Canonicalize Base Path: Resolve any symbolic links or relative segments in the root directory.
+    let canonical_base = base.canonicalize()
+        .context(format!("Failed to canonicalize base path: {:?}", base))?;
+    
+    // 2. Logical Join: Join the canonicalized base with the normalized relative path.
+    let joined = canonical_base.join(rel);
+    
+    // 3. Final Verification
+    if joined.exists() {
+        // If the resulting path exists, use std::fs::canonicalize on it.
+        let canonical_joined = joined.canonicalize()
+            .context(format!("Failed to canonicalize joined path: {:?}", joined))?;
+        
+        // Verify that the final absolute path starts with the canonicalized base path.
+        if !canonical_joined.starts_with(&canonical_base) {
+            return Err(anyhow!(
+                "Security violation: joined path escaped base directory (canonical check). Base: {:?}, Joined: {:?}",
+                canonical_base,
+                canonical_joined
+            ));
+        }
+        Ok(canonical_joined)
+    } else {
+        // If the path does not exist (e.g., for new file creation), 
+        // ensure that the joined path's components do not escape the base directory.
+        let normalized_joined = normalize_path(&joined);
+        
+        if !normalized_joined.starts_with(&canonical_base) {
+            return Err(anyhow!(
+                "Security violation: joined path escaped base directory (logical check). Base: {:?}, Joined: {:?}",
+                canonical_base,
+                normalized_joined
+            ));
+        }
+        Ok(normalized_joined)
+    }
+}
+
+/// Logically normalizes a path without hitting the disk.
+/// Resolves '.' and '..' components.
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek() {
+        let buf = PathBuf::from(c.as_os_str());
+        components.next();
+        buf
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
 }
 
 /// A generic, reusable retry utility for async operations.
