@@ -1,9 +1,10 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use strum::Display;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize, Deserialize, Default)]
 pub enum ServerStatus {
+    #[default]
     Stopped,
     Starting,
     Running,

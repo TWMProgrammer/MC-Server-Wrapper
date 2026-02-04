@@ -12,7 +12,7 @@ export interface Instance {
   port?: number;
   description?: string;
   max_players?: number;
-  status?: string;
+  status: string;
   settings: InstanceSettings;
 }
 

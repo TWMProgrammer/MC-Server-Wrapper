@@ -3,6 +3,7 @@ use uuid::Uuid;
 use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 use super::super::scheduler::ScheduledTask;
+use super::super::server::types::ServerStatus;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum LaunchMethod {
@@ -78,6 +79,8 @@ pub struct InstanceMetadata {
     pub schedules: Vec<ScheduledTask>,
     #[serde(default)]
     pub settings: InstanceSettings,
+    #[serde(default)]
+    pub status: ServerStatus,
     // Dynamic properties from server.properties
     #[serde(default)]
     pub ip: Option<String>,
