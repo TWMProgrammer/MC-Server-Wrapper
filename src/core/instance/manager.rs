@@ -6,6 +6,8 @@ use tracing::{info, warn};
 use chrono::Utc;
 use std::sync::Arc;
 use sqlx::{sqlite::SqliteRow, Row};
+use std::io::Read;
+use regex::Regex;
 
 use super::types::InstanceMetadata;
 use super::archive::{extract_zip, extract_7z, copy_dir_all};
@@ -178,10 +180,12 @@ impl InstanceManager {
             settings.icon_path = Some(icon_path.to_string_lossy().to_string());
         }
 
+        let version = self.detect_minecraft_version(&instance_path, &jar_name).await;
+
         let metadata = InstanceMetadata {
             id,
             name: name.to_string(),
-            version: "Imported".to_string(),
+            version,
             mod_loader,
             loader_version: None,
             created_at: Utc::now(),
@@ -342,5 +346,78 @@ impl InstanceManager {
 
     pub fn get_base_dir(&self) -> PathBuf {
         self.base_dir.clone()
+    }
+
+    async fn detect_minecraft_version(&self, instance_path: &Path, jar_name: &str) -> String {
+        // 1. Try to read version.json from JAR (highest priority as it's definitive)
+        let jar_path = instance_path.join(jar_name);
+        if jar_path.exists() {
+            let version = tokio::task::spawn_blocking({
+                let jar_path = jar_path.to_path_buf();
+                move || {
+                    let file = std::fs::File::open(&jar_path).ok()?;
+                    let mut archive = zip::ZipArchive::new(file).ok()?;
+                    
+                    // Try version.json (Standard Vanilla/Paper)
+                    if let Ok(mut version_file) = archive.by_name("version.json") {
+                        let mut content = String::new();
+                        if version_file.read_to_string(&mut content).is_ok() {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Some(id) = json.get("id").and_then(|v| v.as_str()) {
+                                    return Some(id.to_string());
+                                }
+                            }
+                        }
+                    }
+
+                    // Try fabric.mod.json (Fabric)
+                    if let Ok(mut mod_file) = archive.by_name("fabric.mod.json") {
+                        let mut content = String::new();
+                        if mod_file.read_to_string(&mut content).is_ok() {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Some(version) = json.get("depends").and_then(|d| d.get("minecraft")).and_then(|v| v.as_str()) {
+                                    // Remove common version constraints like ">=1.20.1" or "~1.20"
+                                    let cleaned = version.trim_start_matches(|c: char| !c.is_numeric());
+                                    return Some(cleaned.to_string());
+                                }
+                            }
+                        }
+                    }
+
+                    // Try quilt.mod.json (Quilt)
+                    if let Ok(mut mod_file) = archive.by_name("quilt.mod.json") {
+                        let mut content = String::new();
+                        if mod_file.read_to_string(&mut content).is_ok() {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Some(version) = json.get("quilt_loader").and_then(|l| l.get("depends")).and_then(|d| d.as_array()) {
+                                    for dep in version {
+                                        if dep.get("id").and_then(|i| i.as_str()) == Some("minecraft") {
+                                            if let Some(v) = dep.get("versions").and_then(|v| v.as_str()).or_else(|| dep.get("version").and_then(|v| v.as_str())) {
+                                                let cleaned = v.trim_start_matches(|c: char| !c.is_numeric());
+                                                return Some(cleaned.to_string());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    None
+                }
+            }).await.unwrap_or(None);
+
+            if let Some(v) = version {
+                return v;
+            }
+        }
+
+        // 2. Try regex on filename
+        // Matches things like 1.20.1, 1.8, etc.
+        let version_regex = Regex::new(r"(1\.\d+(?:\.\d+)?)").unwrap();
+        if let Some(caps) = version_regex.captures(jar_name) {
+            return caps[1].to_string();
+        }
+
+        "Imported".to_string()
     }
 }
