@@ -32,7 +32,7 @@ impl ModLoaderClient {
     pub fn new(cache_dir: Option<PathBuf>, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .user_agent("mc-server-wrapper")
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
             cache_dir,

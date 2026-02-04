@@ -18,7 +18,7 @@ impl HangarClient {
     pub fn new(cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .user_agent("mc-server-wrapper/0.1.0")
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url: "https://hangar.papermc.io/api/v1".to_string(),
@@ -29,7 +29,7 @@ impl HangarClient {
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .user_agent("mc-server-wrapper/0.1.0")
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url,

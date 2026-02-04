@@ -97,7 +97,6 @@ function App() {
           onCreateNew={() => setShowCreateModal(true)}
           onOpenSettings={() => setShowSettingsModal(true)}
           onInstancesUpdated={loadInstances}
-          settings={settings}
         />
 
         {/* Main Content */}

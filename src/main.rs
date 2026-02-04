@@ -13,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    info!("Minecraft Server Wrapper Starting...");
+    info!("Minecraft Server Wrapper v{} Starting...", env!("CARGO_PKG_VERSION"));
     
     // 0. Initialize Directories
     let current_exe = std::env::current_exe()?;

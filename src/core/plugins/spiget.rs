@@ -23,7 +23,7 @@ impl SpigetClient {
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .user_agent("mc-server-wrapper/0.1.0")
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("Failed to create reqwest client"),
             base_url,
@@ -321,7 +321,7 @@ impl SpigetClient {
         let response = self
             .client
             .get(&api_url)
-            .header(USER_AGENT, "mc-server-wrapper/0.1.0")
+            .header(USER_AGENT, concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
             .send()
             .await?;
 
@@ -424,7 +424,7 @@ impl SpigetClient {
             .to_string();
 
         let response = self.client.get(download_url)
-            .header(USER_AGENT, "mc-server-wrapper/0.1.0")
+            .header(USER_AGENT, concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
             .send()
             .await?.error_for_status()?;
 

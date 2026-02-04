@@ -11,6 +11,7 @@
     "dialog:allow-open",
     "opener:default",
     "opener:allow-open-url",
+    "core:app:allow-version",
     "log:default"
   ]
 }

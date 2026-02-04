@@ -2,7 +2,7 @@ import { X, Settings, Palette, Layout, Users, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { cn } from '../utils'
-import { AppSettings } from '../hooks/useAppSettings'
+import { AppSettings, useAppSettings } from '../hooks/useAppSettings'
 import { AppearanceSettings } from './settings/AppearanceSettings'
 import { BehaviorSettings } from './settings/BehaviorSettings'
 import { SystemSettings } from './settings/SystemSettings'
@@ -81,6 +81,7 @@ export function AppSettingsModal({
   updateSettings
 }: AppSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const { appVersion } = useAppSettings();
 
   return (
     <AnimatePresence>
@@ -129,7 +130,7 @@ export function AppSettingsModal({
                 <div className="p-4 mt-auto">
                   <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
                     <div className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Version</div>
-                    <div className="text-sm font-bold text-gray-700 dark:text-gray-300">1.0.0-beta</div>
+                    <div className="text-sm font-bold text-gray-700 dark:text-gray-300">{appVersion}</div>
                   </div>
                 </div>
               </div>

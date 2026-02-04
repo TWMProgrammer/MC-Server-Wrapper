@@ -17,7 +17,7 @@ impl CurseForgeClient {
     pub fn new(api_key: Option<String>, cache: Arc<CacheManager>) -> Self {
         Self {
             client: reqwest::Client::builder()
-                .user_agent("mc-server-wrapper/0.1.0")
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .build()
                 .expect("Failed to create reqwest client"),
             api_key,

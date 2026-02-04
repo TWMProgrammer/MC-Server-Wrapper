@@ -38,7 +38,7 @@ impl JavaManager {
             .join("java");
         
         let client = reqwest::Client::builder()
-            .user_agent("mc-server-wrapper")
+            .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
             .build()?;
 
         Ok(Self { base_dir, client })

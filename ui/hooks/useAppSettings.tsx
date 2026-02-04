@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 
 export type AccentColor = {
   name: string;
@@ -83,6 +84,7 @@ interface AppSettingsContextType {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => Promise<void>;
   isLoading: boolean;
+  appVersion: string;
   accentColor: AccentColor;
   setAccentColor: (color: AccentColor) => Promise<void>;
   theme: Theme;
@@ -96,9 +98,11 @@ const AppSettingsContext = createContext<AppSettingsContextType | undefined>(und
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  const [appVersion, setAppVersion] = useState<string>('0.0.0');
 
   // Load settings from backend on mount
   useEffect(() => {
+    // Load settings
     invoke<AppSettings>('get_app_settings')
       .then((loadedSettings) => {
         setSettings(loadedSettings);
@@ -108,6 +112,11 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
         console.error('Failed to load app settings:', err);
         setIsLoading(false);
       });
+
+    // Load version
+    getVersion().then(setAppVersion).catch(err => {
+      console.error('Failed to get app version:', err);
+    });
   }, []);
 
   // Apply appearance settings
@@ -145,6 +154,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     settings,
     updateSettings,
     isLoading,
+    appVersion,
     accentColor: ACCENT_COLORS.find(c => c.name === settings.accent_color) || ACCENT_COLORS[0],
     setAccentColor: (color: AccentColor) => updateSettings({ accent_color: color.name }),
     theme: settings.theme,

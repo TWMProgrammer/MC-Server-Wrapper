@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { Instance } from '../types'
 import { cn } from '../utils'
-import { AppSettings } from '../hooks/useAppSettings'
+import { useAppSettings, AppSettings } from '../hooks/useAppSettings'
 import { InstanceSettingsDropdown } from '../InstanceSettingsDropdown'
 
 interface SidebarProps {
@@ -23,8 +23,9 @@ export function Sidebar({
   onCreateNew,
   onOpenSettings,
   onInstancesUpdated,
-  settings
-}: SidebarProps) {
+}: Omit<SidebarProps, 'settings'>) {
+  const { settings, appVersion } = useAppSettings();
+
   return (
     <div className="w-72 bg-sidebar-bg border-r border-black/5 dark:border-white/5 flex flex-col h-full shadow-2xl z-10 transition-colors duration-300">
       <div
@@ -194,7 +195,7 @@ export function Sidebar({
           </motion.button>
         </div>
         <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-600 font-mono transition-colors duration-300">
-          <span>v1.0.0-beta</span>
+          <span>v{appVersion}</span>
           <span className="text-accent-emerald">CONNECTED</span>
         </div>
       </div>

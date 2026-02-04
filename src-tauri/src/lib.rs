@@ -16,6 +16,7 @@ use anyhow::Context;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  log::info!("Starting MineCraft Server Wrapper v{}", env!("CARGO_PKG_VERSION"));
   tauri::Builder::default()
     .setup(|app| {
       setup::setup_window(app);
