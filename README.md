@@ -28,6 +28,14 @@ A powerful, modern, and cross-platform desktop application designed to simplify 
   - Dynamic app scaling and smooth animations with Framer Motion.
   - Dark-themed, high-performance interface.
 
+## 🗺️ Project Roadmap
+
+This project is currently in its **foundational phase**, focusing on building a robust and reliable core for Minecraft server management. 
+
+While we have many ideas for the future—such as a remote web dashboard, advanced networking tunnels, and developer APIs—these **Future Expansions** will be prioritized and implemented based on community interest and user requests. If there are specific features you would like to see, please let me know!
+
+For a detailed look at what's currently implemented and what's planned, check out our [Implementation Plan](documents/IMPLEMENTATION_PLAN.md).
+
 ## 🛠️ Tech Stack
 
 ### Backend (Rust)

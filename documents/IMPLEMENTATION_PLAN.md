@@ -140,19 +140,35 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] Spigot (Spiget) API integration.
     - [x] CurseForge API support.
     - [x] Dependency resolution for complex mods.
-- [ ] **Resource Monitoring**
+- [x] **Resource Monitoring**
     - [x] Live CPU/RAM usage tracking.
     - [x] Disk I/O monitoring.
     - [x] Historical usage graphs with `recharts`.
-- [ ] **Visual Config Editors**
-    - [ ] `server.properties` visual editor with type safety.
-    - [ ] YAML/JSON editor for plugin configurations.
-    - [ ] Search and filter within configuration files.
+- [x] **Visual Config Editors**
+    - [x] `server.properties` visual editor with type safety.
+    - [x] YAML/JSON editor for plugin configurations.
+    - [x] Search and filter within configuration files.
+- [x] **Player Management**
+    - [x] Whitelist and Ops management via JSON/legacy files.
+    - [x] Banned players and IPs management.
+    - [x] User cache integration for offline/online UUIDs.
+
+### Phase 4: Quality & Reliability
+- [x] **Automated Testing Suite**
+    - [x] Unit tests for `mc_server_wrapper_core` (Config, Managers, Downloader).
+    - [x] Integration tests for Tauri commands in `src-tauri`.
+    - [x] Frontend unit & component tests using `Vitest` and `React Testing Library`.
+    - [x] E2E tests for critical user flows (Create Instance, Start/Stop Server) using `Playwright`.
+- [/] **Robust Error Handling**
+    - [ ] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
+    - [x] Implement React Error Boundaries in the frontend.
+- [x] **Production Observability**
+    - [x] Persistent file logging for production builds using `tauri-plugin-log`.
+
+### Phase 5: Future Expansion
 - [ ] **Auto-Updater**
     - [ ] Core application update check on startup.
     - [ ] Automated backup before applying updates.
-
-### Phase 4: Scale
 - [ ] **Remote Web Dashboard**
     - [ ] Next.js + Tailwind frontend for remote access.
     - [ ] JWT-based authentication and Role-Based Access Control (RBAC).
@@ -167,19 +183,8 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [ ] **Optimization & Maintenance**
     - [ ] Log rotation and cleanup policies.
     - [ ] Advanced performance profiling tools for the server process.
-
-### Phase 5: Quality & Reliability
-- [ ] **Automated Testing Suite**
-    - [x] Unit tests for `mc_server_wrapper_core` (Config, Managers, Downloader).
-    - [x] Integration tests for Tauri commands in `src-tauri`.
-    - [ ] Frontend unit & component tests using `Vitest` and `React Testing Library`.
-    - [ ] E2E tests for critical user flows (Create Instance, Start/Stop Server).
-- [ ] **Robust Error Handling**
-    - [ ] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
-    - [ ] Implement React Error Boundaries in the frontend.
-- [ ] **Production Observability**
-    - [ ] Persistent file logging for production builds.
-    - [ ] Crash reporting integration.
+- [ ] **Crash Reporting**
+    - [ ] Crash reporting integration (e.g., Sentry or custom).
 
 ---
 
