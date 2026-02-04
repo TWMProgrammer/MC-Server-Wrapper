@@ -32,16 +32,29 @@ interface MarketplaceProps {
   onInstallSuccess?: () => void;
 }
 
-const CATEGORIES = [
-  { id: 'administration', name: 'Admin', icon: '🛡️' },
-  { id: 'chat', name: 'Chat', icon: '💬' },
-  { id: 'economy', name: 'Economy', icon: '💰' },
-  { id: 'gameplay', name: 'Gameplay', icon: '🎮' },
-  { id: 'management', name: 'Management', icon: '📋' },
+const MODRINTH_CATEGORIES = [
   { id: 'optimization', name: 'Optimization', icon: '⚡' },
-  { id: 'protection', name: 'Protection', icon: '🔒' },
   { id: 'utility', name: 'Utility', icon: '🛠️' },
-  { id: 'world-management', name: 'World', icon: '🌍' },
+  { id: 'worldgen', name: 'World Gen', icon: '🌍' },
+  { id: 'management', name: 'Management', icon: '📋' },
+  { id: 'economy', name: 'Economy', icon: '💰' },
+  { id: 'chat', name: 'Chat', icon: '💬' },
+  { id: 'game-mechanics', name: 'Mechanics', icon: '⚙️' },
+  { id: 'library', name: 'Library', icon: '📚' },
+  { id: 'magic', name: 'Magic', icon: '🪄' },
+]
+
+const SPIGET_CATEGORIES = [
+  { id: '10', name: 'Admin', icon: '🛡️' },
+  { id: '11', name: 'Chat', icon: '💬' },
+  { id: '12', name: 'Economy', icon: '💰' },
+  { id: '13', name: 'Gameplay', icon: '🎮' },
+  { id: '14', name: 'Management', icon: '📋' },
+  { id: '15', name: 'Protection', icon: '⚔️' },
+  { id: '16', name: 'Utility', icon: '🛠️' },
+  { id: '17', name: 'World Management', icon: '🌍' },
+  { id: '18', name: 'Misc', icon: '📦' },
+  { id: '19', name: 'Library', icon: '📚' },
 ]
 
 const SORT_OPTIONS = [
@@ -198,6 +211,8 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     }
   }
 
+  const categories = provider === 'Modrinth' ? MODRINTH_CATEGORIES : SPIGET_CATEGORIES
+
   return (
     <div className="flex flex-1 gap-8 overflow-hidden min-h-0">
       {/* Sidebar */}
@@ -211,7 +226,10 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             {(['Modrinth', 'Spiget'] as const).map((p) => (
               <button
                 key={p}
-                onClick={() => setProvider(p)}
+                onClick={() => {
+                  setProvider(p)
+                  setActiveCategory(null) // Reset category when switching providers
+                }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${provider === p
                   ? 'bg-primary text-white shadow-lg shadow-primary/20'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
@@ -239,7 +257,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             >
               All Categories
             </button>
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}

@@ -47,13 +47,16 @@ impl SpigetClient {
                     // Map common category names to Spiget IDs if possible, 
                     // or assume the facet is already the ID
                     let cat_id = match cat {
-                        "administration" => "10",
-                        "chat" => "11",
+                        "chat" | "social" => "11",
                         "economy" => "12",
-                        "gameplay" => "13",
+                        "gameplay" | "adventure" | "game-mechanics" | "magic" | "minigame" => "13",
                         "management" => "14",
-                        "utility" => "16",
-                        "world-management" => "17",
+                        "protection" => "15",
+                        "utility" | "optimization" => "16",
+                        "world-management" | "worldgen" => "17",
+                        "library" => "19",
+                        "admin" => "10",
+                        "misc" => "18",
                         _ => cat
                     };
                     format!("{}/categories/{}/resources?size={}&page={}&sort=-downloads", self.base_url, cat_id, size, page)

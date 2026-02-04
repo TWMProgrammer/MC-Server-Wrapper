@@ -1,16 +1,14 @@
 export const CATEGORIES = [
-  { id: 'adventure', name: 'Adventure', icon: '🗺️' },
-  { id: 'decoration', name: 'Decoration', icon: '🎨' },
-  { id: 'equipment', name: 'Equipment', icon: '⚔️' },
-  { id: 'food', name: 'Food', icon: '🍕' },
-  { id: 'library', name: 'Library', icon: '📚' },
-  { id: 'magic', name: 'Magic', icon: '🧙' },
-  { id: 'management', name: 'Management', icon: '📋' },
   { id: 'optimization', name: 'Optimization', icon: '⚡' },
-  { id: 'storage', name: 'Storage', icon: '📦' },
-  { id: 'technology', name: 'Technology', icon: '⚙️' },
   { id: 'utility', name: 'Utility', icon: '🛠️' },
-  { id: 'world-gen', name: 'World Gen', icon: '🌍' },
+  { id: 'worldgen', name: 'World Gen', icon: '🌍' },
+  { id: 'game-mechanics', name: 'Mechanics', icon: '⚙️' },
+  { id: 'decoration', name: 'Decoration', icon: '🏠' },
+  { id: 'technology', name: 'Technology', icon: '💻' },
+  { id: 'magic', name: 'Magic', icon: '🪄' },
+  { id: 'storage', name: 'Storage', icon: '📦' },
+  { id: 'library', name: 'Library', icon: '📚' },
+  { id: 'management', name: 'Management', icon: '📋' },
 ]
 
 export const SORT_OPTIONS = [

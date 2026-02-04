@@ -67,6 +67,32 @@ impl CurseForgeClient {
             }
         }
 
+        if let Some(facets) = &options.facets {
+            for facet in facets {
+                if facet.starts_with("categories:") {
+                    let cat = facet.strip_prefix("categories:").unwrap_or("");
+                    let cat_id = match cat {
+                        "adventure" => Some("421"),
+                        "decoration" => Some("424"),
+                        "equipment" => Some("423"),
+                        "food" => Some("427"),
+                        "library" => Some("422"),
+                        "magic" => Some("419"),
+                        "management" => Some("426"),
+                        "optimization" => Some("417"),
+                        "storage" => Some("425"),
+                        "technology" => Some("418"),
+                        "utility" => Some("416"),
+                        "worldgen" => Some("409"),
+                        _ => None,
+                    };
+                    if let Some(id) = cat_id {
+                        query_params.push(("categoryId", id.to_string()));
+                    }
+                }
+            }
+        }
+
         let url = "https://api.curseforge.com/v1/mods/search";
         let response = self.client.get(url)
             .header("x-api-key", api_key)
