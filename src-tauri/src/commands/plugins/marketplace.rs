@@ -1,4 +1,3 @@
-use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::plugins::{self, Project, PluginProvider, SearchOptions, ResolvedDependency};
 use mc_server_wrapper_core::manager::ServerManager;
 use tauri::State;
