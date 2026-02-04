@@ -3,9 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { Project, ModProvider, SortOrder, SearchOptions, Instance } from '../types'
 import { useToast } from '../hooks/useToast'
 
-const PAGE_SIZE = 16
+const DEFAULT_PAGE_SIZE = 16
 
-export function useModSearch(instanceId: string) {
+export function useModSearch(instanceId: string, initialPageSize = DEFAULT_PAGE_SIZE) {
   const [query, setQuery] = useState('')
   const [provider, setProvider] = useState<ModProvider>('Modrinth')
   const [results, setResults] = useState<Project[]>([])
@@ -14,7 +14,13 @@ export function useModSearch(instanceId: string) {
   const [sortOrder, setSortOrder] = useState<SortOrder>('Downloads')
   const [page, setPage] = useState(1)
   const [instance, setInstance] = useState<Instance | null>(null)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const { showToast } = useToast()
+
+  // Update pageSize when it changes from outside
+  useEffect(() => {
+    setPageSize(initialPageSize)
+  }, [initialPageSize])
 
   // Load instance details to get default version and loader
   useEffect(() => {
@@ -46,8 +52,8 @@ export function useModSearch(instanceId: string) {
         query: query.trim(),
         facets: facets.length > 0 ? facets : undefined,
         sort: sortOrder,
-        offset: (page - 1) * PAGE_SIZE,
-        limit: PAGE_SIZE,
+        offset: (page - 1) * pageSize,
+        limit: pageSize,
         game_version: instance?.version,
         loader: instance?.mod_loader,
       }
@@ -70,7 +76,7 @@ export function useModSearch(instanceId: string) {
     if (instance) {
       handleSearch()
     }
-  }, [provider, activeCategory, sortOrder, page, instance])
+  }, [provider, activeCategory, sortOrder, page, instance, pageSize])
 
   // Reset page when filters change
   useEffect(() => {
@@ -92,6 +98,6 @@ export function useModSearch(instanceId: string) {
     setPage,
     instance,
     handleSearch,
-    pageSize: PAGE_SIZE
+    pageSize
   }
 }

@@ -14,7 +14,7 @@ export function MarketplacePagination({
   loading
 }: MarketplacePaginationProps) {
   return (
-    <div className="flex items-center justify-center gap-4 py-8">
+    <div className="flex items-center justify-center gap-4">
       <button
         onClick={() => setPage(p => Math.max(1, p - 1))}
         disabled={page === 1 || loading}

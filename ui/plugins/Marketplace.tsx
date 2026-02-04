@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import {
   Search,
@@ -22,6 +22,8 @@ import { useToast } from '../hooks/useToast'
 import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
 import { Select } from '../components/Select'
+import { MarketplaceFloatingBar } from '../mods/MarketplaceFloatingBar'
+import { useGridPageSize } from '../hooks/useGridPageSize'
 
 interface MarketplaceProps {
   instanceId: string;
@@ -49,6 +51,9 @@ const SORT_OPTIONS = [
 ]
 
 export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) {
+  const gridContainerRef = useRef<HTMLDivElement>(null)
+  const pageSize = useGridPageSize(gridContainerRef)
+
   const [query, setQuery] = useState('')
   const [provider, setProvider] = useState<PluginProvider>('Modrinth')
   const [results, setResults] = useState<Project[]>([])
@@ -63,7 +68,6 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
   const [page, setPage] = useState(1)
   const [instance, setInstance] = useState<Instance | null>(null)
-  const PAGE_SIZE = 16
 
   const { showToast } = useToast()
 
@@ -97,8 +101,8 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
         query: query.trim(),
         facets: facets.length > 0 ? facets : undefined,
         sort: sortOrder,
-        offset: (page - 1) * PAGE_SIZE,
-        limit: PAGE_SIZE,
+        offset: (page - 1) * pageSize,
+        limit: pageSize,
         game_version: instance?.version,
         loader: instance?.server_type,
       }
@@ -119,7 +123,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   // Initial search on load or when instance/filters change
   useEffect(() => {
     handleSearch()
-  }, [provider, activeCategory, sortOrder, page, instance])
+  }, [provider, activeCategory, sortOrder, page, instance, pageSize])
 
   // Reset page when provider, category or sort changes
   useEffect(() => {
@@ -271,10 +275,10 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+        <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
             {loading ? (
-              Array.from({ length: 12 }).map((_, i) => (
+              Array.from({ length: pageSize }).map((_, i) => (
                 <div key={i} className="bg-white/5 border border-white/5 rounded-[2rem] p-6 h-56 animate-pulse" />
               ))
             ) : results.length > 0 ? (
@@ -285,12 +289,12 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                     key={`${project.provider}-${project.id}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`relative bg-surface border transition-all group flex flex-col p-6 rounded-[2rem] ${isSelected ? 'border-primary bg-primary/5' : 'border-white/5 hover:border-white/20'
+                    className={`relative bg-surface border transition-all group flex flex-col p-6 rounded-[2rem] h-56 ${isSelected ? 'border-primary bg-primary/5' : 'border-white/5 hover:border-white/20'
                       }`}
                   >
                     {isSelected && (
-                      <div className="absolute -top-2 -right-2 bg-primary text-white p-1.5 rounded-full shadow-lg z-10">
-                        <Check size={16} strokeWidth={3} />
+                      <div className="absolute top-3 right-3 bg-primary text-white p-1.5 rounded-full shadow-lg z-10 border-2 border-[#0a0a0c]">
+                        <Check size={12} strokeWidth={4} />
                       </div>
                     )}
 
@@ -298,48 +302,58 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                       {project.icon_url ? (
                         <img src={project.icon_url} alt="" className="w-16 h-16 rounded-2xl object-cover bg-black/20 shadow-xl" />
                       ) : (
-                        <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xl">
+                        <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-gray-500 shadow-xl">
                           <Package size={32} />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-black text-white truncate text-lg">
-                          {project.title}
-                        </h3>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 font-medium min-w-0">
-                          <span className="flex items-center gap-1 min-w-0 flex-1">
-                            <User size={12} className="text-primary shrink-0" />
-                            <span className="truncate">{project.author || 'Unknown'}</span>
-                          </span>
-                          <span className="flex items-center gap-1 shrink-0">
-                            <Download size={12} className="text-primary" />
-                            {project.downloads.toLocaleString()}
-                          </span>
+                        <h3 className="font-bold text-white truncate text-base group-hover:text-primary transition-colors">{project.title}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className={`w-2 h-2 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{project.provider}</span>
                         </div>
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-400 truncate mb-6 font-medium leading-relaxed">
+                    <p className="text-sm text-gray-400 line-clamp-2 mb-4 font-medium leading-relaxed flex-1">
                       {project.description}
                     </p>
 
-                    <div className="flex items-center gap-2 mt-auto">
-                      <button
-                        onClick={() => setSelectedProject(project)}
-                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                      >
-                        Details
-                        <ChevronRight size={16} />
-                      </button>
-                      <button
-                        onClick={() => togglePluginSelection(project)}
-                        className={`px-4 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${isSelected
-                          ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                          : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]'
-                          }`}
-                      >
-                        {isSelected ? 'Remove' : 'Select'}
-                      </button>
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5 gap-2">
+                      <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1 text-gray-500 shrink-0">
+                          <Download size={14} className="text-primary" />
+                          <span className="text-[10px] font-bold truncate">{(project.downloads / 1000).toFixed(1)}k</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-gray-500 shrink-0">
+                          <Star size={14} className="text-primary" />
+                          <span className="text-[10px] font-bold truncate">{(project.downloads / 5000).toFixed(0)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProject(project)
+                          }}
+                          className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
+                        >
+                          <ExternalLink size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            togglePluginSelection(project)
+                          }}
+                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${isSelected
+                            ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                            : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105'
+                            }`}
+                        >
+                          {isSelected ? 'Remove' : 'Select'}
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )
@@ -354,10 +368,12 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
               </div>
             ) : null}
           </div>
+        </div>
 
-          {/* Pagination */}
+        {/* Pagination & Floating Bar */}
+        <div className="shrink-0 relative flex items-center justify-center min-h-[80px] py-4 border-t border-white/5 bg-white/[0.02] rounded-b-[2rem]">
           {results.length > 0 && (
-            <div className="flex items-center justify-center gap-4 py-8">
+            <div className="flex items-center justify-center gap-4">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1 || loading}
@@ -386,61 +402,23 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
               <button
                 onClick={() => setPage(p => p + 1)}
-                disabled={results.length < PAGE_SIZE || loading}
+                disabled={results.length < pageSize || loading}
                 className="p-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 rounded-xl transition-all border border-white/5"
               >
                 <ChevronRight size={24} />
               </button>
             </div>
           )}
+
+          <div className="absolute right-6 top-1/2 -translate-y-1/2">
+            <MarketplaceFloatingBar
+              selectedCount={selectedPlugins.size}
+              isResolvingDeps={isResolvingDeps}
+              onReview={handleReview}
+              label="Plugins"
+            />
+          </div>
         </div>
-
-        {/* Floating Bottom Bar for Review */}
-        <AnimatePresence>
-          {selectedPlugins.size > 0 && (
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 z-50"
-            >
-              <div className="bg-surface/80 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-6">
-                <div className="flex items-center gap-4 pl-2">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center font-black text-xl">
-                    {selectedPlugins.size}
-                  </div>
-                  <div>
-                    <div className="text-white font-bold">Plugins selected</div>
-                    <div className="text-xs text-gray-500 font-medium">Ready to review and install</div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleReview}
-                  disabled={isResolvingDeps}
-                  className="px-8 py-3 bg-primary text-white rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-105 transition-all relative overflow-hidden disabled:opacity-80 disabled:hover:scale-100"
-                >
-                  <span className={isResolvingDeps ? 'opacity-0' : 'opacity-100'}>
-                    Review and Confirm
-                  </span>
-
-                  {isResolvingDeps && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-[10px] uppercase tracking-tighter mb-1">Finding Dependencies...</span>
-                      <div className="w-24 h-1 bg-white/20 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-white"
-                          initial={{ width: "0%" }}
-                          animate={{ width: "100%" }}
-                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <AnimatePresence>

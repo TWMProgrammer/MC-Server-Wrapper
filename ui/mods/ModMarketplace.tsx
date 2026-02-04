@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Search } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
@@ -12,6 +12,7 @@ import { MarketplaceHeader } from './MarketplaceHeader'
 import { ModCard } from './ModCard'
 import { MarketplacePagination } from './MarketplacePagination'
 import { MarketplaceFloatingBar } from './MarketplaceFloatingBar'
+import { useGridPageSize } from '../hooks/useGridPageSize'
 
 interface ModMarketplaceProps {
   instanceId: string;
@@ -19,6 +20,9 @@ interface ModMarketplaceProps {
 }
 
 export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceProps) {
+  const gridContainerRef = useRef<HTMLDivElement>(null)
+  const pageSize = useGridPageSize(gridContainerRef)
+
   const {
     query,
     setQuery,
@@ -32,9 +36,8 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
     setSortOrder,
     page,
     setPage,
-    handleSearch,
-    pageSize
-  } = useModSearch(instanceId)
+    handleSearch
+  } = useModSearch(instanceId, pageSize)
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [selectedMods, setSelectedMods] = useState<Map<string, Project>>(new Map())
@@ -131,10 +134,10 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
           onSearch={handleSearch}
         />
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+        <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
             {loading ? (
-              Array.from({ length: 12 }).map((_, i) => (
+              Array.from({ length: pageSize }).map((_, i) => (
                 <div key={i} className="bg-white/5 border border-white/5 rounded-[2rem] p-6 h-56 animate-pulse" />
               ))
             ) : results.length > 0 ? (
@@ -157,7 +160,9 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
               </div>
             ) : null}
           </div>
+        </div>
 
+        <div className="shrink-0 relative flex items-center justify-center min-h-[80px] py-4 border-t border-white/5 bg-white/[0.02] rounded-b-[2rem]">
           {results.length > 0 && (
             <MarketplacePagination
               page={page}
@@ -166,13 +171,15 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
               loading={loading}
             />
           )}
-        </div>
 
-        <MarketplaceFloatingBar
-          selectedCount={selectedMods.size}
-          isResolvingDeps={isResolvingDeps}
-          onReview={handleReview}
-        />
+          <div className="absolute right-6 top-1/2 -translate-y-1/2">
+            <MarketplaceFloatingBar
+              selectedCount={selectedMods.size}
+              isResolvingDeps={isResolvingDeps}
+              onReview={handleReview}
+            />
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
