@@ -57,6 +57,19 @@ const SPIGET_CATEGORIES = [
   { id: '19', name: 'Library', icon: '📚' },
 ]
 
+const HANGAR_CATEGORIES = [
+  { id: 'admin', name: 'Admin', icon: '🛡️' },
+  { id: 'chat', name: 'Chat', icon: '💬' },
+  { id: 'dev-tools', name: 'Dev Tools', icon: '🛠️' },
+  { id: 'economy', name: 'Economy', icon: '💰' },
+  { id: 'gameplay', name: 'Gameplay', icon: '🎮' },
+  { id: 'games', name: 'Games', icon: '🕹️' },
+  { id: 'protection', name: 'Protection', icon: '⚔️' },
+  { id: 'roleplay', name: 'Roleplay', icon: '🎭' },
+  { id: 'world-management', name: 'World', icon: '🌍' },
+  { id: 'misc', name: 'Misc', icon: '📦' },
+]
+
 const SORT_OPTIONS = [
   { value: 'Relevance', label: 'Sort by Relevance' },
   { value: 'Downloads', label: 'Sort by Downloads' },
@@ -211,7 +224,11 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     }
   }
 
-  const categories = provider === 'Modrinth' ? MODRINTH_CATEGORIES : SPIGET_CATEGORIES
+  const categories = provider === 'Modrinth'
+    ? MODRINTH_CATEGORIES
+    : provider === 'Spiget'
+      ? SPIGET_CATEGORIES
+      : HANGAR_CATEGORIES
 
   return (
     <div className="flex flex-1 gap-8 overflow-hidden min-h-0">
@@ -223,7 +240,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             Providers
           </div>
           <div className="space-y-1">
-            {(['Modrinth', 'Spiget'] as const).map((p) => (
+            {(['Modrinth', 'Spiget', 'Hangar'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => {
@@ -235,7 +252,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                   : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                   }`}
               >
-                <div className={`w-2 h-2 rounded-full ${p === 'Modrinth' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                <div className={`w-2 h-2 rounded-full ${p === 'Modrinth' ? 'bg-green-500' : p === 'Spiget' ? 'bg-orange-500' : 'bg-blue-500'}`} />
                 {p}
               </button>
             ))}
@@ -363,7 +380,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                             {project.title}
                           </h3>
                           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-lg shrink-0">
-                            <div className={`w-1.5 h-1.5 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : project.provider === 'Spiget' ? 'bg-orange-500' : 'bg-blue-500'}`} />
                             <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">{project.provider}</span>
                           </div>
                         </div>
@@ -435,7 +452,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-white truncate text-base group-hover:text-primary transition-colors">{project.title}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className={`w-2 h-2 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                          <div className={`w-2 h-2 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : project.provider === 'Spiget' ? 'bg-orange-500' : 'bg-blue-500'}`} />
                           <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{project.provider}</span>
                         </div>
                       </div>

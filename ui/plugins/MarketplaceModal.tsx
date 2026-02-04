@@ -46,7 +46,7 @@ export function MarketplaceModal({ instanceId, onClose, onInstallSuccess }: Mark
                 Plugin Marketplace
               </h2>
               <p className="text-gray-500 text-sm mt-1 font-medium">
-                Discover and install new plugins from Modrinth and SpigotMC.
+                Discover and install new plugins from Modrinth, SpigotMC, and Hangar.
               </p>
             </div>
 

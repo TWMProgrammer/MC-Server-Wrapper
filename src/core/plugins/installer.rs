@@ -4,6 +4,7 @@ use anyhow::{Result, Context};
 use super::types::*;
 use super::modrinth::ModrinthClient;
 use super::spiget::SpigetClient;
+use super::hangar::HangarClient;
 use super::metadata::PluginCache;
 
 /// Installs a plugin from a provider.
@@ -47,6 +48,18 @@ pub async fn install_plugin(
                 .download_resource(project_id, &plugins_dir, game_version, loader)
                 .await?;
             (fname, None)
+        }
+        PluginProvider::Hangar => {
+            let client = HangarClient::new();
+            let versions = client.get_versions(project_id, game_version, loader).await?;
+            let version = if let Some(vid) = version_id {
+                versions.iter().find(|v| v.id == vid)
+                    .ok_or_else(|| anyhow::anyhow!("Version not found: {}", vid))?
+            } else {
+                versions.first().ok_or_else(|| anyhow::anyhow!("No versions found for project"))?
+            };
+            let fname = client.download_version(version, &plugins_dir).await?;
+            (fname, Some(version.id.clone()))
         }
     };
 

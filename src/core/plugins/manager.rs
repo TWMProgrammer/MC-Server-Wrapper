@@ -4,6 +4,7 @@ use anyhow::{Result, Context};
 use super::types::*;
 use super::modrinth::ModrinthClient;
 use super::spiget::SpigetClient;
+use super::hangar::HangarClient;
 use super::metadata::{PluginCache, PluginCacheEntry, extract_metadata_sync};
 
 /// Lists all installed plugins in the given instance path.
@@ -119,18 +120,25 @@ pub async fn search_plugins(options: &SearchOptions, provider: Option<PluginProv
             let client = SpigetClient::new();
             results.extend(client.search(options).await?);
         }
+        Some(PluginProvider::Hangar) => {
+            let client = HangarClient::new();
+            results.extend(client.search(options).await?);
+        }
         None => {
             // Search all providers
             let modrinth = ModrinthClient::new();
             let spiget = SpigetClient::new();
+            let hangar = HangarClient::new();
 
-            let (m_res, s_res) = tokio::join!(
+            let (m_res, s_res, h_res) = tokio::join!(
                 modrinth.search(options),
-                spiget.search(options)
+                spiget.search(options),
+                hangar.search(options)
             );
 
             if let Ok(res) = m_res { results.extend(res); }
             if let Ok(res) = s_res { results.extend(res); }
+            if let Ok(res) = h_res { results.extend(res); }
         }
     }
 
@@ -146,6 +154,10 @@ pub async fn get_plugin_dependencies(project_id: &str, provider: PluginProvider)
         }
         PluginProvider::Spiget => {
             let client = SpigetClient::new();
+            client.get_dependencies(project_id).await
+        }
+        PluginProvider::Hangar => {
+            let client = HangarClient::new();
             client.get_dependencies(project_id).await
         }
     }
@@ -204,6 +216,23 @@ pub async fn check_for_updates(
                                 project_id: source.project_id.clone(),
                                 provider: source.provider,
                             });
+                        }
+                    }
+                }
+                PluginProvider::Hangar => {
+                    let client = HangarClient::new();
+                    if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
+                        if let Some(latest) = versions.first() {
+                            if Some(latest.id.clone()) != source.current_version_id {
+                                updates.push(PluginUpdate {
+                                    filename: plugin.filename.clone(),
+                                    current_version: plugin.version.clone(),
+                                    latest_version: latest.version_number.clone(),
+                                    latest_version_id: latest.id.clone(),
+                                    project_id: source.project_id.clone(),
+                                    provider: source.provider,
+                                });
+                            }
                         }
                     }
                 }

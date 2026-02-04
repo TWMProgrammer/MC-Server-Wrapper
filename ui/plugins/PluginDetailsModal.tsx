@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Star
+  Star,
+  Globe
 } from 'lucide-react'
 import { Project } from '../types'
 import { useAppSettings } from '../hooks/useAppSettings'
@@ -71,7 +72,7 @@ export function PluginDetailsModal({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className="text-2xl font-bold text-white truncate">{project.title}</h2>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${project.provider === 'Modrinth' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${project.provider === 'Modrinth' ? 'bg-green-500/10 text-green-500' : project.provider === 'Spiget' ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'
                     }`}>
                     {project.provider}
                   </span>
@@ -89,6 +90,12 @@ export function PluginDetailsModal({
                     <span className="flex items-center gap-1.5">
                       <Star size={14} className="text-yellow-500" />
                       Modrinth Project
+                    </span>
+                  )}
+                  {project.provider === 'Hangar' && (
+                    <span className="flex items-center gap-1.5">
+                      <Globe size={14} className="text-blue-500" />
+                      Hangar Project
                     </span>
                   )}
                 </div>
@@ -162,7 +169,9 @@ export function PluginDetailsModal({
                       onClick={async () => {
                         const url = project.provider === 'Modrinth'
                           ? `https://modrinth.com/plugin/${project.slug}`
-                          : `https://www.spigotmc.org/resources/${project.id}`;
+                          : project.provider === 'Spiget'
+                            ? `https://www.spigotmc.org/resources/${project.id}`
+                            : `https://hangar.papermc.io/${project.author}/${project.slug}`;
                         try {
                           await openUrl(url);
                         } catch (err) {
@@ -180,8 +189,8 @@ export function PluginDetailsModal({
                 <button
                   onClick={onInstall}
                   className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3 ${isSelected
-                      ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
-                      : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
+                    ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-red-500/10'
+                    : 'bg-primary text-white shadow-primary/20 hover:bg-primary/90'
                     }`}
                 >
                   {isSelected ? (

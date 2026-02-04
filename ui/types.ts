@@ -136,7 +136,7 @@ export interface PluginUpdate {
   provider: PluginProvider;
 }
 
-export type PluginProvider = 'Modrinth' | 'Spiget';
+export type PluginProvider = 'Modrinth' | 'Spiget' | 'Hangar';
 
 export type ModProvider = 'Modrinth' | 'CurseForge';
 
