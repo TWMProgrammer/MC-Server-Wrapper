@@ -162,11 +162,35 @@ impl CurseForgeClient {
         }
     }
 
-    pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {
+    pub async fn get_versions(
+        &self, 
+        project_id: &str,
+        game_version: Option<&str>,
+        loader: Option<&str>,
+    ) -> Result<Vec<ProjectVersion>> {
         let api_key = self.api_key.as_ref().ok_or_else(|| anyhow!("CurseForge API key not provided"))?;
         let url = format!("https://api.curseforge.com/v1/mods/{}/files", project_id);
+        
+        let mut query_params = Vec::new();
+        if let Some(gv) = game_version {
+            query_params.push(("gameVersion", gv.to_string()));
+        }
+        if let Some(l) = loader {
+            let loader_type = match l.to_lowercase().as_str() {
+                "forge" => "1",
+                "fabric" => "4",
+                "quilt" => "5",
+                "neoforge" => "6",
+                _ => "0",
+            };
+            if loader_type != "0" {
+                query_params.push(("modLoaderType", loader_type.to_string()));
+            }
+        }
+
         let response = self.client.get(&url)
             .header("x-api-key", api_key)
+            .query(&query_params)
             .send()
             .await?
             .json::<serde_json::Value>()

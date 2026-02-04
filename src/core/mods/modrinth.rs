@@ -166,7 +166,7 @@ impl ModrinthClient {
     pub async fn get_dependencies(&self, project_id: &str, game_version: Option<&str>, loader: Option<&str>) -> Result<Vec<ResolvedDependency>> {
         // If we have version/loader, find the best version and its specific dependencies
         if let (Some(gv), Some(l)) = (game_version, loader) {
-            let versions = self.get_versions(project_id).await?;
+            let versions = self.get_versions(project_id, Some(gv), Some(l)).await?;
             let l_lower = l.to_lowercase();
             
             let best_version = versions.into_iter().find(|v| {
@@ -248,8 +248,27 @@ impl ModrinthClient {
         Ok(resolved_deps)
     }
 
-    pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {
-        let url = format!("{}/project/{}/version", self.base_url, project_id);
+    pub async fn get_versions(
+        &self, 
+        project_id: &str,
+        game_version: Option<&str>,
+        loader: Option<&str>,
+    ) -> Result<Vec<ProjectVersion>> {
+        let mut url = format!("{}/project/{}/version", self.base_url, project_id);
+        
+        let mut query_params = Vec::new();
+        if let Some(gv) = game_version {
+            query_params.push(format!("game_versions=[\"{}\"]", gv));
+        }
+        if let Some(l) = loader {
+            query_params.push(format!("loaders=[\"{}\"]", l.to_lowercase()));
+        }
+
+        if !query_params.is_empty() {
+            url.push_str("?");
+            url.push_str(&query_params.join("&"));
+        }
+
         let versions = retry_async(
             || async {
                 self.client.get(&url)

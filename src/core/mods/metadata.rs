@@ -291,12 +291,20 @@ pub async fn list_installed_mods(instance_path: impl AsRef<Path>) -> Result<Vec<
                     .duration_since(std::time::UNIX_EPOCH)?
                     .as_secs();
 
+                let source_key = if is_disabled {
+                    filename.strip_suffix(".disabled").unwrap_or(&filename).to_string()
+                } else {
+                    filename.clone()
+                };
+
                 // Check cache
                 if let Some(entry) = cache.entries.get(&filename) {
                     if entry.last_modified == last_modified {
                         let mut m = entry.metadata.clone();
                         m.enabled = !is_disabled;
-                        m.source = cache.sources.get(&filename).cloned();
+                        m.source = cache.sources.get(&filename)
+                            .or_else(|| cache.sources.get(&source_key))
+                            .cloned();
                         mods.push(m);
                         continue;
                     }
@@ -308,7 +316,9 @@ pub async fn list_installed_mods(instance_path: impl AsRef<Path>) -> Result<Vec<
                     extract_metadata_sync(&path_clone)
                 }).await??;
                 
-                mod_item.source = cache.sources.get(&filename).cloned();
+                mod_item.source = cache.sources.get(&filename)
+                    .or_else(|| cache.sources.get(&source_key))
+                    .cloned();
 
                 cache.entries.insert(filename.clone(), ModCacheEntry {
                     last_modified,

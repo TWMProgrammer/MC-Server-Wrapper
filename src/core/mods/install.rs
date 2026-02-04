@@ -59,55 +59,37 @@ pub async fn install_mod(
         fs::create_dir_all(&mods_dir).await?;
     }
 
-    let filename: String = match provider {
+    let (filename, final_version_id): (String, String) = match provider {
         ModProvider::Modrinth => {
             let client = ModrinthClient::new();
-            let versions: Vec<ProjectVersion> = client.get_versions(project_id).await?;
+            let versions: Vec<ProjectVersion> = client.get_versions(project_id, game_version, loader).await?;
             
             let version = if let Some(vid) = version_id {
                 versions.iter().find(|v| v.id == vid)
                     .ok_or_else(|| anyhow!("Version not found: {}", vid))?
             } else {
-                // Filter versions by game version and loader if provided
-                let filtered: Vec<&ProjectVersion> = versions.iter().filter(|v| {
-                    let version_match = game_version.map_or(true, |gv| v.game_versions.contains(&gv.to_string()));
-                    let loader_match = loader.map_or(true, |l| {
-                        let l_lower = l.to_lowercase();
-                        v.loaders.iter().any(|vl: &String| vl.to_lowercase() == l_lower)
-                    });
-                    version_match && loader_match
-                }).collect();
-
-                filtered.first().copied().or_else(|| versions.first())
+                versions.first()
                     .ok_or_else(|| anyhow!("No versions found for project: {}", project_id))?
             };
 
-            client.download_version(version, &mods_dir).await?
+            let fname = client.download_version(version, &mods_dir).await?;
+            (fname, version.id.clone())
         }
         ModProvider::CurseForge => {
             let client = CurseForgeClient::new(curseforge_api_key);
-            let versions: Vec<ProjectVersion> = client.get_versions(project_id).await?;
+            let versions: Vec<ProjectVersion> = client.get_versions(project_id, game_version, loader).await?;
             
             let version = if let Some(vid) = version_id {
                 versions.iter().find(|v| v.id == vid)
                     .ok_or_else(|| anyhow!("Version not found: {}", vid))?
             } else {
-                // Filter versions by game version and loader if provided
-                let filtered: Vec<&ProjectVersion> = versions.iter().filter(|v| {
-                    let version_match = game_version.map_or(true, |gv| v.game_versions.contains(&gv.to_string()));
-                    let loader_match = loader.map_or(true, |l| {
-                        let l_lower = l.to_lowercase();
-                        v.loaders.iter().any(|vl: &String| vl.to_lowercase() == l_lower)
-                    });
-                    version_match && loader_match
-                }).collect();
-
-                filtered.first().copied().or_else(|| versions.first())
+                versions.first()
                     .ok_or_else(|| anyhow!("No versions found for project: {}", project_id))?
             };
 
             let file = version.files.first().ok_or_else(|| anyhow!("No files found for version"))?;
-            client.download_file(&file.url, &file.filename, &mods_dir).await?
+            let fname = client.download_file(&file.url, &file.filename, &mods_dir).await?;
+            (fname, version.id.clone())
         }
     };
 
@@ -123,7 +105,7 @@ pub async fn install_mod(
     cache.sources.insert(filename.clone(), ModSource {
         project_id: project_id.to_string(),
         provider,
-        current_version_id: version_id.map(|s| s.to_string()),
+        current_version_id: Some(final_version_id),
     });
 
     if let Ok(content) = serde_json::to_string(&cache) {
@@ -148,18 +130,8 @@ pub async fn check_for_updates(
             match source.provider {
                 ModProvider::Modrinth => {
                     let client = ModrinthClient::new();
-                    if let Ok(versions) = client.get_versions(&source.project_id).await {
-                        // Filter versions by game version and loader if provided
-                        let filtered: Vec<&ProjectVersion> = versions.iter().filter(|v: &&ProjectVersion| {
-                            let version_match = game_version.map_or(true, |gv| v.game_versions.contains(&gv.to_string()));
-                            let loader_match = loader.map_or(true, |l| {
-                                let l_lower = l.to_lowercase();
-                                v.loaders.iter().any(|vl: &String| vl.to_lowercase() == l_lower)
-                            });
-                            version_match && loader_match
-                        }).collect();
-
-                        if let Some(latest) = filtered.first() {
+                    if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
+                        if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
                                 updates.push(ModUpdate {
                                     filename: mod_item.filename.clone(),
@@ -175,18 +147,8 @@ pub async fn check_for_updates(
                 }
                 ModProvider::CurseForge => {
                     let client = CurseForgeClient::new(curseforge_api_key.clone());
-                    if let Ok(versions) = client.get_versions(&source.project_id).await {
-                        // Filter versions by game version and loader if provided
-                        let filtered: Vec<&ProjectVersion> = versions.iter().filter(|v: &&ProjectVersion| {
-                            let version_match = game_version.map_or(true, |gv| v.game_versions.contains(&gv.to_string()));
-                            let loader_match = loader.map_or(true, |l| {
-                                let l_lower = l.to_lowercase();
-                                v.loaders.iter().any(|vl: &String| vl.to_lowercase() == l_lower)
-                            });
-                            version_match && loader_match
-                        }).collect();
-
-                        if let Some(latest) = filtered.first() {
+                    if let Ok(versions) = client.get_versions(&source.project_id, game_version, loader).await {
+                        if let Some(latest) = versions.first() {
                             if Some(latest.id.clone()) != source.current_version_id {
                                 updates.push(ModUpdate {
                                     filename: mod_item.filename.clone(),
