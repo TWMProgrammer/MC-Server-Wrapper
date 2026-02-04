@@ -92,12 +92,23 @@ export function Sidebar({
 
                 {settings.display_server_status && (
                   <div className="relative">
-                    <div className={cn(
-                      "w-2.5 h-2.5 rounded-full shadow-sm",
-                      inst.status === 'Running' ? "bg-accent-emerald animate-pulse" :
-                        inst.status === 'Starting' ? "bg-accent-amber animate-pulse" :
-                          (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-600"
-                    )} />
+                    <motion.div
+                      className={cn(
+                        "w-2.5 h-2.5 rounded-full shadow-sm",
+                        inst.status === 'Running' ? "bg-accent-emerald" :
+                          inst.status === 'Starting' ? "bg-accent-amber" :
+                            (inst.status === 'Stopping' || inst.status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-600"
+                      )}
+                      animate={(inst.status === 'Running' || inst.status === 'Starting' || inst.status === 'Stopping') ? {
+                        scale: [1, 1.2, 1],
+                        opacity: [1, 0.7, 1],
+                      } : {}}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
                   </div>
                 )}
 
@@ -148,15 +159,17 @@ export function Sidebar({
           </div>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02, backgroundColor: "rgba(var(--primary-rgb), 0.05)" }}
+          whileTap={{ scale: 0.98 }}
           onClick={onCreateNew}
-          className="w-full group flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-gray-200 dark:border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-primary"
+          className="w-full group flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-gray-200 dark:border-white/10 hover:border-primary/50 transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-primary"
         >
           <div className="p-1.5 bg-gray-100 dark:bg-white/5 rounded-lg group-hover:bg-primary/20 transition-colors">
             <Plus size={18} />
           </div>
           <span className="font-medium">Create New Instance</span>
-        </button>
+        </motion.button>
       </div>
 
       <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 transition-colors duration-300">
@@ -170,13 +183,15 @@ export function Sidebar({
               <span className="text-[10px] text-gray-500 truncate">System Control</span>
             </div>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1, rotate: 15 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onOpenSettings}
             className="p-2 hover:bg-gray-200 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-400 hover:text-gray-900 dark:hover:text-white group"
             title="App Settings"
           >
             <Settings size={18} className="group-hover:rotate-45 transition-transform duration-300" />
-          </button>
+          </motion.button>
         </div>
         <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-600 font-mono transition-colors duration-300">
           <span>v1.0.0-beta</span>

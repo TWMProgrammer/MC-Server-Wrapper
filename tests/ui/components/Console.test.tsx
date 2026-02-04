@@ -18,13 +18,39 @@ vi.mock('../../../ui/hooks/useAppSettings', () => ({
 }));
 
 // Mock Framer Motion
-vi.mock('framer-motion', () => ({
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+vi.mock('framer-motion', async () => {
+    const React = await import('react');
+    const motionProps = [
+        'layout', 'layoutId', 'initial', 'animate', 'whileHover',
+        'whileTap', 'transition', 'exit', 'variants', 'whileInView',
+        'viewport', 'onLayoutAnimationComplete', 'onAnimationStart',
+        'onAnimationComplete', 'onUpdate', 'onDragStart', 'onDragEnd',
+        'onDrag', 'onDirectionLock', 'onDragTransitionEnd', 'drag',
+        'dragControls', 'dragListener', 'dragConstraints', 'dragElastic',
+        'dragMomentum', 'dragPropagation', 'dragSnapToOrigin',
+        'layoutDependency', 'onViewportEnter', 'onViewportLeave'
+    ];
+
+    const filterProps = (props: any) => {
+        const filtered = { ...props };
+        motionProps.forEach(prop => delete filtered[prop]);
+        return filtered;
+    };
+
+    const motion = new Proxy({}, {
+        get: (_target, key: string) => {
+            return React.forwardRef(({ children, ...props }: any, ref: any) => {
+                const Tag = key as any;
+                return React.createElement(Tag, { ...filterProps(props), ref }, children);
+            });
+        }
+    });
+
+    return {
+        motion,
+        AnimatePresence: ({ children }: any) => <>{children}</>,
+    };
+});
 
 // Mock ansi-to-react
 vi.mock('ansi-to-react', () => ({

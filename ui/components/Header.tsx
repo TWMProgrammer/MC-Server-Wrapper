@@ -60,12 +60,23 @@ export function Header({
                   (status === 'Starting' || (isTransitioning as any) === 'starting') ? "bg-accent-amber/10 text-accent-amber ring-accent-amber/20" :
                     (status === 'Stopping' || isTransitioning === 'stopping' || status === 'Crashed') ? "bg-accent-rose/10 text-accent-rose ring-accent-rose/20" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 ring-gray-200 dark:ring-gray-700"
               )}>
-                <div className={cn(
-                  "w-1.5 h-1.5 rounded-full shadow-sm",
-                  (status === 'Running' || isTransitioning === 'starting' || (isTransitioning === 'restarting' && status === 'Starting')) ? "bg-accent-emerald animate-pulse" :
-                    (status === 'Starting' || (isTransitioning as any) === 'starting') ? "bg-accent-amber animate-pulse" :
-                      (status === 'Stopping' || isTransitioning === 'stopping' || status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-500"
-                )} />
+                <motion.div
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full shadow-sm",
+                    (status === 'Running' || isTransitioning === 'starting' || (isTransitioning === 'restarting' && status === 'Starting')) ? "bg-accent-emerald" :
+                      (status === 'Starting' || (isTransitioning as any) === 'starting') ? "bg-accent-amber" :
+                        (status === 'Stopping' || isTransitioning === 'stopping' || status === 'Crashed') ? "bg-accent-rose" : "bg-gray-400 dark:bg-gray-500"
+                  )}
+                  animate={(status === 'Running' || status === 'Starting' || isTransitioning) ? {
+                    scale: [1, 1.2, 1],
+                    opacity: [1, 0.7, 1],
+                  } : {}}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                />
                 {isTransitioning === 'starting' ? 'Starting...' :
                   isTransitioning === 'stopping' ? 'Stopping...' :
                     isTransitioning === 'restarting' ? 'Restarting...' :
@@ -168,8 +179,10 @@ export function Header({
 
       <div className="flex gap-8 overflow-x-auto no-scrollbar">
         {tabs.map((tab) => (
-          <button
+          <motion.button
             key={tab.id}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onSetActiveTab(tab.id)}
             className={cn(
               "flex items-center gap-2.5 pb-4 px-1 text-sm font-bold uppercase tracking-widest transition-all relative",
@@ -186,7 +199,7 @@ export function Header({
                 className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-glow-primary shadow-primary/40"
               />
             )}
-          </button>
+          </motion.button>
         ))}
       </div>
     </div>

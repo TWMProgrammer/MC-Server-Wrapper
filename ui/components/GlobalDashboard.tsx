@@ -39,8 +39,13 @@ export function GlobalDashboard({
             key={instance.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="card group hover:scale-[1.02] transition-all duration-300 flex flex-col h-full border border-black/10 dark:border-white/5"
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{
+              delay: i * 0.05,
+              scale: { type: "spring", stiffness: 400, damping: 25 }
+            }}
+            className="card group transition-all duration-300 flex flex-col h-full border border-black/10 dark:border-white/5"
           >
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
@@ -65,13 +70,24 @@ export function GlobalDashboard({
                     {instance.name}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      (instance.status === 'Running' || isTransitioning[instance.id] === 'starting' || (isTransitioning[instance.id] === 'restarting' && instance.status === 'Starting')) ? "bg-accent-emerald animate-pulse" :
-                        (instance.status === 'Starting' || (isTransitioning[instance.id] as any) === 'starting') ? "bg-accent-amber animate-pulse" :
-                          (instance.status === 'Stopping' || isTransitioning[instance.id] === 'stopping') ? "bg-accent-rose animate-pulse" :
-                            "bg-gray-400 dark:bg-gray-500"
-                    )} />
+                    <motion.div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        (instance.status === 'Running' || isTransitioning[instance.id] === 'starting' || (isTransitioning[instance.id] === 'restarting' && instance.status === 'Starting')) ? "bg-accent-emerald" :
+                          (instance.status === 'Starting' || (isTransitioning[instance.id] as any) === 'starting') ? "bg-accent-amber" :
+                            (instance.status === 'Stopping' || isTransitioning[instance.id] === 'stopping') ? "bg-accent-rose" :
+                              "bg-gray-400 dark:bg-gray-500"
+                      )}
+                      animate={(instance.status === 'Running' || instance.status === 'Starting' || isTransitioning[instance.id]) ? {
+                        scale: [1, 1.2, 1],
+                        opacity: [1, 0.7, 1],
+                      } : {}}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
                       {isTransitioning[instance.id] === 'starting' ? 'Starting...' :
                         isTransitioning[instance.id] === 'stopping' ? 'Stopping...' :
@@ -84,7 +100,9 @@ export function GlobalDashboard({
 
               <div className="flex items-center gap-2">
                 {instance.status === 'Stopped' || instance.status === 'Crashed' || instance.status === 'Starting' || isTransitioning[instance.id] === 'starting' ? (
-                  <button
+                  <motion.button
+                    whileHover={isTransitioning[instance.id] || instance.status === 'Starting' ? {} : { scale: 1.1 }}
+                    whileTap={isTransitioning[instance.id] || instance.status === 'Starting' ? {} : { scale: 0.9 }}
                     disabled={!!isTransitioning[instance.id] || instance.status === 'Starting'}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -101,9 +119,11 @@ export function GlobalDashboard({
                     ) : (
                       <Play size={18} fill="currentColor" />
                     )}
-                  </button>
+                  </motion.button>
                 ) : (
-                  <button
+                  <motion.button
+                    whileHover={isTransitioning[instance.id] || instance.status === 'Stopping' ? {} : { scale: 1.1 }}
+                    whileTap={isTransitioning[instance.id] || instance.status === 'Stopping' ? {} : { scale: 0.9 }}
                     disabled={!!isTransitioning[instance.id] || instance.status === 'Stopping'}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -120,7 +140,7 @@ export function GlobalDashboard({
                     ) : (
                       <Square size={18} fill="currentColor" />
                     )}
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </div>
@@ -156,13 +176,15 @@ export function GlobalDashboard({
             </div>
 
             <div className="mt-6 pt-6 border-t border-black/5 dark:border-white/5">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => onSelectInstance(instance.id)}
                 className="w-full py-3 rounded-xl bg-primary/10 text-primary font-bold hover:bg-primary hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <Activity size={18} />
                 Manage Instance
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         ))}

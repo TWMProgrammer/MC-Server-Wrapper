@@ -68,8 +68,13 @@ export function Dashboard({
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="card group hover:scale-[1.02] transition-all duration-300"
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{
+              delay: i * 0.1,
+              scale: { type: "spring", stiffness: 400, damping: 25 }
+            }}
+            className="card group transition-all duration-300"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -91,6 +96,7 @@ export function Dashboard({
                         ? `${((usage?.memory_usage || 0) / totalRamBytes) * 100}%`
                         : '0%'
                   }}
+                  transition={{ type: "spring", stiffness: 50, damping: 20 }}
                   className={`h-full ${stat.color.replace('text-', 'bg-')} opacity-80 shadow-[0_0_10px_rgba(0,0,0,0.2)]`}
                 />
               </div>
@@ -104,7 +110,11 @@ export function Dashboard({
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
+          whileHover={{ y: -4 }}
+          transition={{
+            delay: 0.4,
+            y: { type: "spring", stiffness: 400, damping: 25 }
+          }}
           className="card bg-white dark:bg-surface border border-black/10 dark:border-white/5"
         >
           <div className="flex items-center justify-between mb-8">
@@ -174,7 +184,11 @@ export function Dashboard({
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
+          whileHover={{ y: -4 }}
+          transition={{
+            delay: 0.5,
+            y: { type: "spring", stiffness: 400, damping: 25 }
+          }}
           className="card bg-white dark:bg-surface border border-black/10 dark:border-white/5"
         >
           <div className="flex items-center justify-between mb-8">

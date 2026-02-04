@@ -4,12 +4,39 @@ import { ToastProvider, useToast } from '../../../ui/hooks/useToast';
 import React from 'react';
 
 // Mock framer-motion to avoid animation delays
-vi.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+vi.mock('framer-motion', async () => {
+  const React = await import('react');
+  const motionProps = [
+    'layout', 'layoutId', 'initial', 'animate', 'whileHover',
+    'whileTap', 'transition', 'exit', 'variants', 'whileInView',
+    'viewport', 'onLayoutAnimationComplete', 'onAnimationStart',
+    'onAnimationComplete', 'onUpdate', 'onDragStart', 'onDragEnd',
+    'onDrag', 'onDirectionLock', 'onDragTransitionEnd', 'drag',
+    'dragControls', 'dragListener', 'dragConstraints', 'dragElastic',
+    'dragMomentum', 'dragPropagation', 'dragSnapToOrigin',
+    'layoutDependency', 'onViewportEnter', 'onViewportLeave'
+  ];
+
+  const filterProps = (props: any) => {
+    const filtered = { ...props };
+    motionProps.forEach(prop => delete filtered[prop]);
+    return filtered;
+  };
+
+  const motion = new Proxy({}, {
+    get: (_target, key: string) => {
+      return React.forwardRef(({ children, ...props }: any, ref: any) => {
+        const Tag = key as any;
+        return React.createElement(Tag, { ...filterProps(props), ref }, children);
+      });
+    }
+  });
+
+  return {
+    motion,
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+  };
+});
 
 describe('useToast', () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (

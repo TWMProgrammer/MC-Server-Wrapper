@@ -3,6 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModMarketplace } from '../../../ui/mods/ModMarketplace';
 import React from 'react';
 
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+};
+
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({
     Search: () => <div data-testid="icon-search" />,
@@ -24,6 +31,8 @@ vi.mock('lucide-react', () => ({
     Clock: () => <div data-testid="icon-clock" />,
     ShieldCheck: () => <div data-testid="icon-shield" />,
     X: () => <div data-testid="icon-x" />,
+    LayoutGrid: () => <div data-testid="icon-grid" />,
+    List: () => <div data-testid="icon-list" />,
 }));
 
 // Mock Tauri invoke
@@ -41,13 +50,39 @@ vi.mock('../../../ui/hooks/useToast', () => ({
 }));
 
 // Mock Framer Motion
-vi.mock('framer-motion', () => ({
-    motion: {
-        div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-        button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+vi.mock('framer-motion', async () => {
+    const React = await import('react');
+    const motionProps = [
+        'layout', 'layoutId', 'initial', 'animate', 'whileHover',
+        'whileTap', 'transition', 'exit', 'variants', 'whileInView',
+        'viewport', 'onLayoutAnimationComplete', 'onAnimationStart',
+        'onAnimationComplete', 'onUpdate', 'onDragStart', 'onDragEnd',
+        'onDrag', 'onDirectionLock', 'onDragTransitionEnd', 'drag',
+        'dragControls', 'dragListener', 'dragConstraints', 'dragElastic',
+        'dragMomentum', 'dragPropagation', 'dragSnapToOrigin',
+        'layoutDependency', 'onViewportEnter', 'onViewportLeave'
+    ];
+
+    const filterProps = (props: any) => {
+        const filtered = { ...props };
+        motionProps.forEach(prop => delete filtered[prop]);
+        return filtered;
+    };
+
+    const motion = new Proxy({}, {
+        get: (_target, key: string) => {
+            return React.forwardRef(({ children, ...props }: any, ref: any) => {
+                const Tag = key as any;
+                return React.createElement(Tag, { ...filterProps(props), ref }, children);
+            });
+        }
+    });
+
+    return {
+        motion,
+        AnimatePresence: ({ children }: any) => <>{children}</>,
+    };
+});
 
 // Mock components
 vi.mock('../../../ui/components/Select', () => ({
@@ -67,12 +102,17 @@ vi.mock('../../../ui/mods/ModDetailsModal', () => ({
 vi.mock('../../../ui/mods/ModReviewModal', () => ({
     ModReviewModal: ({ onConfirm, selectedMods, isInstalling }: any) => (
         <div data-testid="mod-review-modal">
+            <h2>Review and Confirm</h2>
             {selectedMods.map((mod: any) => <div key={mod.id}>{mod.title}</div>)}
             <button onClick={() => onConfirm(selectedMods)} disabled={isInstalling}>
                 {isInstalling ? 'Installing...' : `Install ${selectedMods.length} Mods`}
             </button>
         </div>
     ),
+}));
+
+vi.mock('../../../ui/hooks/useGridPageSize', () => ({
+    useGridPageSize: () => 16,
 }));
 
 const mockInstance = {
@@ -91,7 +131,7 @@ const mockProjects = Array.from({ length: 16 }, (_, i) => ({
     downloads: 1000 - i * 10,
     follows: 100 - i,
     provider: 'Modrinth',
-    categories: i === 0 ? ['adventure'] : ['technology'],
+    categories: i === 0 ? ['optimization'] : ['technology'],
 }));
 
 describe('ModMarketplace', () => {
@@ -131,14 +171,14 @@ describe('ModMarketplace', () => {
         await waitFor(() => screen.getByText('Test Mod 1'));
         mockInvoke.mockClear();
 
-        const adventureBtn = screen.getByTestId('category-adventure');
-        fireEvent.click(adventureBtn);
+        const optimizationBtn = screen.getByTestId('category-optimization');
+        fireEvent.click(optimizationBtn);
 
         await waitFor(() => {
             const calls = mockInvoke.mock.calls;
             const hasCategoryCall = calls.some(call =>
                 call[0] === 'search_mods' &&
-                call[1].options.facets?.some((f: string) => f.includes('adventure'))
+                call[1].options.facets?.some((f: string) => f.includes('optimization'))
             );
             expect(hasCategoryCall).toBe(true);
         });
@@ -173,10 +213,10 @@ describe('ModMarketplace', () => {
         fireEvent.click(selectBtn);
 
         await waitFor(() => {
-            expect(screen.getByText(/Review and Confirm/)).toBeDefined();
+            expect(screen.getByText(/Review & Confirm/)).toBeDefined();
         });
 
-        fireEvent.click(screen.getByText(/Review and Confirm/));
+        fireEvent.click(screen.getByText(/Review & Confirm/));
 
         await waitFor(() => {
             expect(screen.getByTestId('mod-review-modal')).toBeDefined();
