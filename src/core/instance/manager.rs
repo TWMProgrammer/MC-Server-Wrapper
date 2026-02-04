@@ -161,6 +161,12 @@ impl InstanceManager {
         let mut settings = InstanceSettings::default();
         settings.startup_line = format!("java -Xmx{{ram}}{{unit}} -jar {} nogui", jar_name);
 
+        // Check for server-icon.png
+        let icon_path = instance_path.join("server-icon.png");
+        if icon_path.exists() {
+            settings.icon_path = Some(icon_path.to_string_lossy().to_string());
+        }
+
         let metadata = InstanceMetadata {
             id,
             name: name.to_string(),

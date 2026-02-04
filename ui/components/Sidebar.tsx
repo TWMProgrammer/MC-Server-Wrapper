@@ -75,14 +75,14 @@ export function Sidebar({
                 {settings.display_server_icon && (
                   <div className="relative">
                     <div className={cn(
-                      "w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400 overflow-hidden",
-                      selectedInstanceId === inst.id && "bg-white/20 text-white"
+                      "w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 overflow-hidden",
+                      selectedInstanceId === inst.id ? "text-white" : "bg-black/5 dark:bg-white/5"
                     )}>
                       {inst.settings.icon_path ? (
                         <img
                           src={convertFileSrc(inst.settings.icon_path)}
                           alt={inst.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover rounded-lg"
                         />
                       ) : (
                         <ServerIcon size={16} />

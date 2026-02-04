@@ -48,16 +48,18 @@ export function Header({
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-gradient-to-br from-primary to-accent-indigo rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 ring-1 ring-white/20 overflow-hidden"
+            className="w-16 h-16 bg-transparent rounded-2xl flex items-center justify-center overflow-hidden"
           >
             {currentInstance.settings.icon_path ? (
               <img
                 src={convertFileSrc(currentInstance.settings.icon_path)}
                 alt={currentInstance.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-2xl"
               />
             ) : (
-              <Database size={32} className="text-white" />
+              <div className="w-full h-full bg-gradient-to-br from-primary to-accent-indigo flex items-center justify-center shadow-2xl shadow-primary/20 ring-1 ring-white/20 rounded-2xl">
+                <Database size={32} className="text-white" />
+              </div>
             )}
           </motion.div>
 
