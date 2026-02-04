@@ -4,7 +4,7 @@ A powerful, modern, and cross-platform desktop application designed to simplify 
 
 ## 🚀 Features
 
-- **Instance Management**: 
+- **Instance Management**:
   - Create, delete, and clone multiple Minecraft server instances.
   - Support for various software loaders: Fabric, Forge, NeoForge, Paper, Purpur, and Bedrock.
   - Import existing server archives (ZIP, 7z).
@@ -30,7 +30,7 @@ A powerful, modern, and cross-platform desktop application designed to simplify 
 
 ## 🗺️ Project Roadmap
 
-This project is currently in its **foundational phase**, focusing on building a robust and reliable core for Minecraft server management. 
+This project is currently in its **foundational phase**, focusing on building a robust and reliable core for Minecraft server management.
 
 While we have many ideas for the future—such as a remote web dashboard, advanced networking tunnels, and developer APIs—these **Future Expansions** will be prioritized and implemented based on community interest and user requests. If there are specific features you would like to see, please let me know!
 
@@ -39,6 +39,7 @@ For a detailed look at what's currently implemented and what's planned, check ou
 ## 🛠️ Tech Stack
 
 ### Backend (Rust)
+
 - **Tauri v2**: Cross-platform desktop framework.
 - **Tokio**: Asynchronous runtime for concurrent operations.
 - **SQLx & SQLite**: Reliable database for instance metadata and task scheduling.
@@ -46,6 +47,7 @@ For a detailed look at what's currently implemented and what's planned, check ou
 - **sysinfo**: Real-time system and process monitoring.
 
 ### Frontend (React)
+
 - **React 19**: Latest modern UI development.
 - **TypeScript**: Full type safety across the application.
 - **Tailwind CSS**: Utility-first styling for a responsive design.
@@ -56,38 +58,46 @@ For a detailed look at what's currently implemented and what's planned, check ou
 ## 📥 Getting Started
 
 ### Prerequisites
-- [Rust](https://www.rust-lang.org/tools/install) (1.77.2 or higher)
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [npm](https://www.npmjs.com/)
 
-### Installation
+- **Node.js** (v18 or later) and **npm**
+- **Rust** (latest stable toolchain)
+- **Tauri CLI**: `cargo install tauri-cli`
+- **Git**
+
+For detailed instructions on setting up your environment and building the application, please refer to our [Build Guide](documents/reference/BUILD_GUIDE.md).
+
+### Quick Start
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/your-username/mc-server-wrapper.git
    cd mc-server-wrapper
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Run in development mode**:
+
    ```bash
    npm run tauri dev
    ```
 
 4. **Build for production**:
+
    ```bash
    npm run tauri build
    ```
 
-## � Testing
+## 🧪 Testing
 
 For detailed information on running tests, see the [Testing Guide](documents/reference/TESTING_GUIDE.md).
 
-## �🤝 Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
