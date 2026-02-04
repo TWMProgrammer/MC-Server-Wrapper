@@ -45,6 +45,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
   const [isInstalling, setIsInstalling] = useState(false)
   const [isResolvingDeps, setIsResolvingDeps] = useState(false)
   const [resolvedDeps, setResolvedDeps] = useState<ResolvedDependency[]>([])
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   const { showToast } = useToast()
 
@@ -132,13 +133,18 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
           sortOrder={sortOrder}
           setSortOrder={setSortOrder}
           onSearch={handleSearch}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
 
         <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+          <div className={viewMode === 'grid'
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4"
+            : "flex flex-col gap-3 pb-4"
+          }>
             {loading ? (
               Array.from({ length: pageSize }).map((_, i) => (
-                <div key={i} className="bg-white/5 border border-white/5 rounded-[2rem] p-6 h-56 animate-pulse" />
+                <div key={i} className={`bg-white/5 border border-white/5 animate-pulse ${viewMode === 'grid' ? 'rounded-[2rem] h-56' : 'rounded-2xl h-20'}`} />
               ))
             ) : results.length > 0 ? (
               results.map((project) => (
@@ -148,6 +154,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
                   isSelected={selectedMods.has(project.id)}
                   onSelect={toggleModSelection}
                   onShowDetails={setSelectedProject}
+                  viewMode={viewMode}
                 />
               ))
             ) : !loading ? (

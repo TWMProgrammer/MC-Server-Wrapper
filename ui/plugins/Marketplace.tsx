@@ -14,7 +14,9 @@ import {
   ChevronLeft,
   Check,
   Tag,
-  Layers
+  Layers,
+  LayoutGrid,
+  List
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Project, PluginProvider, SortOrder, SearchOptions, Instance, ResolvedDependency } from '../types'
@@ -68,6 +70,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [sortOrder, setSortOrder] = useState<SortOrder>('Relevance')
   const [page, setPage] = useState(1)
   const [instance, setInstance] = useState<Instance | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   const { showToast } = useToast()
 
@@ -267,23 +270,128 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             />
           </form>
 
-          <Select
-            value={sortOrder}
-            onChange={(val) => setSortOrder(val as SortOrder)}
-            options={SORT_OPTIONS}
-            className="w-56"
-          />
+          <div className="flex items-center gap-2">
+            <div className="flex bg-black/20 border border-white/5 rounded-2xl p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-xl transition-all ${viewMode === 'grid'
+                  ? 'bg-white/10 text-white shadow-lg'
+                  : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                title="Grid View"
+              >
+                <LayoutGrid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-xl transition-all ${viewMode === 'list'
+                  ? 'bg-white/10 text-white shadow-lg'
+                  : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                title="List View"
+              >
+                <List size={20} />
+              </button>
+            </div>
+
+            <Select
+              value={sortOrder}
+              onChange={(val) => setSortOrder(val as SortOrder)}
+              options={SORT_OPTIONS}
+              className="w-56"
+            />
+          </div>
         </div>
 
         <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+          <div className={viewMode === 'grid'
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4"
+            : "flex flex-col gap-3 pb-4"
+          }>
             {loading ? (
               Array.from({ length: pageSize }).map((_, i) => (
-                <div key={i} className="bg-white/5 border border-white/5 rounded-[2rem] p-6 h-56 animate-pulse" />
+                <div key={i} className={`bg-white/5 border border-white/5 animate-pulse ${viewMode === 'grid' ? 'rounded-[2rem] h-56' : 'rounded-2xl h-20'}`} />
               ))
             ) : results.length > 0 ? (
               results.map((project) => {
                 const isSelected = selectedPlugins.has(project.id)
+                if (viewMode === 'list') {
+                  return (
+                    <motion.div
+                      key={`${project.provider}-${project.id}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`relative bg-surface border transition-all group flex items-center p-4 rounded-2xl gap-4 ${isSelected ? 'border-primary bg-primary/5' : 'border-white/5 hover:border-white/20'
+                        }`}
+                    >
+                      <div className="relative shrink-0">
+                        {project.icon_url ? (
+                          <img src={project.icon_url} alt="" className="w-12 h-12 rounded-xl object-cover bg-black/20 shadow-lg" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 shadow-lg">
+                            <Package size={24} />
+                          </div>
+                        )}
+                        {isSelected && (
+                          <div className="absolute -top-2 -right-2 bg-primary text-white p-1 rounded-full shadow-lg z-10 border-2 border-[#0a0a0c]">
+                            <Check size={8} strokeWidth={4} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-bold text-white truncate text-base group-hover:text-primary transition-colors">
+                            {project.title}
+                          </h3>
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-lg shrink-0">
+                            <div className={`w-1.5 h-1.5 rounded-full ${project.provider === 'Modrinth' ? 'bg-green-500' : 'bg-orange-500'}`} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">{project.provider}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-400 line-clamp-1 font-medium mt-0.5">
+                          {project.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-6 shrink-0 ml-4 px-6 border-l border-white/5">
+                        <div className="flex flex-col items-center gap-1">
+                          <Download size={14} className="text-primary" />
+                          <span className="text-[10px] font-bold text-gray-500">{(project.downloads / 1000).toFixed(1)}k</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <Star size={14} className="text-primary" />
+                          <span className="text-[10px] font-bold text-gray-500">{(project.downloads / 5000).toFixed(0)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedProject(project)
+                          }}
+                          className="p-2.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl transition-all"
+                        >
+                          <ExternalLink size={18} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            togglePluginSelection(project)
+                          }}
+                          className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all ${isSelected
+                            ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                            : 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105'
+                            }`}
+                        >
+                          {isSelected ? 'Remove' : 'Select'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )
+                }
+
                 return (
                   <motion.div
                     key={`${project.provider}-${project.id}`}
