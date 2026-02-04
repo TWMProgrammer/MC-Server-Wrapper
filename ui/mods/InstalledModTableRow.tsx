@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { Layers, CheckSquare, Square, ArrowUpCircle, Sliders, Trash2 } from 'lucide-react'
 import { InstalledMod, ModUpdate } from '../types'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
@@ -14,6 +15,24 @@ interface InstalledModTableRowProps {
   onConfigure: () => void;
 }
 
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 25
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    transition: { duration: 0.2 }
+  }
+};
+
 export function InstalledModTableRow({
   mod,
   isSelected,
@@ -26,7 +45,12 @@ export function InstalledModTableRow({
   onConfigure
 }: InstalledModTableRowProps) {
   return (
-    <tr className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
+    <motion.tr
+      layout
+      variants={itemVariants}
+      key={mod.filename}
+      className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+    >
       <td className="p-4">
         <button
           onClick={onToggleSelect}
@@ -119,6 +143,6 @@ export function InstalledModTableRow({
           </ConfirmDropdown>
         </div>
       </td>
-    </tr>
+    </motion.tr>
   )
 }

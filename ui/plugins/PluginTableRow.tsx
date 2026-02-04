@@ -15,6 +15,24 @@ interface PluginTableRowProps {
   onDelete: (plugin: InstalledPlugin, deleteConfig: boolean) => void;
 }
 
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 25
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.95,
+    transition: { duration: 0.2 }
+  }
+};
+
 export function PluginTableRow({
   plugin,
   isSelected,
@@ -28,9 +46,9 @@ export function PluginTableRow({
 }: PluginTableRowProps) {
   return (
     <motion.tr
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      layout
+      variants={itemVariants}
+      key={plugin.filename}
       className={`hover:bg-white/5 transition-colors ${!plugin.enabled ? 'opacity-60 grayscale-[0.5]' : ''} ${isSelected ? 'bg-primary/5' : ''}`}
     >
       <td className="px-6 py-4">

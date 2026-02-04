@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from 'framer-motion'
 import { CheckSquare, Square } from 'lucide-react'
 import { InstalledMod, ModUpdate } from '../types'
 import { InstalledModTableRow } from './InstalledModTableRow'
@@ -15,6 +16,16 @@ interface InstalledModTableViewProps {
   onToggleAll: () => void;
   allSelected: boolean;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05
+    }
+  }
+};
 
 export function InstalledModTableView({
   mods,
@@ -49,22 +60,28 @@ export function InstalledModTableView({
             <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {mods.map((mod) => (
-            <InstalledModTableRow
-              key={mod.filename}
-              mod={mod}
-              isSelected={selectedFilenames.has(mod.filename)}
-              update={updates.find(u => u.filename === mod.filename)}
-              isUpdating={updatingMods.has(mod.filename)}
-              onUpdate={onUpdate}
-              onToggleSelect={() => onToggleSelect(mod.filename)}
-              onToggleEnabled={() => onToggleEnabled(mod)}
-              onDelete={(delConfig) => onDelete(mod, delConfig)}
-              onConfigure={() => onConfigure(mod)}
-            />
-          ))}
-        </tbody>
+        <motion.tbody
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <AnimatePresence mode="popLayout">
+            {mods.map((mod) => (
+              <InstalledModTableRow
+                key={mod.filename}
+                mod={mod}
+                isSelected={selectedFilenames.has(mod.filename)}
+                update={updates.find(u => u.filename === mod.filename)}
+                isUpdating={updatingMods.has(mod.filename)}
+                onUpdate={onUpdate}
+                onToggleSelect={() => onToggleSelect(mod.filename)}
+                onToggleEnabled={() => onToggleEnabled(mod)}
+                onDelete={(delConfig) => onDelete(mod, delConfig)}
+                onConfigure={() => onConfigure(mod)}
+              />
+            ))}
+          </AnimatePresence>
+        </motion.tbody>
       </table>
     </div>
   )

@@ -18,6 +18,16 @@ interface PlayersTabProps {
 
 export type PlayerSubTab = 'all' | 'whitelist' | 'ops' | 'banned-players' | 'banned-ips';
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05
+    }
+  }
+};
+
 export function PlayersTab({ instanceId, settings }: PlayersTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<PlayerSubTab>('all');
   const [lists, setLists] = useState<AllPlayerLists | null>(null);
@@ -300,21 +310,24 @@ export function PlayersTab({ instanceId, settings }: PlayersTabProps) {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSubTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial="hidden"
+            animate="visible"
             exit={{ opacity: 0, y: -10 }}
+            variants={containerVariants}
           >
             {activeSubTab === 'all' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {allPlayers.map((player, index) => (
-                  <PlayerCard
-                    key={player.name}
-                    player={player}
-                    index={index}
-                    onQuickAdd={handleQuickAdd}
-                    settings={settings}
-                  />
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {allPlayers.map((player, index) => (
+                    <PlayerCard
+                      key={player.name}
+                      player={player}
+                      index={index}
+                      onQuickAdd={handleQuickAdd}
+                      settings={settings}
+                    />
+                  ))}
+                </AnimatePresence>
               </div>
             ) : (
               <PlayerListTable

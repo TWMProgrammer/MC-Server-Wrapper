@@ -6,7 +6,7 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react'
-import { AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { InstalledPlugin, PluginUpdate } from '../types'
 import { useToast } from '../hooks/useToast'
 import { PluginConfigModal } from './PluginConfigModal'
@@ -21,6 +21,16 @@ interface InstalledPluginsProps {
 }
 
 type ViewMode = 'table' | 'grid'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05
+    }
+  }
+};
 
 export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPluginsProps) {
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([])
@@ -265,7 +275,12 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
                   <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <motion.tbody
+                className="divide-y divide-white/5"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 <AnimatePresence mode="popLayout">
                   {filteredPlugins.map((plugin) => (
                     <PluginTableRow
@@ -282,11 +297,16 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
                     />
                   ))}
                 </AnimatePresence>
-              </tbody>
+              </motion.tbody>
             </table>
           </div>
         ) : (
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             <AnimatePresence mode="popLayout">
               {filteredPlugins.map((plugin) => (
                 <PluginCard
@@ -303,7 +323,7 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
                 />
               ))}
             </AnimatePresence>
-          </div>
+          </motion.div>
         )}
       </div>
 

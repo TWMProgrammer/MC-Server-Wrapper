@@ -15,6 +15,25 @@ interface PluginCardProps {
   onDelete: (plugin: InstalledPlugin, deleteConfig: boolean) => void;
 }
 
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.9, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 25
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    transition: { duration: 0.2 }
+  }
+};
+
 export function PluginCard({
   plugin,
   isSelected,
@@ -29,9 +48,8 @@ export function PluginCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      variants={itemVariants}
+      key={plugin.filename}
       className={`bg-white/5 border rounded-2xl p-4 hover:border-primary/30 transition-all group flex flex-col h-full relative ${!plugin.enabled ? 'opacity-60 grayscale-[0.5]' : ''} ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/5' : 'border-white/5'}`}
     >
       <button

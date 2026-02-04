@@ -18,6 +18,25 @@ interface PlayerCardProps {
   settings: AppSettings;
 }
 
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.9, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 25
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    transition: { duration: 0.2 }
+  }
+};
+
 export function PlayerCard({ player, index, onQuickAdd, settings }: PlayerCardProps) {
   const avatarUrl = useMemo(() => {
     if (!settings.download_player_heads) return null;
@@ -29,9 +48,8 @@ export function PlayerCard({ player, index, onQuickAdd, settings }: PlayerCardPr
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.05 }}
+      layout
+      variants={itemVariants}
       key={player.name}
       className="glass-panel p-4 rounded-2xl flex items-center justify-between border border-black/5 dark:border-white/5 group hover:border-primary/30 transition-all hover:translate-y-[-2px]"
     >

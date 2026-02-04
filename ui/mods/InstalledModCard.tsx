@@ -15,6 +15,25 @@ interface InstalledModCardProps {
   onConfigure: () => void;
 }
 
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.9, y: 10 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
+      damping: 25
+    }
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    transition: { duration: 0.2 }
+  }
+};
+
 export function InstalledModCard({
   mod,
   isSelected,
@@ -29,6 +48,8 @@ export function InstalledModCard({
   return (
     <motion.div
       layout
+      variants={itemVariants}
+      key={mod.filename}
       className={`group relative p-4 bg-white/5 rounded-2xl border transition-all ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/5' : 'border-white/5 hover:border-white/10 hover:bg-white/10'}`}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
