@@ -1,5 +1,7 @@
+use crate::utils::retry_async;
 use anyhow::{Result, anyhow};
 use std::path::Path;
+use std::time::Duration;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use futures_util::StreamExt;
@@ -93,7 +95,21 @@ impl ModrinthClient {
             url.push_str(&format!("&limit={}", limit));
         }
 
-        let response_text = self.client.get(&url).send().await?.text().await?;
+        let response_text: String = retry_async(
+            || async {
+                let res = self.client.get(&url)
+                    .send()
+                    .await?;
+                let text = res.text()
+                    .await
+                    .map_err(|e| anyhow!(e))?;
+                Ok(text)
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Modrinth search: {}", options.query)
+        ).await?;
+
         let response: serde_json::Value = serde_json::from_str(&response_text)
             .map_err(|e| anyhow!("Failed to parse Modrinth response: {}. Body: {}", e, response_text))?;
         
@@ -105,11 +121,11 @@ impl ModrinthClient {
             title: h["title"].as_str().unwrap_or_default().to_string(),
             description: h["description"].as_str().unwrap_or_default().to_string(),
             downloads: h["downloads"].as_u64().unwrap_or(0),
-            icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
+            icon_url: h["icon_url"].as_str().map(|s: &str| s.to_string()),
             author: h["author"].as_str().unwrap_or_default().to_string(),
             provider: ModProvider::Modrinth,
-            categories: h["categories"].as_array().map(|cats| {
-                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+            categories: h["categories"].as_array().map(|cats: &Vec<serde_json::Value>| {
+                cats.iter().filter_map(|c: &serde_json::Value| c.as_str().map(|s: &str| s.to_string())).collect()
             }),
         }).collect();
 
@@ -118,7 +134,19 @@ impl ModrinthClient {
 
     pub async fn get_project(&self, id: &str) -> Result<Project> {
         let url = format!("{}/project/{}", self.base_url, id);
-        let h = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
+        let h = retry_async(
+            || async {
+                self.client.get(&url)
+                    .send()
+                    .await?
+                    .json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| anyhow!(e))
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Get Modrinth project: {}", id)
+        ).await?;
         
         Ok(Project {
             id: h["id"].as_str().unwrap_or_default().to_string(),
@@ -126,11 +154,11 @@ impl ModrinthClient {
             title: h["title"].as_str().unwrap_or_default().to_string(),
             description: h["description"].as_str().unwrap_or_default().to_string(),
             downloads: h["downloads"].as_u64().unwrap_or(0),
-            icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
+            icon_url: h["icon_url"].as_str().map(|s: &str| s.to_string()),
             author: String::new(), // Author is in a separate field
             provider: ModProvider::Modrinth,
-            categories: h["categories"].as_array().map(|cats| {
-                cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+            categories: h["categories"].as_array().map(|cats: &Vec<serde_json::Value>| {
+                cats.iter().filter_map(|c: &serde_json::Value| c.as_str().map(|s: &str| s.to_string())).collect()
             }),
         })
     }
@@ -166,7 +194,19 @@ impl ModrinthClient {
 
         // Fallback to project-wide dependencies if no specific version found or version/loader not provided
         let url = format!("{}/project/{}/dependencies", self.base_url, project_id);
-        let response = self.client.get(&url).send().await?.json::<serde_json::Value>().await?;
+        let response = retry_async(
+            || async {
+                self.client.get(&url)
+                    .send()
+                    .await?
+                    .json::<serde_json::Value>()
+                    .await
+                    .map_err(|e| anyhow!(e))
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Get Modrinth dependencies: {}", project_id)
+        ).await?;
         
         let projects_json = response["projects"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
         let versions_json = response["versions"].as_array().ok_or_else(|| anyhow!("Invalid dependencies response"))?;
@@ -194,11 +234,11 @@ impl ModrinthClient {
                     title: h["title"].as_str().unwrap_or_default().to_string(),
                     description: h["description"].as_str().unwrap_or_default().to_string(),
                     downloads: h["downloads"].as_u64().unwrap_or(0),
-                    icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
+                    icon_url: h["icon_url"].as_str().map(|s: &str| s.to_string()),
                     author: String::new(),
                     provider: ModProvider::Modrinth,
-                    categories: h["categories"].as_array().map(|cats| {
-                        cats.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect()
+                    categories: h["categories"].as_array().map(|cats: &Vec<serde_json::Value>| {
+                        cats.iter().filter_map(|c: &serde_json::Value| c.as_str().map(|s: &str| s.to_string())).collect()
                     }),
                 },
                 dependency_type,
@@ -210,7 +250,19 @@ impl ModrinthClient {
 
     pub async fn get_versions(&self, project_id: &str) -> Result<Vec<ProjectVersion>> {
         let url = format!("{}/project/{}/version", self.base_url, project_id);
-        let versions = self.client.get(&url).send().await?.json::<Vec<ProjectVersion>>().await?;
+        let versions = retry_async(
+            || async {
+                self.client.get(&url)
+                    .send()
+                    .await?
+                    .json::<Vec<ProjectVersion>>()
+                    .await
+                    .map_err(|e| anyhow!(e))
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Get Modrinth versions: {}", project_id)
+        ).await?;
         Ok(versions)
     }
 
@@ -225,16 +277,26 @@ impl ModrinthClient {
         let target_path = target_dir.as_ref().join(&file.filename);
         info!("Downloading mod from {}: {} ({} bytes)", file.url, file.filename, file.size);
 
-        let response = self.client.get(&file.url).send().await?;
-        let mut f = fs::File::create(&target_path).await?;
+        let target_path_clone = target_path.clone();
+        retry_async(
+            || async {
+                let response = self.client.get(&file.url).send().await?;
+                let mut f = fs::File::create(&target_path_clone).await?;
 
-        let mut stream = response.bytes_stream();
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            f.write_all(&chunk).await?;
-        }
+                let mut stream = response.bytes_stream();
+                while let Some(chunk_result) = stream.next().await {
+                    let chunk = chunk_result?;
+                    f.write_all(&chunk).await?;
+                }
 
-        f.flush().await?;
+                f.flush().await?;
+                Ok(())
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Download mod: {}", file.filename)
+        ).await?;
+
         Ok(file.filename.clone())
     }
 }

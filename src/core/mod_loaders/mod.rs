@@ -6,11 +6,13 @@ pub mod purpur;
 pub mod proxy;
 pub mod bedrock;
 
+use crate::utils::retry_async;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use futures_util::StreamExt;
 use tokio::io::AsyncWriteExt;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModLoader {
@@ -38,25 +40,33 @@ impl ModLoaderClient {
     where
         F: Fn(u64, u64) + Send + Sync + 'static,
     {
-        let response = self.client.get(url).send().await?;
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Failed to download: {}", response.status()));
-        }
+        let target_path_ref = target_path.as_ref();
+        retry_async(
+            || async {
+                let response = self.client.get(url).send().await?;
+                if !response.status().is_success() {
+                    return Err(anyhow!("Failed to download: {}", response.status()));
+                }
 
-        let total_size = response.content_length().unwrap_or(0);
-        let mut file = tokio::fs::File::create(target_path).await?;
-        let mut downloaded: u64 = 0;
-        let mut stream = response.bytes_stream();
+                let total_size = response.content_length().unwrap_or(0);
+                let mut file = tokio::fs::File::create(target_path_ref).await?;
+                let mut downloaded: u64 = 0;
+                let mut stream = response.bytes_stream();
 
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            file.write_all(&chunk).await?;
-            downloaded += chunk.len() as u64;
-            on_progress(downloaded, total_size);
-        }
+                while let Some(chunk_result) = stream.next().await {
+                    let chunk = chunk_result?;
+                    file.write_all(&chunk).await?;
+                    downloaded += chunk.len() as u64;
+                    on_progress(downloaded, total_size);
+                }
 
-        file.flush().await?;
-        Ok(())
+                file.flush().await?;
+                Ok(())
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Download from {}", url)
+        ).await
     }
 
     pub async fn download_loader<F>(&self, loader_name: &str, mc_version: &str, loader_version: Option<&str>, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 

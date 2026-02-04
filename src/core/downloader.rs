@@ -1,6 +1,8 @@
+use crate::utils::retry_async;
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, anyhow};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use sha1::{Sha1, Digest};
@@ -78,11 +80,19 @@ impl VersionDownloader {
         }
 
         info!("Fetching version manifest from {}", VERSION_MANIFEST_URL);
-        let manifest = self.client.get(VERSION_MANIFEST_URL)
-            .send()
-            .await?
-            .json::<VersionManifest>()
-            .await?;
+        let manifest = retry_async(
+            || async {
+                self.client.get(VERSION_MANIFEST_URL)
+                    .send()
+                    .await?
+                    .json::<VersionManifest>()
+                    .await
+                    .map_err(|e| anyhow!(e))
+            },
+            3,
+            Duration::from_secs(2),
+            "Fetch version manifest"
+        ).await?;
 
         if let Some(cache_dir) = &self.cache_dir {
             if !cache_dir.exists() {
@@ -106,37 +116,53 @@ impl VersionDownloader {
             .ok_or_else(|| anyhow!("Version {} not found in manifest", version_id))?;
 
         info!("Fetching details for version {}", version_id);
-        let detail = self.client.get(&version_info.url)
-            .send()
-            .await?
-            .json::<VersionDetail>()
-            .await?;
+        let detail = retry_async(
+            || async {
+                self.client.get(&version_info.url)
+                    .send()
+                    .await?
+                    .json::<VersionDetail>()
+                    .await
+                    .map_err(|e| anyhow!(e))
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Fetch version details for {}", version_id)
+        ).await?;
 
         let server_download = detail.downloads.server;
         let total_size = server_download.size;
         info!("Downloading server JAR for version {}: {} ({} bytes)", version_id, server_download.url, total_size);
 
-        let response = self.client.get(&server_download.url).send().await?;
-        let mut file = fs::File::create(&target_path).await?;
-        let mut hasher = Sha1::new();
-        let mut downloaded: u64 = 0;
+        retry_async(
+            || async {
+                let response = self.client.get(&server_download.url).send().await?;
+                let mut file = fs::File::create(&target_path).await?;
+                let mut hasher = Sha1::new();
+                let mut downloaded: u64 = 0;
 
-        let mut stream = response.bytes_stream();
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            file.write_all(&chunk).await?;
-            hasher.update(&chunk);
-            downloaded += chunk.len() as u64;
-            on_progress(downloaded, total_size);
-        }
+                let mut stream = response.bytes_stream();
+                while let Some(chunk_result) = stream.next().await {
+                    let chunk = chunk_result?;
+                    file.write_all(&chunk).await?;
+                    hasher.update(&chunk);
+                    downloaded += chunk.len() as u64;
+                    on_progress(downloaded, total_size);
+                }
 
-        file.flush().await?;
+                file.flush().await?;
 
-        let actual_sha1 = format!("{:x}", hasher.finalize());
-        if actual_sha1 != server_download.sha1 {
-            fs::remove_file(&target_path).await?;
-            return Err(anyhow!("SHA1 mismatch! Expected: {}, Got: {}", server_download.sha1, actual_sha1));
-        }
+                let actual_sha1 = format!("{:x}", hasher.finalize());
+                if actual_sha1 != server_download.sha1 {
+                    fs::remove_file(&target_path).await?;
+                    return Err(anyhow!("SHA1 mismatch! Expected: {}, Got: {}", server_download.sha1, actual_sha1));
+                }
+                Ok(())
+            },
+            3,
+            Duration::from_secs(2),
+            &format!("Download server JAR for {}", version_id)
+        ).await?;
 
         info!("Successfully downloaded and verified server JAR for version {}", version_id);
         Ok(())
