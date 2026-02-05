@@ -4,7 +4,6 @@ use super::super::{
 };
 use mc_server_wrapper_core::instance::{InstanceManager, InstanceMetadata};
 use mc_server_wrapper_core::manager::ServerManager;
-use serde::Deserialize;
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use uuid::Uuid;
@@ -125,18 +124,19 @@ pub async fn open_instance_folder(
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn create_instance_full(
     server_manager: State<'_, Arc<ServerManager>>,
     app_state: State<'_, AppState>,
     app_handle: tauri::AppHandle,
     name: String,
     version: String,
-    #[serde(rename = "modLoader")] mod_loader: Option<String>,
-    #[serde(rename = "loaderVersion")] loader_version: Option<String>,
-    #[serde(rename = "startAfterCreation")] start_after_creation: bool,
+    modLoader: Option<String>,
+    loaderVersion: Option<String>,
+    startAfterCreation: bool,
 ) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
     let instance = server_manager
-        .create_instance_full(&name, &version, mod_loader, loader_version)
+        .create_instance_full(&name, &version, modLoader, loaderVersion)
         .await
         .map_err(AppError::from)?;
 
@@ -185,7 +185,7 @@ pub async fn create_instance_full(
             );
         }
 
-        if start_after_creation {
+        if startAfterCreation {
             if let Err(e) = server_manager_clone.start_server(id).await {
                 let _ = app_handle_clone.emit(
                     "server-log",

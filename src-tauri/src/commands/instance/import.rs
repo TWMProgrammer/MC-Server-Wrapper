@@ -22,21 +22,22 @@ pub struct ImportProgressPayload {
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn import_instance(
     app_handle: tauri::AppHandle,
     instance_manager: State<'_, Arc<InstanceManager>>,
     name: String,
-    #[serde(rename = "sourcePath")] source_path: String,
-    #[serde(rename = "jarName")] jar_name: String,
-    #[serde(rename = "serverType")] server_type: String,
-    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
-    #[serde(rename = "scriptPath")] script_path: Option<String>,
+    sourcePath: String,
+    jarName: String,
+    serverType: String,
+    rootWithinZip: Option<String>,
+    scriptPath: Option<String>,
 ) -> CommandResult<InstanceMetadata> {
-    let path = PathBuf::from(source_path);
-    let mod_loader = if server_type == "vanilla" || server_type == "custom" {
+    let path = PathBuf::from(sourcePath);
+    let mod_loader = if serverType == "vanilla" || serverType == "custom" {
         None
     } else {
-        Some(server_type)
+        Some(serverType)
     };
 
     let app_handle_clone = app_handle.clone();
@@ -44,10 +45,10 @@ pub async fn import_instance(
         .import_instance(
             &name,
             path,
-            jar_name,
+            jarName,
             mod_loader,
-            root_within_zip,
-            script_path,
+            rootWithinZip,
+            scriptPath,
             move |current, total, message| {
                 let _ = app_handle_clone.emit(
                     "import-progress",
@@ -64,11 +65,12 @@ pub async fn import_instance(
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn list_jars_in_source(
-    #[serde(rename = "sourcePath")] source_path: String,
-    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+    sourcePath: String,
+    rootWithinZip: Option<String>,
 ) -> CommandResult<Vec<String>> {
-    let path = PathBuf::from(&source_path);
+    let path = PathBuf::from(&sourcePath);
     let mut jars = Vec::new();
 
     if path.is_dir() {
@@ -95,7 +97,7 @@ pub async fn list_jars_in_source(
             let mut archive = zip::ZipArchive::new(file)
                 .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
 
-            let root = root_within_zip.map(|r| {
+            let root = rootWithinZip.map(|r| {
                 if r.ends_with('/') {
                     r
                 } else {
@@ -125,7 +127,7 @@ pub async fn list_jars_in_source(
                 }
             }
         } else if extension == "7z" {
-            let root = root_within_zip.as_deref().map(|r| {
+            let root = rootWithinZip.as_deref().map(|r| {
                 if r.ends_with('/') {
                     r.to_string()
                 } else {
@@ -161,11 +163,12 @@ pub async fn list_jars_in_source(
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn list_scripts_in_source(
-    #[serde(rename = "sourcePath")] source_path: String,
-    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+    sourcePath: String,
+    rootWithinZip: Option<String>,
 ) -> CommandResult<Vec<String>> {
-    let path = PathBuf::from(&source_path);
+    let path = PathBuf::from(&sourcePath);
     let mut scripts = Vec::new();
 
     if path.is_dir() {
@@ -193,7 +196,7 @@ pub async fn list_scripts_in_source(
             let mut archive = zip::ZipArchive::new(file)
                 .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
 
-            let root = root_within_zip.map(|r| {
+            let root = rootWithinZip.map(|r| {
                 if r.ends_with('/') {
                     r
                 } else {
@@ -232,7 +235,7 @@ pub async fn list_scripts_in_source(
                 }
             }
         } else if extension == "7z" {
-            let root = root_within_zip.as_deref().map(|r| {
+            let root = rootWithinZip.as_deref().map(|r| {
                 if r.ends_with('/') {
                     r.to_string()
                 } else {
@@ -277,11 +280,12 @@ pub async fn list_scripts_in_source(
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn check_server_properties_exists(
-    #[serde(rename = "sourcePath")] source_path: String,
-    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+    sourcePath: String,
+    rootWithinZip: Option<String>,
 ) -> CommandResult<bool> {
-    let path = PathBuf::from(&source_path);
+    let path = PathBuf::from(&sourcePath);
 
     if path.is_dir() {
         Ok(path.join("server.properties").exists())
@@ -295,7 +299,7 @@ pub async fn check_server_properties_exists(
             let mut archive = zip::ZipArchive::new(file)
                 .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
 
-            let target = if let Some(root) = root_within_zip {
+            let target = if let Some(root) = rootWithinZip {
                 let root = if root.ends_with('/') {
                     root
                 } else {
@@ -316,7 +320,7 @@ pub async fn check_server_properties_exists(
             }
             Ok(false)
         } else if extension == "7z" {
-            let target = if let Some(root) = root_within_zip {
+            let target = if let Some(root) = rootWithinZip {
                 let root = if root.ends_with('/') {
                     root
                 } else {
@@ -348,11 +352,12 @@ pub async fn check_server_properties_exists(
 }
 
 #[tauri::command]
+#[allow(non_snake_case)]
 pub async fn detect_server_type(
-    #[serde(rename = "sourcePath")] source_path: String,
-    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+    sourcePath: String,
+    rootWithinZip: Option<String>,
 ) -> CommandResult<String> {
-    let path = PathBuf::from(&source_path);
+    let path = PathBuf::from(&sourcePath);
     let mut files = HashSet::new();
     let mut folders = HashSet::new();
 
@@ -381,7 +386,7 @@ pub async fn detect_server_type(
             let mut archive = zip::ZipArchive::new(file)
                 .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
 
-            let root = root_within_zip.map(|r| {
+            let root = rootWithinZip.map(|r| {
                 if r.ends_with('/') {
                     r
                 } else {
@@ -442,7 +447,7 @@ pub async fn detect_server_type(
                 }
             }
         } else if extension == "7z" {
-            let root = root_within_zip.map(|r| {
+            let root = rootWithinZip.map(|r| {
                 if r.ends_with('/') {
                     r
                 } else {
