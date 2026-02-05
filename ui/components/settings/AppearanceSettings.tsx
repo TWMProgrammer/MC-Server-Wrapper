@@ -82,13 +82,13 @@ export function AppearanceSettings({ settings, updateSettings, activeTab }: Appe
             <div className="flex items-center justify-between mb-6">
               <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">Scale the user interface</div>
               <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                {Math.round((settings.scaling + 0.2) * 100)}%
+                {Math.round(settings.scaling * 100)}%
               </span>
             </div>
             <input
               type="range"
-              min="0.5"
-              max="1.1"
+              min="0.7"
+              max="1.3"
               step="0.05"
               value={settings.scaling}
               onChange={(e) => updateSettings({ scaling: parseFloat(e.target.value) })}

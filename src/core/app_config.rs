@@ -74,7 +74,7 @@ impl Default for AppSettings {
             show_tray_notification: true,
             accent_color: "Blue".to_string(),
             theme: "dark".to_string(),
-            scaling: 0.8,
+            scaling: 1.0,
             managed_java_versions: vec![],
         }
     }
