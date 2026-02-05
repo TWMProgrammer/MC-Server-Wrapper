@@ -1,22 +1,44 @@
-use std::path::{Path, PathBuf, Component};
-use anyhow::{Result, anyhow, Context};
+use anyhow::{Context, Result, anyhow};
+use std::path::{Component, Path, PathBuf};
 
 /// Validates that a relative path does not contain path traversal components.
 /// This function handles URL encoding and logical normalization.
 pub fn validate_rel_path(rel_path: &str) -> Result<()> {
-    // 1. Handle Encoded Characters: Ensure that common traversal encodings 
+    // 1. Handle Encoded Characters: Ensure that common traversal encodings
     // (e.g., %2e%2e%2f, ..%5c) are decoded before checks.
     let decoded = urlencoding::decode(rel_path)
         .map_err(|_| anyhow!("Invalid URL encoding in path: {}", rel_path))?;
-    
+
     // Normalize slashes for cross-platform consistency during validation
     let normalized_input = decoded.replace('\\', "/");
 
-    // 2. Reject Absolute Paths and Prefixes
-    let path = Path::new(&normalized_input);
-    if path.is_absolute() {
-        return Err(anyhow!("Invalid path: Absolute paths not allowed: {}", rel_path));
+    // 2. Reject Absolute Paths and Prefixes (Cross-platform check)
+    if normalized_input.starts_with('/') {
+        return Err(anyhow!(
+            "Invalid path: Absolute paths not allowed: {}",
+            rel_path
+        ));
     }
+
+    // Check for Windows drive prefix (e.g., C:) even on Linux
+    if normalized_input.len() >= 2 {
+        let mut chars = normalized_input.chars();
+        let first = chars.next().unwrap();
+        let second = chars.next().unwrap();
+        if first.is_ascii_alphabetic() && second == ':' {
+            return Err(anyhow!(
+                "Invalid path: Windows drive prefixes not allowed: {}",
+                rel_path
+            ));
+        }
+    }
+
+    // Check for UNC paths (e.g., //server/share)
+    if normalized_input.starts_with("//") {
+        return Err(anyhow!("Invalid path: UNC paths not allowed: {}", rel_path));
+    }
+
+    let path = Path::new(&normalized_input);
 
     // 3. Normalize Input & Reject Traversal Components
     // Use logical path normalization to resolve . and .. components.
@@ -28,12 +50,18 @@ pub fn validate_rel_path(rel_path: &str) -> Result<()> {
             Component::ParentDir => {
                 // If we try to pop and there's nothing, it means we're climbing above root
                 if components.pop().is_none() {
-                    return Err(anyhow!("Invalid path: Path traversal detected (climbing above root): {}", rel_path));
+                    return Err(anyhow!(
+                        "Invalid path: Path traversal detected (climbing above root): {}",
+                        rel_path
+                    ));
                 }
             }
-            Component::CurDir => {}, // . is ignored in logical normalization
+            Component::CurDir => {} // . is ignored in logical normalization
             Component::RootDir | Component::Prefix(_) => {
-                return Err(anyhow!("Invalid path: Absolute paths or prefixes not allowed: {}", rel_path));
+                return Err(anyhow!(
+                    "Invalid path: Absolute paths or prefixes not allowed: {}",
+                    rel_path
+                ));
             }
         }
     }
@@ -94,7 +122,7 @@ mod tests {
     fn test_safe_join() {
         let temp = tempfile::tempdir().unwrap();
         let base = temp.path();
-        
+
         // Canonicalize base for comparison (tempdir might be in a symlinked path on some OS)
         let canonical_base = base.canonicalize().unwrap();
 
@@ -138,7 +166,7 @@ mod tests {
 }
 
 /// Safely joins a base path with a relative path, ensuring no traversal.
-/// 
+///
 /// This implementation follows a multi-step hardening process:
 /// 1. Validates the relative path for traversal components and encoding.
 /// 2. Canonicalizes the base path to resolve symlinks.
@@ -146,21 +174,23 @@ mod tests {
 ///    handling both existing and non-existing target paths.
 pub fn safe_join(base: impl AsRef<Path>, rel: &str) -> Result<PathBuf> {
     validate_rel_path(rel)?;
-    
+
     let base = base.as_ref();
     // 1. Canonicalize Base Path: Resolve any symbolic links or relative segments in the root directory.
-    let canonical_base = base.canonicalize()
+    let canonical_base = base
+        .canonicalize()
         .context(format!("Failed to canonicalize base path: {:?}", base))?;
-    
+
     // 2. Logical Join: Join the canonicalized base with the normalized relative path.
     let joined = canonical_base.join(rel);
-    
+
     // 3. Final Verification
     if joined.exists() {
         // If the resulting path exists, use std::fs::canonicalize on it.
-        let canonical_joined = joined.canonicalize()
+        let canonical_joined = joined
+            .canonicalize()
             .context(format!("Failed to canonicalize joined path: {:?}", joined))?;
-        
+
         // Verify that the final absolute path starts with the canonicalized base path.
         if !canonical_joined.starts_with(&canonical_base) {
             return Err(anyhow!(
@@ -171,10 +201,10 @@ pub fn safe_join(base: impl AsRef<Path>, rel: &str) -> Result<PathBuf> {
         }
         Ok(canonical_joined)
     } else {
-        // If the path does not exist (e.g., for new file creation), 
+        // If the path does not exist (e.g., for new file creation),
         // ensure that the joined path's components do not escape the base directory.
         let normalized_joined = normalize_path(&joined);
-        
+
         if !normalized_joined.starts_with(&canonical_base) {
             return Err(anyhow!(
                 "Security violation: joined path escaped base directory (logical check). Base: {:?}, Joined: {:?}",
