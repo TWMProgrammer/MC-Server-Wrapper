@@ -11,16 +11,20 @@ test('Server Full Lifecycle Flow', async () => {
   test.setTimeout(240000); // Increased timeout for the full flow
   
   // Path to your Tauri binary
-  const appPath = path.join(__dirname, '..', '..', 'src-tauri', 'target', 'debug', 'mc-server-wrapper.exe');
+  const platform = process.platform;
+  const binaryName = platform === 'win32' ? 'mc-server-wrapper.exe' : 'mc-server-wrapper';
+  const appPath = path.join(__dirname, '..', '..', 'src-tauri', 'target', 'debug', binaryName);
   
   // Start the Tauri app with a remote debugging port
+  const env = { ...process.env };
+  if (platform === 'win32') {
+    env.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222';
+  }
+
   const tauriProcess = spawn(appPath, [], {
     stdio: 'ignore',
     detached: true,
-    env: {
-      ...process.env,
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222',
-    }
+    env
   });
 
   // Give it a moment to start
@@ -66,12 +70,11 @@ test('Server Full Lifecycle Flow', async () => {
     await versionRow.click();
     console.log('Version 1.21.1 selected');
 
-    // Toggle off "Start Server after creation"
-    console.log('Toggling off "Start Server after creation"...');
+    // Verify "Start Server after creation" is off by default
+    console.log('Verifying "Start Server after creation" is off by default...');
     const toggleButton = page.locator('button').filter({ hasText: 'Start Server' }).filter({ hasText: 'After Creation' });
-    await toggleButton.click();
     
-    // Verify toggle state changed
+    // Verify toggle state is off (doesn't have the primary background class)
     await expect(toggleButton).not.toHaveClass(/bg-primary\/10/);
     console.log('Toggle verified off');
 
