@@ -1,6 +1,6 @@
 use super::InstanceManager;
 use crate::instance::archive::{copy_dir_all, extract_7z, extract_zip};
-use crate::instance::types::{InstanceMetadata, InstanceSettings};
+use crate::instance::types::{CrashHandlingMode, InstanceMetadata, InstanceSettings};
 use anyhow::Result;
 use chrono::Utc;
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ impl InstanceManager {
         &self,
         name: &str,
         source_path: PathBuf,
-        jar_name: String,
+        mut jar_name: String,
         mod_loader: Option<String>,
         root_within_zip: Option<String>,
         script_path: Option<String>,
@@ -50,25 +50,59 @@ impl InstanceManager {
         }
 
         let mut settings = InstanceSettings::default();
+        let mut jvm_args = Vec::new();
+        let mut server_args = vec!["nogui".to_string()];
 
         // Parse script if provided
         if let Some(script) = script_path {
             let script_full_path = instance_path.join(&script);
             if script_full_path.exists() {
                 if let Ok(content) = fs::read_to_string(script_full_path).await {
-                    if let Some((min, min_u, max, max_u)) = self.parse_ram_from_script(&content) {
+                    let info = self.parse_script_content(&content);
+
+                    if let Some(min) = info.min_ram {
                         settings.min_ram = min;
+                    }
+                    if let Some(min_u) = info.min_ram_unit {
                         settings.min_ram_unit = min_u;
+                    }
+                    if let Some(max) = info.max_ram {
                         settings.max_ram = max;
+                    }
+                    if let Some(max_u) = info.max_ram_unit {
                         settings.max_ram_unit = max_u;
+                    }
+
+                    if !info.jvm_args.is_empty() {
+                        jvm_args = info.jvm_args;
+                    }
+
+                    if let Some(script_jar) = info.jar_name {
+                        jar_name = script_jar;
+                    }
+
+                    if !info.server_args.is_empty() {
+                        server_args = info.server_args;
+                    }
+
+                    if info.has_restart_loop {
+                        settings.crash_handling = CrashHandlingMode::Elevated;
                     }
                 }
             }
         }
 
+        let jvm_args_str = if jvm_args.is_empty() {
+            "".to_string()
+        } else {
+            format!(" {} ", jvm_args.join(" "))
+        };
+
+        let server_args_str = server_args.join(" ");
+
         settings.startup_line = format!(
-            "java -Xms{{min_ram}}{{min_unit}} -Xmx{{max_ram}}{{max_unit}} -jar {} nogui",
-            jar_name
+            "java -Xms{{min_ram}}{{min_unit}} -Xmx{{max_ram}}{{max_unit}}{}-jar {} {}",
+            jvm_args_str, jar_name, server_args_str
         );
 
         // Check for server-icon.png
