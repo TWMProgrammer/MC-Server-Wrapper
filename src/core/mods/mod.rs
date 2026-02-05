@@ -7,8 +7,8 @@ pub mod config;
 pub mod metadata;
 
 pub use types::*;
-pub use curseforge::*;
-pub use modrinth::*;
+pub use curseforge::CurseForgeClient;
+pub use modrinth::ModrinthClient;
 pub use search::*;
 pub use install::*;
 pub use config::*;

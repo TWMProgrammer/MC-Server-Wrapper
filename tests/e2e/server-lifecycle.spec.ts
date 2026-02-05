@@ -60,11 +60,11 @@ test('Server Full Lifecycle Flow', async () => {
     await page.fill('input[placeholder="Enter instance name..."]', instanceName);
 
     // Select version
-    console.log('Selecting version 1.20.1...');
-    const versionRow = page.locator('tr').filter({ hasText: '1.20.1' }).first();
+    console.log('Selecting version 1.21.1...');
+    const versionRow = page.locator('tr').filter({ hasText: '1.21.1' }).first();
     await versionRow.waitFor({ state: 'visible', timeout: 30000 });
     await versionRow.click();
-    console.log('Version 1.20.1 selected');
+    console.log('Version 1.21.1 selected');
 
     // Toggle off "Start Server after creation"
     console.log('Toggling off "Start Server after creation"...');

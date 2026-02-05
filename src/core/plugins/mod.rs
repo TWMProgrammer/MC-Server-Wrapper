@@ -7,9 +7,9 @@ pub mod manager;
 pub mod installer;
 
 pub use types::*;
-pub use modrinth::*;
-pub use spiget::*;
-pub use hangar::*;
+pub use modrinth::ModrinthClient;
+pub use spiget::SpigetClient;
+pub use hangar::HangarClient;
 pub use metadata::extract_metadata_sync;
 pub use manager::*;
 pub use installer::*;

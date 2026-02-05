@@ -6,7 +6,7 @@ use commands::AppState;
 use mc_server_wrapper_core::app_config::{CloseBehavior, GlobalConfigManager};
 use mc_server_wrapper_core::backup::BackupManager;
 use mc_server_wrapper_core::instance::InstanceManager;
-use mc_server_wrapper_core::java_manager::JavaManager;
+use mc_server_wrapper_core::java::JavaManager;
 use mc_server_wrapper_core::manager::ServerManager;
 use mc_server_wrapper_core::scheduler::SchedulerManager;
 use std::collections::HashSet;

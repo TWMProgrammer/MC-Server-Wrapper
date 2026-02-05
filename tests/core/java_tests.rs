@@ -1,4 +1,4 @@
-use mc_server_wrapper_core::java_manager::JavaManager;
+use mc_server_wrapper_core::java::JavaManager;
 use tempfile::tempdir;
 use anyhow::Result;
 
