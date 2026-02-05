@@ -163,7 +163,7 @@ export function VersionSelection({
       </div>
 
       {/* Mod Loader Selection */}
-      {['forge', 'fabric', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
+      {['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur'].includes(selectedServerType || '') && (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

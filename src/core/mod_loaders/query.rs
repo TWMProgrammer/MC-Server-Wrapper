@@ -1,6 +1,6 @@
-use anyhow::Result;
 use super::client::ModLoaderClient;
 use super::types::ModLoader;
+use anyhow::Result;
 
 impl ModLoaderClient {
     pub async fn get_available_loaders(
@@ -36,6 +36,16 @@ impl ModLoaderClient {
             if !versions.is_empty() {
                 loaders.push(ModLoader {
                     name: "Fabric".to_string(),
+                    versions,
+                });
+            }
+        }
+
+        // Quilt
+        if let Ok(versions) = self.get_quilt_versions(mc_version).await {
+            if !versions.is_empty() {
+                loaders.push(ModLoader {
+                    name: "Quilt".to_string(),
                     versions,
                 });
             }

@@ -45,6 +45,13 @@ export const SERVER_TYPES: ServerType[] = [
     icon: <Layers className="text-indigo-400" size={24} />,
   },
   {
+    id: 'quilt',
+    name: 'Quilt',
+    description: 'Quilt is an open-source, community-driven modding toolchain, designed primarily for Minecraft.',
+    category: 'Playable Server',
+    icon: <Box className="text-pink-400" size={24} />,
+  },
+  {
     id: 'bungeecord',
     name: 'BungeeCord',
     description: 'Efficiently proxies, maintains connections and transport between multiple servers.',

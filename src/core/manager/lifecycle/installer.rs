@@ -57,11 +57,14 @@ impl ServerManager {
             if let Some(loader) = &instance.mod_loader {
                 let loader_lower = loader.to_lowercase();
                 let is_fabric = loader_lower == "fabric";
+                let is_quilt = loader_lower == "quilt";
                 let is_forge = loader_lower == "forge";
                 let is_neoforge = loader_lower == "neoforge";
 
                 if is_fabric {
                     self.install_fabric(Arc::clone(&server), &instance).await?;
+                } else if is_quilt {
+                    self.install_quilt(Arc::clone(&server), &instance).await?;
                 } else if is_forge {
                     self.install_forge(Arc::clone(&server), &instance).await?;
                 } else if is_neoforge {

@@ -7,6 +7,7 @@ pub mod neoforge;
 pub mod paper;
 pub mod proxy;
 pub mod purpur;
+pub mod quilt;
 pub mod query;
 pub mod types;
 

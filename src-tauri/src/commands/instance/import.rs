@@ -423,6 +423,9 @@ pub async fn detect_server_type(
                         if relative_name.contains("net/fabricmc") {
                             files.insert("fabric_marker".to_string());
                         }
+                        if relative_name.contains("org/quiltmc") {
+                            files.insert("quilt_marker".to_string());
+                        }
                     }
                 } else {
                     if file.is_dir() {
@@ -442,6 +445,9 @@ pub async fn detect_server_type(
                         }
                         if name.contains("net/fabricmc") {
                             files.insert("fabric_marker".to_string());
+                        }
+                        if name.contains("org/quiltmc") {
+                            files.insert("quilt_marker".to_string());
                         }
                     }
                 }
@@ -480,6 +486,9 @@ pub async fn detect_server_type(
                                 if relative_name.contains("net/fabricmc") {
                                     files.insert("fabric_marker".to_string());
                                 }
+                                if relative_name.contains("org/quiltmc") {
+                                    files.insert("quilt_marker".to_string());
+                                }
                             }
                         }
                     } else {
@@ -501,6 +510,9 @@ pub async fn detect_server_type(
                             if name.contains("net/fabricmc") {
                                 files.insert("fabric_marker".to_string());
                             }
+                            if name.contains("org/quiltmc") {
+                                files.insert("quilt_marker".to_string());
+                            }
                         }
                     }
                     Ok(true)
@@ -512,18 +524,19 @@ pub async fn detect_server_type(
     // Detection Logic (Heuristics)
 
     // Quilt
-    if files
-        .iter()
-        .any(|f| f.to_lowercase().contains("quilt-server-launch.jar"))
+    if files.iter().any(|f| {
+        let fl = f.to_lowercase();
+        fl.contains("quilt-server-launch.jar") || fl.contains("quilt-server.jar")
+    }) || files.contains("quilt_marker")
     {
         return Ok("quilt".to_string());
     }
 
     // Fabric
-    if files
-        .iter()
-        .any(|f| f.to_lowercase().contains("fabric-server-launch.jar"))
-        || files.contains("fabric_marker")
+    if files.iter().any(|f| {
+        let fl = f.to_lowercase();
+        fl.contains("fabric-server-launch.jar") || fl.contains("fabric-server.jar")
+    }) || files.contains("fabric_marker")
     {
         return Ok("fabric".to_string());
     }

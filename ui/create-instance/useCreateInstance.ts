@@ -93,6 +93,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       setSelectedLoader('forge');
     } else if (selectedServerType === 'fabric') {
       setSelectedLoader('fabric');
+    } else if (selectedServerType === 'quilt') {
+      setSelectedLoader('quilt');
     } else if (selectedServerType === 'vanilla') {
       setSelectedLoader('none');
     } else if (selectedServerType) {
@@ -165,7 +167,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   }
 
   async function loadModLoaders(version: string) {
-    const isModded = ['forge', 'fabric', 'neoforge', 'paper', 'purpur', 'velocity', 'bungeecord'].includes(selectedServerType || '');
+    const isModded = ['forge', 'fabric', 'quilt', 'neoforge', 'paper', 'purpur', 'velocity', 'bungeecord'].includes(selectedServerType || '');
     if (!isModded) {
       setModLoaders([]);
       return;

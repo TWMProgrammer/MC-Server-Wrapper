@@ -34,6 +34,13 @@ impl ServerManager {
             final_jar_path = Some(instance.path.join("fabric-server.jar"));
         }
 
+        // Check for Quilt server
+        if loader_lower.as_deref() == Some("quilt")
+            && instance.path.join("quilt-server.jar").exists()
+        {
+            final_jar_path = Some(instance.path.join("quilt-server.jar"));
+        }
+
         // Check for run scripts (modern Forge/NeoForge)
         let run_script_name = if cfg!(windows) { "run.bat" } else { "run.sh" };
         if instance.path.join(run_script_name).exists() {
@@ -54,7 +61,9 @@ impl ServerManager {
                 let is_imported = instance.version == "Imported";
                 let has_specialized = final_run_script.is_some()
                     || (loader_lower.as_deref() == Some("fabric")
-                        && instance.path.join("fabric-server.jar").exists());
+                        && instance.path.join("fabric-server.jar").exists())
+                    || (loader_lower.as_deref() == Some("quilt")
+                        && instance.path.join("quilt-server.jar").exists());
 
                 if is_imported || !has_specialized {
                     if let Some(jar_idx) = instance.settings.startup_line.find("-jar ") {
