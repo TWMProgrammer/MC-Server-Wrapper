@@ -132,7 +132,7 @@ describe('Console', () => {
             />
         );
 
-        const scrollContainer = container.querySelector('.overflow-y-auto')!;
+        const scrollContainer = container.querySelector('.overflow-auto')!;
 
         // Mock scroll properties
         Object.defineProperty(scrollContainer, 'scrollTop', { value: 0, configurable: true });
@@ -148,7 +148,7 @@ describe('Console', () => {
         });
     });
 
-    it('implements virtualization structure', () => {
+    it('implements virtualization structure when wrapping is disabled', () => {
         const mockLogs = Array.from({ length: 100 }, (_, i) => `Line ${i}`);
         const { container } = render(
             <Console
@@ -160,8 +160,35 @@ describe('Console', () => {
             />
         );
 
-        // Check for the virtualization wrapper
-        const virtualWrapper = container.querySelector('[style*="height"]');
-        expect(virtualWrapper).toBeDefined();
+        // Disable wrapping
+        const wrapCheckbox = screen.getByText('Wrap');
+        fireEvent.click(wrapCheckbox);
+
+        // Check for the virtualization wrapper (div with explicit height style)
+        // We look for the inner container that has the total height set
+        // The style string might vary in spacing, so we look for the attribute
+        const virtualWrapper = container.querySelector('div[style*="height:"]');
+        expect(virtualWrapper).not.toBeNull();
+    });
+
+    it('renders wrapped logs by default without virtualization', () => {
+        const mockLogs = Array.from({ length: 100 }, (_, i) => `Line ${i}`);
+        const { container } = render(
+            <Console
+                logs={mockLogs}
+                consoleEndRef={consoleEndRef}
+                command=""
+                onCommandChange={onCommandChange}
+                onSendCommand={onSendCommand}
+            />
+        );
+
+        // Should NOT have virtualization wrapper by default
+        const virtualWrapper = container.querySelector('div[style*="height:"]');
+        expect(virtualWrapper).toBeNull();
+
+        // Should have simple flex container
+        const flexContainer = container.querySelector('.flex.flex-col');
+        expect(flexContainer).not.toBeNull();
     });
 });

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
-import { Terminal, Maximize2, Send, ChevronRight, Activity } from 'lucide-react'
+import { Terminal, Maximize2, Send, ChevronRight, Activity, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Ansi from 'ansi-to-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { cn } from '../utils'
 import { useAppSettings, AppSettings } from '../hooks/useAppSettings'
 
@@ -29,11 +30,12 @@ export function Console({
   const { settings: hookSettings } = useAppSettings();
   const settings = propSettings || hookSettings;
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isWrapped, setIsWrapped] = useState(true);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isAutoScrolling = useRef(false);
-  const LINE_HEIGHT = 22; // Approximate height of a log line
+  const LINE_HEIGHT = 18; // Approximate height of a log line
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -100,23 +102,48 @@ export function Console({
     const timestamp = timestampMatch ? timestampMatch[0] : '';
     const rest = timestampMatch ? line.slice(timestamp.length) : line;
 
+    // Split text by URLs (http/https), excluding whitespace and ANSI escape codes
+    const parts = rest.split(/(https?:\/\/[^\s\x1b]+)/g);
+
     let typeColor = settings.use_white_console_text
-      ? 'text-gray-900 dark:text-white/90 font-medium'
+      ? 'text-gray-900 dark:text-white/90'
       : 'text-gray-400';
 
-    if (line.includes('ERROR') || line.includes('Exception')) typeColor = 'text-accent-rose font-bold';
-    else if (line.includes('WARN')) typeColor = 'text-accent-amber font-bold';
+    if (line.includes('ERROR') || line.includes('Exception')) typeColor = 'text-accent-rose';
+    else if (line.includes('WARN')) typeColor = 'text-accent-amber';
     else if (line.includes('INFO')) {
       typeColor = settings.use_white_console_text
-        ? 'text-gray-900 dark:text-white/90 font-bold'
-        : 'text-primary/80 font-bold';
+        ? 'text-gray-900 dark:text-white/90'
+        : 'text-primary/80';
     }
 
     return (
-      <div className="flex gap-3 py-0.5 group hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors rounded px-2 -mx-2">
-        {timestamp && <span className="text-gray-400 dark:text-white/20 shrink-0 select-none font-medium">{timestamp}</span>}
-        <span className={cn("break-all leading-relaxed", typeColor)}>
-          <Ansi>{rest}</Ansi>
+      <div className="flex gap-2 py-0 group hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors rounded px-2 -mx-2">
+        {timestamp && <span className="text-gray-400 dark:text-white/20 shrink-0 select-none">{timestamp}</span>}
+        <span className={cn("leading-tight", isWrapped ? "whitespace-pre-wrap break-all" : "whitespace-pre", typeColor)}>
+          {parts.map((part, i) => {
+            if (part.match(/^https?:\/\//)) {
+              return (
+                <a
+                  key={i}
+                  href={part}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    try {
+                      await openUrl(part);
+                    } catch (err) {
+                      console.error("Failed to open URL:", err);
+                    }
+                  }}
+                  className="underline hover:text-blue-400 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                  title="Click to open in default browser"
+                >
+                  <Ansi>{part}</Ansi>
+                </a>
+              );
+            }
+            return <Ansi key={i}>{part}</Ansi>;
+          })}
         </span>
       </div>
     );
@@ -147,35 +174,71 @@ export function Console({
           <Terminal size={18} className="text-primary" />
           <span className="tracking-tight text-gray-900 dark:text-white">Live Server Console</span>
         </div>
-        {!isFull && onViewFull && (
-          <button
-            onClick={onViewFull}
-            className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all group"
-            title="Expand Console"
-          >
-            <Maximize2 size={16} className="group-hover:scale-110 transition-transform" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer group select-none">
+            <div className="relative flex items-center">
+              <input
+                type="checkbox"
+                checked={isWrapped}
+                onChange={(e) => setIsWrapped(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className={cn(
+                "w-3.5 h-3.5 rounded border transition-all flex items-center justify-center",
+                isWrapped
+                  ? "bg-primary border-primary"
+                  : "border-gray-400 dark:border-white/30 group-hover:border-primary/50"
+              )}>
+                {isWrapped && <Check size={10} className="text-white" />}
+              </div>
+            </div>
+            <span className={cn(
+              "text-xs font-medium transition-colors",
+              isWrapped ? "text-primary" : "text-gray-500 group-hover:text-gray-900 dark:group-hover:text-gray-300"
+            )}>
+              Wrap
+            </span>
+          </label>
+          {!isFull && onViewFull && (
+            <button
+              onClick={onViewFull}
+              className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all group"
+              title="Expand Console"
+            >
+              <Maximize2 size={16} className="group-hover:scale-110 transition-transform" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn(
-          "flex-1 p-6 font-mono overflow-y-auto no-scrollbar bg-black/5 dark:bg-black/40 relative",
+          "flex-1 p-6 font-mono overflow-auto no-scrollbar bg-black/5 dark:bg-black/40 relative",
           isFull ? "text-sm" : "text-[13px]"
         )}
       >
         {logs && logs.length > 0 ? (
-          <div style={{ height: totalHeight, position: 'relative' }}>
-            <div style={{ transform: `translateY(${offsetTop}px)`, position: 'absolute', top: 0, left: 0, right: 0 }}>
-              {visibleLogs.map((line, i) => (
-                <div key={startIndex + i} style={{ height: LINE_HEIGHT, overflow: 'hidden' }}>
+          isWrapped ? (
+            <div className="flex flex-col">
+              {logs.map((line, i) => (
+                <div key={i} className="min-h-[18px]">
                   {formatLogLine(line)}
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div style={{ height: totalHeight, position: 'relative' }}>
+              <div style={{ transform: `translateY(${offsetTop}px)`, position: 'absolute', top: 0, left: 0, right: 0 }}>
+                {visibleLogs.map((line, i) => (
+                  <div key={startIndex + i} style={{ height: LINE_HEIGHT, overflow: 'hidden' }}>
+                    {formatLogLine(line)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-white/20 space-y-4">
             <Terminal size={48} className="opacity-10" />
