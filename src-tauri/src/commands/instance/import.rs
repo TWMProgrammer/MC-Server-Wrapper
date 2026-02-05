@@ -1,11 +1,11 @@
 use mc_server_wrapper_core::instance::{InstanceManager, InstanceMetadata};
-use tauri::{State, Emitter};
-use std::sync::Arc;
-use std::path::PathBuf;
-use std::collections::HashSet;
 use serde::Serialize;
+use std::collections::HashSet;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tauri::{Emitter, State};
 
-use super::super::{CommandResult, AppError};
+use super::super::{AppError, CommandResult};
 
 #[derive(Debug, Serialize)]
 pub struct ZipEntry {
@@ -26,11 +26,11 @@ pub async fn import_instance(
     app_handle: tauri::AppHandle,
     instance_manager: State<'_, Arc<InstanceManager>>,
     name: String,
-    source_path: String,
-    jar_name: String,
-    server_type: String,
-    root_within_zip: Option<String>,
-    script_path: Option<String>,
+    #[serde(rename = "sourcePath")] source_path: String,
+    #[serde(rename = "jarName")] jar_name: String,
+    #[serde(rename = "serverType")] server_type: String,
+    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+    #[serde(rename = "scriptPath")] script_path: Option<String>,
 ) -> CommandResult<InstanceMetadata> {
     let path = PathBuf::from(source_path);
     let mod_loader = if server_type == "vanilla" || server_type == "custom" {
@@ -38,21 +38,36 @@ pub async fn import_instance(
     } else {
         Some(server_type)
     };
-    
+
     let app_handle_clone = app_handle.clone();
-    instance_manager.import_instance(&name, path, jar_name, mod_loader, root_within_zip, script_path, move |current, total, message| {
-        let _ = app_handle_clone.emit("import-progress", ImportProgressPayload {
-            current,
-            total,
-            message,
-        });
-    })
+    instance_manager
+        .import_instance(
+            &name,
+            path,
+            jar_name,
+            mod_loader,
+            root_within_zip,
+            script_path,
+            move |current, total, message| {
+                let _ = app_handle_clone.emit(
+                    "import-progress",
+                    ImportProgressPayload {
+                        current,
+                        total,
+                        message,
+                    },
+                );
+            },
+        )
         .await
         .map_err(AppError::from)
 }
 
 #[tauri::command]
-pub async fn list_jars_in_source(source_path: String, root_within_zip: Option<String>) -> CommandResult<Vec<String>> {
+pub async fn list_jars_in_source(
+    #[serde(rename = "sourcePath")] source_path: String,
+    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+) -> CommandResult<Vec<String>> {
     let path = PathBuf::from(&source_path);
     let mut jars = Vec::new();
 
@@ -71,25 +86,38 @@ pub async fn list_jars_in_source(source_path: String, root_within_zip: Option<St
             }
         }
     } else if path.is_file() {
-        let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+        let extension = path
+            .extension()
+            .map_or("", |ext| ext.to_str().unwrap_or(""))
+            .to_lowercase();
         if extension == "zip" {
             let file = std::fs::File::open(&path).map_err(AppError::from)?;
-            let mut archive = zip::ZipArchive::new(file).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
-            
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+
             let root = root_within_zip.map(|r| {
-                if r.ends_with('/') { r } else { format!("{}/", r) }
+                if r.ends_with('/') {
+                    r
+                } else {
+                    format!("{}/", r)
+                }
             });
 
             for i in 0..archive.len() {
-                let file = archive.by_index(i).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+                let file = archive
+                    .by_index(i)
+                    .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
                 let name = file.name();
-                
+
                 if let Some(ref root_path) = root {
                     if !name.starts_with(root_path) {
                         continue;
                     }
                     let relative_name = name.strip_prefix(root_path).unwrap_or(name);
-                    if !file.is_dir() && relative_name.to_lowercase().ends_with(".jar") && !relative_name.contains('/') {
+                    if !file.is_dir()
+                        && relative_name.to_lowercase().ends_with(".jar")
+                        && !relative_name.contains('/')
+                    {
                         jars.push(relative_name.to_string());
                     }
                 } else if !file.is_dir() && name.to_lowercase().ends_with(".jar") {
@@ -98,24 +126,34 @@ pub async fn list_jars_in_source(source_path: String, root_within_zip: Option<St
             }
         } else if extension == "7z" {
             let root = root_within_zip.as_deref().map(|r| {
-                if r.ends_with('/') { r.to_string() } else { format!("{}/", r) }
-            });
-            
-            sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
-                let name = entry.name();
-                if let Some(ref root_path) = root {
-                    if !name.starts_with(root_path) {
-                        return Ok(true);
-                    }
-                    let relative_name = name.strip_prefix(root_path).unwrap_or(name);
-                    if !entry.is_directory() && relative_name.to_lowercase().ends_with(".jar") && !relative_name.contains('/') {
-                        jars.push(relative_name.to_string());
-                    }
-                } else if !entry.is_directory() && name.to_lowercase().ends_with(".jar") {
-                    jars.push(name.to_string());
+                if r.ends_with('/') {
+                    r.to_string()
+                } else {
+                    format!("{}/", r)
                 }
-                Ok(true)
-            }).map_err(|e| AppError::Config(e.to_string()))?;
+            });
+
+            sevenz_rust::SevenZReader::open(&path, "".into())
+                .map_err(|e| AppError::Config(e.to_string()))?
+                .for_each_entries(|entry, _| {
+                    let name = entry.name();
+                    if let Some(ref root_path) = root {
+                        if !name.starts_with(root_path) {
+                            return Ok(true);
+                        }
+                        let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+                        if !entry.is_directory()
+                            && relative_name.to_lowercase().ends_with(".jar")
+                            && !relative_name.contains('/')
+                        {
+                            jars.push(relative_name.to_string());
+                        }
+                    } else if !entry.is_directory() && name.to_lowercase().ends_with(".jar") {
+                        jars.push(name.to_string());
+                    }
+                    Ok(true)
+                })
+                .map_err(|e| AppError::Config(e.to_string()))?;
         }
     }
 
@@ -123,7 +161,10 @@ pub async fn list_jars_in_source(source_path: String, root_within_zip: Option<St
 }
 
 #[tauri::command]
-pub async fn list_scripts_in_source(source_path: String, root_within_zip: Option<String>) -> CommandResult<Vec<String>> {
+pub async fn list_scripts_in_source(
+    #[serde(rename = "sourcePath")] source_path: String,
+    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+) -> CommandResult<Vec<String>> {
     let path = PathBuf::from(&source_path);
     let mut scripts = Vec::new();
 
@@ -143,59 +184,92 @@ pub async fn list_scripts_in_source(source_path: String, root_within_zip: Option
             }
         }
     } else if path.is_file() {
-        let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+        let extension = path
+            .extension()
+            .map_or("", |ext| ext.to_str().unwrap_or(""))
+            .to_lowercase();
         if extension == "zip" {
             let file = std::fs::File::open(&path).map_err(AppError::from)?;
-            let mut archive = zip::ZipArchive::new(file).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
-            
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+
             let root = root_within_zip.map(|r| {
-                if r.ends_with('/') { r } else { format!("{}/", r) }
+                if r.ends_with('/') {
+                    r
+                } else {
+                    format!("{}/", r)
+                }
             });
 
             for i in 0..archive.len() {
-                let file = archive.by_index(i).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+                let file = archive
+                    .by_index(i)
+                    .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
                 let name = file.name();
-                
+
                 if let Some(ref root_path) = root {
                     if !name.starts_with(root_path) {
                         continue;
                     }
                     let relative_name = name.strip_prefix(root_path).unwrap_or(name);
                     let lower_name = relative_name.to_lowercase();
-                    if !file.is_dir() && (lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh")) && !relative_name.contains('/') {
+                    if !file.is_dir()
+                        && (lower_name.ends_with(".bat")
+                            || lower_name.ends_with(".cmd")
+                            || lower_name.ends_with(".sh"))
+                        && !relative_name.contains('/')
+                    {
                         scripts.push(relative_name.to_string());
                     }
                 } else if !file.is_dir() {
                     let lower_name = name.to_lowercase();
-                    if lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh") {
+                    if lower_name.ends_with(".bat")
+                        || lower_name.ends_with(".cmd")
+                        || lower_name.ends_with(".sh")
+                    {
                         scripts.push(name.to_string());
                     }
                 }
             }
         } else if extension == "7z" {
             let root = root_within_zip.as_deref().map(|r| {
-                if r.ends_with('/') { r.to_string() } else { format!("{}/", r) }
+                if r.ends_with('/') {
+                    r.to_string()
+                } else {
+                    format!("{}/", r)
+                }
             });
 
-            sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
-                let name = entry.name();
-                if let Some(ref root_path) = root {
-                    if !name.starts_with(root_path) {
-                        return Ok(true);
+            sevenz_rust::SevenZReader::open(&path, "".into())
+                .map_err(|e| AppError::Config(e.to_string()))?
+                .for_each_entries(|entry, _| {
+                    let name = entry.name();
+                    if let Some(ref root_path) = root {
+                        if !name.starts_with(root_path) {
+                            return Ok(true);
+                        }
+                        let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+                        let lower_name = relative_name.to_lowercase();
+                        if !entry.is_directory()
+                            && (lower_name.ends_with(".bat")
+                                || lower_name.ends_with(".cmd")
+                                || lower_name.ends_with(".sh"))
+                            && !relative_name.contains('/')
+                        {
+                            scripts.push(relative_name.to_string());
+                        }
+                    } else if !entry.is_directory() {
+                        let lower_name = name.to_lowercase();
+                        if lower_name.ends_with(".bat")
+                            || lower_name.ends_with(".cmd")
+                            || lower_name.ends_with(".sh")
+                        {
+                            scripts.push(name.to_string());
+                        }
                     }
-                    let relative_name = name.strip_prefix(root_path).unwrap_or(name);
-                    let lower_name = relative_name.to_lowercase();
-                    if !entry.is_directory() && (lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh")) && !relative_name.contains('/') {
-                        scripts.push(relative_name.to_string());
-                    }
-                } else if !entry.is_directory() {
-                    let lower_name = name.to_lowercase();
-                    if lower_name.ends_with(".bat") || lower_name.ends_with(".cmd") || lower_name.ends_with(".sh") {
-                        scripts.push(name.to_string());
-                    }
-                }
-                Ok(true)
-            }).map_err(|e| AppError::Config(e.to_string()))?;
+                    Ok(true)
+                })
+                .map_err(|e| AppError::Config(e.to_string()))?;
         }
     }
 
@@ -203,26 +277,39 @@ pub async fn list_scripts_in_source(source_path: String, root_within_zip: Option
 }
 
 #[tauri::command]
-pub async fn check_server_properties_exists(source_path: String, root_within_zip: Option<String>) -> CommandResult<bool> {
+pub async fn check_server_properties_exists(
+    #[serde(rename = "sourcePath")] source_path: String,
+    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+) -> CommandResult<bool> {
     let path = PathBuf::from(&source_path);
 
     if path.is_dir() {
         Ok(path.join("server.properties").exists())
     } else if path.is_file() {
-        let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+        let extension = path
+            .extension()
+            .map_or("", |ext| ext.to_str().unwrap_or(""))
+            .to_lowercase();
         if extension == "zip" {
             let file = std::fs::File::open(&path).map_err(AppError::from)?;
-            let mut archive = zip::ZipArchive::new(file).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
-            
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+
             let target = if let Some(root) = root_within_zip {
-                let root = if root.ends_with('/') { root } else { format!("{}/", root) };
+                let root = if root.ends_with('/') {
+                    root
+                } else {
+                    format!("{}/", root)
+                };
                 format!("{}server.properties", root)
             } else {
                 "server.properties".to_string()
             };
 
             for i in 0..archive.len() {
-                let file = archive.by_index(i).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+                let file = archive
+                    .by_index(i)
+                    .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
                 if file.name() == target {
                     return Ok(true);
                 }
@@ -230,20 +317,27 @@ pub async fn check_server_properties_exists(source_path: String, root_within_zip
             Ok(false)
         } else if extension == "7z" {
             let target = if let Some(root) = root_within_zip {
-                let root = if root.ends_with('/') { root } else { format!("{}/", root) };
+                let root = if root.ends_with('/') {
+                    root
+                } else {
+                    format!("{}/", root)
+                };
                 format!("{}server.properties", root)
             } else {
                 "server.properties".to_string()
             };
 
             let mut exists = false;
-            sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
-                if entry.name() == target {
-                    exists = true;
-                    return Ok(false); // Stop iterating
-                }
-                Ok(true)
-            }).map_err(|e| AppError::Config(e.to_string()))?;
+            sevenz_rust::SevenZReader::open(&path, "".into())
+                .map_err(|e| AppError::Config(e.to_string()))?
+                .for_each_entries(|entry, _| {
+                    if entry.name() == target {
+                        exists = true;
+                        return Ok(false); // Stop iterating
+                    }
+                    Ok(true)
+                })
+                .map_err(|e| AppError::Config(e.to_string()))?;
             Ok(exists)
         } else {
             Ok(false)
@@ -254,7 +348,10 @@ pub async fn check_server_properties_exists(source_path: String, root_within_zip
 }
 
 #[tauri::command]
-pub async fn detect_server_type(source_path: String, root_within_zip: Option<String>) -> CommandResult<String> {
+pub async fn detect_server_type(
+    #[serde(rename = "sourcePath")] source_path: String,
+    #[serde(rename = "rootWithinZip")] root_within_zip: Option<String>,
+) -> CommandResult<String> {
     let path = PathBuf::from(&source_path);
     let mut files = HashSet::new();
     let mut folders = HashSet::new();
@@ -263,7 +360,10 @@ pub async fn detect_server_type(source_path: String, root_within_zip: Option<Str
         let mut entries = tokio::fs::read_dir(&path).await.map_err(AppError::from)?;
         while let Some(entry) = entries.next_entry().await.map_err(AppError::from)? {
             let entry_path = entry.path();
-            if let Some(name) = entry_path.file_name().map(|n| n.to_string_lossy().to_string()) {
+            if let Some(name) = entry_path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+            {
                 if entry_path.is_dir() {
                     folders.insert(name);
                 } else {
@@ -272,19 +372,29 @@ pub async fn detect_server_type(source_path: String, root_within_zip: Option<Str
             }
         }
     } else if path.is_file() {
-        let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+        let extension = path
+            .extension()
+            .map_or("", |ext| ext.to_str().unwrap_or(""))
+            .to_lowercase();
         if extension == "zip" {
             let file = std::fs::File::open(&path).map_err(AppError::from)?;
-            let mut archive = zip::ZipArchive::new(file).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
-            
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+
             let root = root_within_zip.map(|r| {
-                if r.ends_with('/') { r } else { format!("{}/", r) }
+                if r.ends_with('/') {
+                    r
+                } else {
+                    format!("{}/", r)
+                }
             });
 
             for i in 0..archive.len() {
-                let file = archive.by_index(i).map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
+                let file = archive
+                    .by_index(i)
+                    .map_err(|e: zip::result::ZipError| AppError::Config(e.to_string()))?;
                 let name = file.name();
-                
+
                 if let Some(ref root_path) = root {
                     if !name.starts_with(root_path) {
                         continue;
@@ -333,82 +443,102 @@ pub async fn detect_server_type(source_path: String, root_within_zip: Option<Str
             }
         } else if extension == "7z" {
             let root = root_within_zip.map(|r| {
-                if r.ends_with('/') { r } else { format!("{}/", r) }
+                if r.ends_with('/') {
+                    r
+                } else {
+                    format!("{}/", r)
+                }
             });
 
-            sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
-                let name = entry.name();
-                if let Some(ref root_path) = root {
-                    if name.starts_with(root_path) {
-                        let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+            sevenz_rust::SevenZReader::open(&path, "".into())
+                .map_err(|e| AppError::Config(e.to_string()))?
+                .for_each_entries(|entry, _| {
+                    let name = entry.name();
+                    if let Some(ref root_path) = root {
+                        if name.starts_with(root_path) {
+                            let relative_name = name.strip_prefix(root_path).unwrap_or(name);
+                            if entry.is_directory() {
+                                if let Some(folder_name) = relative_name.split('/').next() {
+                                    if !folder_name.is_empty() {
+                                        folders.insert(folder_name.to_string());
+                                    }
+                                }
+                            } else if !relative_name.contains('/') {
+                                files.insert(relative_name.to_string());
+                            }
+
+                            if relative_name.starts_with("libraries/") {
+                                folders.insert("libraries".to_string());
+                                if relative_name.contains("net/minecraftforge") {
+                                    files.insert("forge_marker".to_string());
+                                }
+                                if relative_name.contains("net/fabricmc") {
+                                    files.insert("fabric_marker".to_string());
+                                }
+                            }
+                        }
+                    } else {
                         if entry.is_directory() {
-                            if let Some(folder_name) = relative_name.split('/').next() {
+                            if let Some(folder_name) = name.split('/').next() {
                                 if !folder_name.is_empty() {
                                     folders.insert(folder_name.to_string());
                                 }
                             }
-                        } else if !relative_name.contains('/') {
-                            files.insert(relative_name.to_string());
+                        } else if !name.contains('/') {
+                            files.insert(name.to_string());
                         }
 
-                        if relative_name.starts_with("libraries/") {
+                        if name.starts_with("libraries/") {
                             folders.insert("libraries".to_string());
-                            if relative_name.contains("net/minecraftforge") {
+                            if name.contains("net/minecraftforge") {
                                 files.insert("forge_marker".to_string());
                             }
-                            if relative_name.contains("net/fabricmc") {
+                            if name.contains("net/fabricmc") {
                                 files.insert("fabric_marker".to_string());
                             }
                         }
                     }
-                } else {
-                    if entry.is_directory() {
-                        if let Some(folder_name) = name.split('/').next() {
-                            if !folder_name.is_empty() {
-                                folders.insert(folder_name.to_string());
-                            }
-                        }
-                    } else if !name.contains('/') {
-                        files.insert(name.to_string());
-                    }
-
-                    if name.starts_with("libraries/") {
-                        folders.insert("libraries".to_string());
-                        if name.contains("net/minecraftforge") {
-                            files.insert("forge_marker".to_string());
-                        }
-                        if name.contains("net/fabricmc") {
-                            files.insert("fabric_marker".to_string());
-                        }
-                    }
-                }
-                Ok(true)
-            }).map_err(|e| AppError::Config(e.to_string()))?;
+                    Ok(true)
+                })
+                .map_err(|e| AppError::Config(e.to_string()))?;
         }
     }
 
     // Detection Logic (Heuristics)
-    
+
     // Quilt
-    if files.iter().any(|f| f.to_lowercase().contains("quilt-server-launch.jar")) {
+    if files
+        .iter()
+        .any(|f| f.to_lowercase().contains("quilt-server-launch.jar"))
+    {
         return Ok("quilt".to_string());
     }
 
     // Fabric
-    if files.iter().any(|f| f.to_lowercase().contains("fabric-server-launch.jar")) || files.contains("fabric_marker") {
+    if files
+        .iter()
+        .any(|f| f.to_lowercase().contains("fabric-server-launch.jar"))
+        || files.contains("fabric_marker")
+    {
         return Ok("fabric".to_string());
     }
 
     // Forge
-    if files.iter().any(|f| f.to_lowercase().contains("forge") && f.to_lowercase().ends_with(".jar")) 
-        || files.contains("user_jvm_args.txt") 
-        || files.contains("forge_marker") 
+    if files
+        .iter()
+        .any(|f| f.to_lowercase().contains("forge") && f.to_lowercase().ends_with(".jar"))
+        || files.contains("user_jvm_args.txt")
+        || files.contains("forge_marker")
     {
         return Ok("forge".to_string());
     }
 
     // Paper/Spigot/Bukkit
-    if folders.contains("plugins") || files.contains("paper.yml") || files.contains("spigot.yml") || files.contains("bukkit.yml") {
+    if folders.contains("plugins")
+        || files.contains("paper.yml")
+        || files.contains("spigot.yml")
+        || files.contains("bukkit.yml")
+    {
         return Ok("paper".to_string());
     }
 
@@ -427,35 +557,57 @@ pub async fn list_archive_contents(archive_path: String) -> CommandResult<Vec<Zi
         return Err(AppError::Validation("Path is not a file".to_string()));
     }
 
-    let extension = path.extension().map_or("", |ext| ext.to_str().unwrap_or("")).to_lowercase();
+    let extension = path
+        .extension()
+        .map_or("", |ext| ext.to_str().unwrap_or(""))
+        .to_lowercase();
     let mut entries = Vec::new();
 
     if extension == "zip" {
         let file = std::fs::File::open(&path).map_err(AppError::from)?;
-        let mut archive = zip::ZipArchive::new(file).map_err(|e| AppError::Config(e.to_string()))?;
-        
+        let mut archive =
+            zip::ZipArchive::new(file).map_err(|e| AppError::Config(e.to_string()))?;
+
         for i in 0..archive.len() {
-            let file = archive.by_index(i).map_err(|e| AppError::Config(e.to_string()))?;
+            let file = archive
+                .by_index(i)
+                .map_err(|e| AppError::Config(e.to_string()))?;
             let name = file.name();
-            
+
             entries.push(ZipEntry {
-                name: name.split('/').filter(|s| !s.is_empty()).last().unwrap_or(name).to_string(),
+                name: name
+                    .split('/')
+                    .filter(|s| !s.is_empty())
+                    .last()
+                    .unwrap_or(name)
+                    .to_string(),
                 path: name.to_string(),
                 is_dir: file.is_dir(),
             });
         }
     } else if extension == "7z" {
-        sevenz_rust::SevenZReader::open(&path, "".into()).map_err(|e| AppError::Config(e.to_string()))?.for_each_entries(|entry, _| {
-            let name = entry.name();
-            entries.push(ZipEntry {
-                name: name.split('/').filter(|s| !s.is_empty()).last().unwrap_or(name).to_string(),
-                path: name.to_string(),
-                is_dir: entry.is_directory(),
-            });
-            Ok(true)
-        }).map_err(|e| AppError::Config(e.to_string()))?;
+        sevenz_rust::SevenZReader::open(&path, "".into())
+            .map_err(|e| AppError::Config(e.to_string()))?
+            .for_each_entries(|entry, _| {
+                let name = entry.name();
+                entries.push(ZipEntry {
+                    name: name
+                        .split('/')
+                        .filter(|s| !s.is_empty())
+                        .last()
+                        .unwrap_or(name)
+                        .to_string(),
+                    path: name.to_string(),
+                    is_dir: entry.is_directory(),
+                });
+                Ok(true)
+            })
+            .map_err(|e| AppError::Config(e.to_string()))?;
     } else {
-        return Err(AppError::Validation(format!("Unsupported archive format: .{}", extension)));
+        return Err(AppError::Validation(format!(
+            "Unsupported archive format: .{}",
+            extension
+        )));
     }
 
     Ok(entries)

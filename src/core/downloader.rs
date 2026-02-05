@@ -58,7 +58,11 @@ pub struct VersionDownloader {
 impl VersionDownloader {
     pub fn new(cache_dir: Option<PathBuf>) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(30))
+                .connect_timeout(Duration::from_secs(10))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             cache_dir,
         }
     }

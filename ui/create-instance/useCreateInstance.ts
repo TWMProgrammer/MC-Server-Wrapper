@@ -243,9 +243,9 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       const instance = await invoke<Instance>('create_instance_full', {
         name,
         version,
-        mod_loader: modLoader,
-        loader_version: loaderVersion,
-        start_after_creation: startAfterCreation,
+        modLoader: modLoader,
+        loaderVersion: loaderVersion,
+        startAfterCreation: startAfterCreation,
       });
       showToast(`Successfully created instance "${name}"`, 'success');
       onCreated(instance);

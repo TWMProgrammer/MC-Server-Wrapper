@@ -1,27 +1,44 @@
+use super::super::config::ServerConfig;
+use super::super::server::{ResourceUsage, ServerHandle, ServerStatus, generate_ascii_bar};
+use super::ServerManager;
+use anyhow::{Result, anyhow};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use uuid::Uuid;
-use anyhow::{Result, anyhow};
 use tracing::info;
-use super::ServerManager;
-use super::super::server::{ServerHandle, ServerStatus, ResourceUsage, generate_ascii_bar};
-use super::super::config::ServerConfig;
+use uuid::Uuid;
 
 impl ServerManager {
-    async fn build_server_config(&self, instance: &crate::instance::InstanceMetadata) -> ServerConfig {
-        let is_bedrock = instance.mod_loader.as_deref().map(|l| l.to_lowercase() == "bedrock").unwrap_or(false);
-        let bedrock_exe = if cfg!(windows) { "bedrock_server.exe" } else { "bedrock_server" };
+    async fn build_server_config(
+        &self,
+        instance: &crate::instance::InstanceMetadata,
+    ) -> ServerConfig {
+        let is_bedrock = instance
+            .mod_loader
+            .as_deref()
+            .map(|l| l.to_lowercase() == "bedrock")
+            .unwrap_or(false);
+        let bedrock_exe = if cfg!(windows) {
+            "bedrock_server.exe"
+        } else {
+            "bedrock_server"
+        };
         let bedrock_path = instance.path.join(bedrock_exe);
         let jar_path = instance.path.join("server.jar");
 
-        let mut final_jar_path = if is_bedrock { Some(bedrock_path) } else { Some(jar_path) };
+        let mut final_jar_path = if is_bedrock {
+            Some(bedrock_path)
+        } else {
+            Some(jar_path)
+        };
         let mut final_run_script = None;
         let mut args = vec!["nogui".to_string()];
 
         let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
 
         // Check for Fabric server
-        if loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists() {
+        if loader_lower.as_deref() == Some("fabric")
+            && instance.path.join("fabric-server.jar").exists()
+        {
             final_jar_path = Some(instance.path.join("fabric-server.jar"));
         }
 
@@ -41,11 +58,12 @@ impl ServerManager {
                     final_jar_path = None;
                     args.clear();
                 }
-            },
+            }
             LaunchMethod::StartupLine => {
                 let is_imported = instance.version == "Imported";
-                let has_specialized = final_run_script.is_some() || 
-                    (loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists());
+                let has_specialized = final_run_script.is_some()
+                    || (loader_lower.as_deref() == Some("fabric")
+                        && instance.path.join("fabric-server.jar").exists());
 
                 if is_imported || !has_specialized {
                     if let Some(jar_idx) = instance.settings.startup_line.find("-jar ") {
@@ -78,7 +96,11 @@ impl ServerManager {
             if !java_override.is_empty() && java_override != "java" {
                 // Check if it's a managed version ID
                 if let Ok(settings) = self.config_manager.load().await {
-                    if let Some(managed) = settings.managed_java_versions.iter().find(|v| v.id == *java_override) {
+                    if let Some(managed) = settings
+                        .managed_java_versions
+                        .iter()
+                        .find(|v| v.id == *java_override)
+                    {
                         java_path = Some(managed.path.clone());
                     } else {
                         // Check if it's a valid path on disk
@@ -118,12 +140,15 @@ impl ServerManager {
 
     pub async fn get_or_create_server(&self, instance_id: Uuid) -> Result<Arc<ServerHandle>> {
         let mut servers = self.servers.lock().await;
-        
+
         if let Some(server) = servers.get(&instance_id) {
             return Ok(Arc::clone(server));
         }
 
-        let instance = self.instance_manager.get_instance(instance_id).await?
+        let instance = self
+            .instance_manager
+            .get_instance(instance_id)
+            .await?
             .ok_or_else(|| anyhow!("Instance not found"))?;
 
         let config = self.build_server_config(&instance).await;
@@ -134,59 +159,50 @@ impl ServerManager {
 
     pub async fn prepare_server(&self, instance_id: Uuid) -> Result<Arc<ServerHandle>> {
         let server = self.get_or_create_server(instance_id).await?;
-        let instance = self.instance_manager.get_instance(instance_id).await?
+        let instance = self
+            .instance_manager
+            .get_instance(instance_id)
+            .await?
             .ok_or_else(|| anyhow!("Instance not found"))?;
 
-        let is_bedrock = instance.mod_loader.as_deref().map(|l| l.to_lowercase() == "bedrock").unwrap_or(false);
-        let bedrock_exe = if cfg!(windows) { "bedrock_server.exe" } else { "bedrock_server" };
+        let is_bedrock = instance
+            .mod_loader
+            .as_deref()
+            .map(|l| l.to_lowercase() == "bedrock")
+            .unwrap_or(false);
+        let bedrock_exe = if cfg!(windows) {
+            "bedrock_server.exe"
+        } else {
+            "bedrock_server"
+        };
         let bedrock_path = instance.path.join(bedrock_exe);
-        let jar_path = instance.path.join("server.jar");
-        
-        let loader_lower = instance.mod_loader.as_deref().map(|l| l.to_lowercase());
-        let run_script_name = if cfg!(windows) { "run.bat" } else { "run.sh" };
-        
-        // Robust check for existing installation
-        let mut exists = if is_bedrock { 
-            bedrock_path.exists() 
-        } else { 
-            // Check for server.jar
-            jar_path.exists() || 
-            // Check for Fabric server
-            (loader_lower.as_deref() == Some("fabric") && instance.path.join("fabric-server.jar").exists()) ||
-            // Check for modern Forge/NeoForge run scripts
-            instance.path.join(run_script_name).exists()
+
+        // Robust check for existing installation using the built config
+        let config = server.get_config().await;
+        let exists = if let Some(jar) = &config.jar_path {
+            jar.exists()
+        } else if let Some(script) = &config.run_script {
+            instance.path.join(script).exists()
+        } else {
+            // Fallback for Bedrock or edge cases where neither is set but directory isn't empty
+            (is_bedrock && bedrock_path.exists())
+                || (instance.path.exists()
+                    && std::fs::read_dir(&instance.path)
+                        .map(|mut d| d.next().is_some())
+                        .unwrap_or(false))
         };
 
-        // For imported instances, check if the configured executable exists
-        if instance.version == "Imported" {
-            use crate::instance::LaunchMethod;
-            exists = match instance.settings.launch_method {
-                LaunchMethod::BatFile => {
-                    instance.settings.bat_file.as_ref()
-                        .map(|bat| instance.path.join(bat).exists())
-                        .unwrap_or(false)
-                },
-                LaunchMethod::StartupLine => {
-                    // Check if startup line has a -jar argument
-                    if let Some(jar_idx) = instance.settings.startup_line.find("-jar ") {
-                        let after_jar = &instance.settings.startup_line[jar_idx + 5..];
-                        let jar_name = after_jar.split_whitespace().next().unwrap_or("");
-                        !jar_name.is_empty() && instance.path.join(jar_name).exists()
-                    } else {
-                        // If no -jar, check if the startup line itself might be a direct executable path (unlikely but possible)
-                        // Or fallback to directory not empty check
-                        let exe_name = instance.settings.startup_line.split_whitespace().next().unwrap_or("");
-                        (!exe_name.is_empty() && instance.path.join(exe_name).exists()) || 
-                        (instance.path.exists() && std::fs::read_dir(&instance.path).map(|mut d| d.next().is_some()).unwrap_or(false))
-                    }
-                }
-            };
-        }
+        // Determine the target JAR path for download if missing
+        let download_jar_path = config
+            .jar_path
+            .unwrap_or_else(|| instance.path.join("server.jar"));
 
         // Download jar/binary if missing
         if !exists {
             if instance.version == "Imported" {
-                return Err(anyhow!("Imported instance is missing its executable (jar or bat file). Please check the instance settings."));
+                return Err(anyhow!(
+                    "Imported instance is missing its executable (jar or bat file). Please check the instance settings."
+                ));
             }
             if let Some(loader) = &instance.mod_loader {
                 let loader_lower = loader.to_lowercase();
@@ -202,7 +218,8 @@ impl ServerManager {
                 } else if is_forge {
                     self.install_forge(Arc::clone(&server), &instance).await?;
                 } else if is_neoforge {
-                    self.install_neoforge(Arc::clone(&server), &instance).await?;
+                    self.install_neoforge(Arc::clone(&server), &instance)
+                        .await?;
                 } else {
                     let server_clone = Arc::clone(&server);
                     let display_name = match loader_lower.as_str() {
@@ -213,47 +230,81 @@ impl ServerManager {
                         "bedrock" => "Bedrock".to_string(),
                         _ => loader.clone(),
                     };
-                    
-                    let msg = format!("Starting download of {} for version {}", display_name, instance.version);
+
+                    let msg = format!(
+                        "Starting download of {} for version {}",
+                        display_name, instance.version
+                    );
                     info!("{}", msg);
                     server.emit_log(msg);
 
                     let last_percent = Arc::new(AtomicU32::new(0));
                     let display_name_clone = display_name.clone();
-                    self.mod_loader_client.download_loader(
-                        loader,
-                        &instance.version,
-                        instance.loader_version.as_deref(),
-                        &jar_path,
-                        move |current, total| {
-                            let percent = if total > 0 { (current as f64 / total as f64 * 100.0) as u32 } else { 0 };
-                            let prev = last_percent.load(Ordering::Relaxed);
-                            if percent >= prev + 5 || percent == 100 {
-                                last_percent.store(percent, Ordering::Relaxed);
-                                let bar = generate_ascii_bar(current, total);
-                                server_clone.emit_log(format!("Downloading {}... {}", display_name_clone, bar));
-                            }
-                            server_clone.emit_progress(current, total, format!("Downloading {}...", display_name_clone));
-                        }
-                    ).await?;
+                    self.mod_loader_client
+                        .download_loader(
+                            loader,
+                            &instance.version,
+                            instance.loader_version.as_deref(),
+                            &download_jar_path,
+                            move |current, total| {
+                                let percent = if total > 0 {
+                                    (current as f64 / total as f64 * 100.0) as u32
+                                } else {
+                                    0
+                                };
+                                let prev = last_percent.load(Ordering::Relaxed);
+                                if percent >= prev + 5 || percent == 100 {
+                                    last_percent.store(percent, Ordering::Relaxed);
+                                    let bar = generate_ascii_bar(current, total);
+                                    server_clone.emit_log(format!(
+                                        "Downloading {}... {}",
+                                        display_name_clone, bar
+                                    ));
+                                }
+                                server_clone.emit_progress(
+                                    current,
+                                    total,
+                                    format!("Downloading {}...", display_name_clone),
+                                );
+                            },
+                        )
+                        .await?;
                     server.emit_log("Download complete!".to_string());
                 }
             } else {
-                let msg = format!("Starting download of vanilla server for version {}", instance.version);
+                let msg = format!(
+                    "Starting download of vanilla server for version {}",
+                    instance.version
+                );
                 info!("{}", msg);
                 server.emit_log(msg);
                 let server_clone = Arc::clone(&server);
                 let last_percent = Arc::new(AtomicU32::new(0));
-                self.downloader.download_server(&instance.version, &jar_path, move |current, total| {
-                    let percent = if total > 0 { (current as f64 / total as f64 * 100.0) as u32 } else { 0 };
-                    let prev = last_percent.load(Ordering::Relaxed);
-                    if percent >= prev + 5 || percent == 100 {
-                        last_percent.store(percent, Ordering::Relaxed);
-                        let bar = generate_ascii_bar(current, total);
-                        server_clone.emit_log(format!("Downloading vanilla server... {}", bar));
-                    }
-                    server_clone.emit_progress(current, total, "Downloading vanilla server...".to_string());
-                }).await?;
+                self.downloader
+                    .download_server(
+                        &instance.version,
+                        &download_jar_path,
+                        move |current, total| {
+                            let percent = if total > 0 {
+                                (current as f64 / total as f64 * 100.0) as u32
+                            } else {
+                                0
+                            };
+                            let prev = last_percent.load(Ordering::Relaxed);
+                            if percent >= prev + 5 || percent == 100 {
+                                last_percent.store(percent, Ordering::Relaxed);
+                                let bar = generate_ascii_bar(current, total);
+                                server_clone
+                                    .emit_log(format!("Downloading vanilla server... {}", bar));
+                            }
+                            server_clone.emit_progress(
+                                current,
+                                total,
+                                "Downloading vanilla server...".to_string(),
+                            );
+                        },
+                    )
+                    .await?;
                 server.emit_log("Download complete!".to_string());
             }
 
@@ -266,7 +317,7 @@ impl ServerManager {
             }
         }
 
-        // Update server config after potential installation
+        // Update server config after potential installation (in case jar path changed or was created)
         let config = self.build_server_config(&instance).await;
         server.update_config(config).await;
         Ok(server)
@@ -275,15 +326,15 @@ impl ServerManager {
     pub async fn start_server(&self, instance_id: Uuid) -> Result<()> {
         let server = self.prepare_server(instance_id).await?;
         let status = server.get_status().await;
-        
+
         if status != ServerStatus::Stopped && status != ServerStatus::Crashed {
             return Ok(());
         }
 
         server.start().await?;
-        
+
         self.instance_manager.update_last_run(instance_id).await?;
-        
+
         Ok(())
     }
 
@@ -340,7 +391,7 @@ impl ServerManager {
         if let Some(server) = server {
             server.stop().await?;
         }
-        
+
         self.start_server(instance_id).await?;
         Ok(())
     }

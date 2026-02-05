@@ -1,20 +1,20 @@
+pub mod bedrock;
 pub mod fabric;
 pub mod forge;
 pub mod neoforge;
 pub mod paper;
-pub mod purpur;
 pub mod proxy;
-pub mod bedrock;
+pub mod purpur;
 
-use crate::utils::retry_async;
 use crate::cache::CacheManager;
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
+use crate::utils::retry_async;
 use anyhow::{Result, anyhow};
 use futures_util::StreamExt;
-use tokio::io::AsyncWriteExt;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModLoader {
@@ -33,6 +33,8 @@ impl ModLoaderClient {
         Self {
             client: reqwest::Client::builder()
                 .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
+                .timeout(Duration::from_secs(30))
+                .connect_timeout(Duration::from_secs(10))
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
             cache_dir,
@@ -40,7 +42,12 @@ impl ModLoaderClient {
         }
     }
 
-    pub(crate) async fn download_with_progress<F>(&self, url: &str, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()>
+    pub(crate) async fn download_with_progress<F>(
+        &self,
+        url: &str,
+        target_path: impl AsRef<std::path::Path>,
+        on_progress: F,
+    ) -> Result<()>
     where
         F: Fn(u64, u64) + Send + Sync + 'static,
     {
@@ -69,70 +76,128 @@ impl ModLoaderClient {
             },
             3,
             Duration::from_secs(2),
-            &format!("Download from {}", url)
-        ).await
+            &format!("Download from {}", url),
+        )
+        .await
     }
 
-    pub async fn download_loader<F>(&self, loader_name: &str, mc_version: &str, loader_version: Option<&str>, target_path: impl AsRef<std::path::Path>, on_progress: F) -> Result<()> 
-    where F: Fn(u64, u64) + Send + Sync + 'static {
+    pub async fn download_loader<F>(
+        &self,
+        loader_name: &str,
+        mc_version: &str,
+        loader_version: Option<&str>,
+        target_path: impl AsRef<std::path::Path>,
+        on_progress: F,
+    ) -> Result<()>
+    where
+        F: Fn(u64, u64) + Send + Sync + 'static,
+    {
         match loader_name.to_lowercase().as_str() {
             "paper" => {
-                let build = loader_version.ok_or_else(|| anyhow::anyhow!("Paper requires a build number"))?;
-                self.download_paper(mc_version, build, target_path, on_progress).await
-            },
+                let build = match loader_version {
+                    Some(v) => v.to_string(),
+                    None => {
+                        let builds = self.get_paper_versions(mc_version).await?;
+                        builds
+                            .first()
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No builds found for Paper version {}", mc_version)
+                            })?
+                            .clone()
+                    }
+                };
+                self.download_paper(mc_version, &build, target_path, on_progress)
+                    .await
+            }
             "fabric" => {
-                let version = loader_version.ok_or_else(|| anyhow::anyhow!("Fabric requires a loader version"))?;
-                self.download_fabric(mc_version, version, target_path, on_progress).await
-            },
+                let version = loader_version
+                    .ok_or_else(|| anyhow::anyhow!("Fabric requires a loader version"))?;
+                self.download_fabric(mc_version, version, target_path, on_progress)
+                    .await
+            }
             "forge" => {
-                let version = loader_version.ok_or_else(|| anyhow::anyhow!("Forge requires a version"))?;
-                self.download_forge(mc_version, version, target_path, on_progress).await
-            },
+                let version =
+                    loader_version.ok_or_else(|| anyhow::anyhow!("Forge requires a version"))?;
+                self.download_forge(mc_version, version, target_path, on_progress)
+                    .await
+            }
             "purpur" => {
-                let build = loader_version.ok_or_else(|| anyhow::anyhow!("Purpur requires a build number"))?;
-                self.download_purpur(mc_version, build, target_path, on_progress).await
-            },
+                let build = match loader_version {
+                    Some(v) => v.to_string(),
+                    None => {
+                        let builds = self.get_purpur_versions(mc_version).await?;
+                        builds
+                            .first()
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No builds found for Purpur version {}", mc_version)
+                            })?
+                            .clone()
+                    }
+                };
+                self.download_purpur(mc_version, &build, target_path, on_progress)
+                    .await
+            }
             "neoforge" => {
-                let version = loader_version.ok_or_else(|| anyhow::anyhow!("NeoForge requires a version"))?;
-                self.download_neoforge(version, target_path, on_progress).await
-            },
+                let version =
+                    loader_version.ok_or_else(|| anyhow::anyhow!("NeoForge requires a version"))?;
+                self.download_neoforge(version, target_path, on_progress)
+                    .await
+            }
             "velocity" => {
                 let version = mc_version;
                 let build = match loader_version {
                     Some(v) => v.to_string(),
                     None => {
                         let builds = self.get_velocity_builds(version).await?;
-                        builds.first()
-                            .ok_or_else(|| anyhow::anyhow!("No builds found for Velocity version {}", version))?
+                        builds
+                            .first()
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("No builds found for Velocity version {}", version)
+                            })?
                             .clone()
                     }
                 };
-                self.download_velocity(version, &build, target_path, on_progress).await
-            },
+                self.download_velocity(version, &build, target_path, on_progress)
+                    .await
+            }
             "bungeecord" => {
                 let version = loader_version.unwrap_or("latest");
-                self.download_bungeecord(version, target_path, on_progress).await
-            },
+                self.download_bungeecord(version, target_path, on_progress)
+                    .await
+            }
             "bedrock" => {
                 let version = mc_version;
                 // For Bedrock, target_path is the directory where it should be extracted
-                let target_dir = target_path.as_ref().parent().ok_or_else(|| anyhow::anyhow!("Invalid target path for Bedrock"))?;
-                self.download_bedrock(version, target_dir, on_progress).await
-            },
+                let target_dir = target_path
+                    .as_ref()
+                    .parent()
+                    .ok_or_else(|| anyhow::anyhow!("Invalid target path for Bedrock"))?;
+                self.download_bedrock(version, target_dir, on_progress)
+                    .await
+            }
             _ => Err(anyhow::anyhow!("Unsupported mod loader: {}", loader_name)),
         }
     }
 
-    pub async fn get_available_loaders(&self, mc_version: &str, server_type: Option<&str>) -> Result<Vec<ModLoader>> {
+    pub async fn get_available_loaders(
+        &self,
+        mc_version: &str,
+        server_type: Option<&str>,
+    ) -> Result<Vec<ModLoader>> {
         let mut loaders = Vec::new();
 
         // If we know the server type, we can skip the bedrock check if it's not bedrock
         let is_bedrock = if let Some(t) = server_type {
             t.to_lowercase() == "bedrock"
         } else {
-            let bedrock_manifest = self.get_bedrock_versions().await.unwrap_or_else(|_| crate::downloader::VersionManifest {
-                latest: crate::downloader::LatestVersions { release: "".to_string(), snapshot: "".to_string() },
-                versions: vec![],
+            let bedrock_manifest = self.get_bedrock_versions().await.unwrap_or_else(|_| {
+                crate::downloader::VersionManifest {
+                    latest: crate::downloader::LatestVersions {
+                        release: "".to_string(),
+                        snapshot: "".to_string(),
+                    },
+                    versions: vec![],
+                }
             });
             bedrock_manifest.versions.iter().any(|v| v.id == mc_version)
         };
