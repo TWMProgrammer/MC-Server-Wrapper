@@ -413,13 +413,14 @@ export function PluginConfigModal({ plugin, instanceId, onClose }: PluginConfigM
                   <button
                     onClick={() => setAutoReload(!autoReload)}
                     className={cn(
-                      "w-10 h-5 rounded-full transition-all relative border",
+                      "w-10 h-5 rounded-full transition-all flex items-center px-1 border",
                       autoReload ? "bg-primary border-primary" : "bg-black/40 border-white/10"
                     )}
                   >
                     <motion.div
-                      animate={{ x: autoReload ? 20 : 2 }}
-                      className="absolute top-1 w-2.5 h-2.5 rounded-full bg-white shadow-sm"
+                      animate={{ x: autoReload ? 20 : 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="w-2.5 h-2.5 rounded-full bg-white shadow-sm"
                     />
                   </button>
                 </div>

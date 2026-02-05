@@ -22,7 +22,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameExists, setNameExists] = useState(false);
-  const [startAfterCreation, setStartAfterCreation] = useState(true);
+  const [startAfterCreation, setStartAfterCreation] = useState(false);
 
   const [importSourcePath, setImportSourcePath] = useState<string | null>(null);
   const [importServerType, setImportServerType] = useState<string>('vanilla');
@@ -43,7 +43,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setSelectedVersion(null);
     setSelectedLoader('none');
     setSelectedLoaderVersion(null);
-    setStartAfterCreation(true);
+    setStartAfterCreation(false);
     setImportSourcePath(null);
     setImportServerType('vanilla');
     setAvailableJars([]);

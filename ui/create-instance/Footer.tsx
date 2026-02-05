@@ -89,12 +89,13 @@ export function Footer({
             )}
           >
             <div className={cn(
-              "w-7 h-3.5 rounded-full relative transition-colors duration-300",
+              "w-8 h-4 rounded-full transition-colors duration-300 flex items-center px-1",
               startAfterCreation ? "bg-primary" : "bg-gray-300 dark:bg-white/10"
             )}>
               <motion.div
-                animate={{ x: startAfterCreation ? 16 : 2 }}
-                className="absolute top-0.75 w-2 h-2 rounded-full bg-white shadow-sm"
+                animate={{ x: startAfterCreation ? 16 : 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                className="w-2 h-2 rounded-full bg-white shadow-sm"
               />
             </div>
             <div className="flex flex-col items-start">
