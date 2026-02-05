@@ -42,8 +42,8 @@ export function Header({
   };
 
   return (
-    <div className="px-8 pt-8 pb-0 bg-surface/50 border-b border-gray-100 dark:border-white/5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
-      <div className="flex items-start justify-between mb-8">
+    <div className="pt-8 pb-0 bg-surface/50 border-b border-gray-100 dark:border-white/5 backdrop-blur-xl sticky top-0 z-20 transition-colors duration-300">
+      <div className="px-8 flex items-start justify-between mb-8">
         <div className="flex items-start gap-6">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -193,7 +193,7 @@ export function Header({
         </div>
       </div>
 
-      <div className="flex gap-8 overflow-x-auto no-scrollbar">
+      <div className="px-6 flex w-full items-center justify-between gap-0.5 overflow-x-auto no-scrollbar">
         {tabs.map((tab) => (
           <motion.button
             key={tab.id}
@@ -201,13 +201,13 @@ export function Header({
             whileTap={{ scale: 0.95 }}
             onClick={() => onSetActiveTab(tab.id)}
             className={cn(
-              "flex items-center gap-2.5 pb-4 px-1 text-sm font-bold uppercase tracking-widest transition-all relative",
+              "flex-auto flex items-center justify-center gap-1.5 pb-4 px-1.5 text-[10px] font-bold uppercase tracking-tight transition-all relative whitespace-nowrap min-w-fit",
               activeTab === tab.id
                 ? "text-primary"
                 : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             )}
           >
-            <tab.icon size={18} />
+            <tab.icon size={14} className="shrink-0" />
             <span>{tab.label}</span>
             {activeTab === tab.id && (
               <motion.div
