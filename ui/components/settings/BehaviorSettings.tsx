@@ -69,6 +69,17 @@ export function BehaviorSettings({ settings, updateSettings, activeTab }: Behavi
               </button>
             ))}
           </div>
+
+          {settings.close_behavior === 'HideToSystemTray' && (
+            <div className="mt-4 pt-4 border-t border-black/5 dark:border-white/5">
+              <Checkbox
+                label="Show tray notification"
+                description="Notify when the app is minimized to the system tray"
+                checked={settings.show_tray_notification}
+                onChange={(val) => updateSettings({ show_tray_notification: val })}
+              />
+            </div>
+          )}
         </Section>
       </div>
     );

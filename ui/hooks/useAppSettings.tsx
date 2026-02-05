@@ -50,6 +50,7 @@ export interface AppSettings {
 
   // Close Preference
   close_behavior: CloseBehavior;
+  show_tray_notification: boolean;
 
   // Appearance (Existing)
   accent_color: string;
@@ -74,6 +75,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   display_server_status: true,
   display_navigational_buttons: true,
   close_behavior: 'HideToSystemTray',
+  show_tray_notification: true,
   accent_color: "Blue",
   theme: "dark",
   scaling: 0.8,

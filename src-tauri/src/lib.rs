@@ -1,212 +1,243 @@
 mod commands;
 mod setup;
 
-use mc_server_wrapper_core::instance::InstanceManager;
-use mc_server_wrapper_core::manager::ServerManager;
-use mc_server_wrapper_core::backup::BackupManager;
-use mc_server_wrapper_core::scheduler::SchedulerManager;
-use mc_server_wrapper_core::java_manager::JavaManager;
-use mc_server_wrapper_core::app_config::{GlobalConfigManager, CloseBehavior};
-use tauri::Manager;
-use std::sync::Arc;
-use tokio::sync::Mutex as TokioMutex;
-use std::collections::HashSet;
-use commands::AppState;
 use anyhow::Context;
+use commands::AppState;
+use mc_server_wrapper_core::app_config::{CloseBehavior, GlobalConfigManager};
+use mc_server_wrapper_core::backup::BackupManager;
+use mc_server_wrapper_core::instance::InstanceManager;
+use mc_server_wrapper_core::java_manager::JavaManager;
+use mc_server_wrapper_core::manager::ServerManager;
+use mc_server_wrapper_core::scheduler::SchedulerManager;
+use std::collections::HashSet;
+use std::sync::Arc;
+use tauri::Manager;
+use tauri_plugin_notification::NotificationExt;
+use tokio::sync::Mutex as TokioMutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> anyhow::Result<()> {
-  log::info!("Starting MineCraft Server Wrapper v{}", env!("CARGO_PKG_VERSION"));
-  tauri::Builder::default()
-    .setup(|app| {
+    log::info!(
+        "Starting MC Server Wrapper v{}",
+        env!("CARGO_PKG_VERSION")
+    );
+    tauri::Builder::default()
+        .setup(|app| {
       setup::setup_window(app);
-      setup::setup_tray(app).context("failed to setup tray")?;
+            setup::setup_tray(app).context("failed to setup tray")?;
 
-      // Initialize Directories next to the executable
-      let exe_path = std::env::current_exe()
-          .context("failed to get exe path")?
-          .parent()
-          .context("failed to get exe directory")?
-          .to_path_buf();
+            // Initialize Directories next to the executable
+            let exe_path = std::env::current_exe()
+                .context("failed to get exe path")?
+                .parent()
+                .context("failed to get exe directory")?
+                .to_path_buf();
 
-      setup::setup_logging(app, &exe_path).context("failed to setup logging")?;
+            setup::setup_logging(app, &exe_path).context("failed to setup logging")?;
 
-      app.handle().plugin(tauri_plugin_dialog::init())?;
-      app.handle().plugin(tauri_plugin_opener::init())?;
+            app.handle().plugin(tauri_plugin_dialog::init())?;
+            app.handle().plugin(tauri_plugin_opener::init())?;
+            app.handle().plugin(tauri_plugin_notification::init())?;
 
-      setup::check_clutter(app, &exe_path);
+            setup::check_clutter(app, &exe_path);
 
-      let app_dirs = tauri::async_runtime::block_on(async {
-          mc_server_wrapper_core::init::init_directories(&exe_path).await
-      }).context("failed to initialize directories")?;
-      
-      // Initialize GlobalConfigManager
-      let config_manager = Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
-      
-      // Initialize Database
-      let db = Arc::new(tauri::async_runtime::block_on(async {
-          mc_server_wrapper_core::database::Database::new(exe_path.join("resources").join("app.db")).await
-      }).context("failed to initialize database")?);
+            let app_dirs = tauri::async_runtime::block_on(async {
+                mc_server_wrapper_core::init::init_directories(&exe_path).await
+            })
+            .context("failed to initialize directories")?;
 
-      // Initialize JavaManager
-      let java_manager = Arc::new(JavaManager::new().context("failed to initialize java manager")?);
+            // Initialize GlobalConfigManager
+            let config_manager =
+                Arc::new(GlobalConfigManager::new(exe_path.join("app_settings.json")));
 
-      // Initialize InstanceManager using the 'server' directory
-      let instance_manager = Arc::new(tauri::async_runtime::block_on(async {
-          InstanceManager::new(app_dirs.server, Arc::clone(&db)).await
-      }).context("failed to initialize instance manager")?);
-
-      let server_manager = Arc::new(ServerManager::new(Arc::clone(&instance_manager), Arc::clone(&config_manager)));
-      let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
-      let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
-          let sm = SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager)).await.context("failed to initialize scheduler manager")?;
-          
-          // Load existing schedules
-          let instances = match instance_manager.list_instances().await {
-              Ok(list) => list,
-              Err(e) => {
-                  log::error!("Failed to list instances for scheduler: {}", e);
-                  Vec::new()
-              }
-          };
-          for instance in instances {
-              for task in instance.schedules {
-                  if task.enabled {
-                      let _ = sm.add_task(task).await;
-                  }
-              }
-          }
-          Ok::<SchedulerManager, anyhow::Error>(sm)
-      })?);
-
-      app.manage(instance_manager);
-      app.manage(server_manager);
-      app.manage(backup_manager);
-      app.manage(scheduler_manager);
-      app.manage(config_manager);
-      app.manage(java_manager);
-      app.manage(AppState {
-          subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
-      });
-      
-      Ok(())
-    })
-    .on_window_event(|window, event| {
-        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-            let app_handle = window.app_handle();
-            let config_manager = app_handle.state::<Arc<GlobalConfigManager>>();
-            
-            // We need to block on this because on_window_event is sync
-            let settings = tauri::async_runtime::block_on(async {
-                config_manager.load().await.unwrap_or_else(|e| {
-                    log::error!("Failed to load app settings on close: {}", e);
-                    Default::default()
+            // Initialize Database
+            let db = Arc::new(
+                tauri::async_runtime::block_on(async {
+                    mc_server_wrapper_core::database::Database::new(
+                        exe_path.join("resources").join("app.db"),
+                    )
+                    .await
                 })
+                .context("failed to initialize database")?,
+            );
+
+            // Initialize JavaManager
+            let java_manager =
+                Arc::new(JavaManager::new().context("failed to initialize java manager")?);
+
+            // Initialize InstanceManager using the 'server' directory
+            let instance_manager = Arc::new(
+                tauri::async_runtime::block_on(async {
+                    InstanceManager::new(app_dirs.server, Arc::clone(&db)).await
+                })
+                .context("failed to initialize instance manager")?,
+            );
+
+            let server_manager = Arc::new(ServerManager::new(
+                Arc::clone(&instance_manager),
+                Arc::clone(&config_manager),
+            ));
+            let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
+            let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
+                let sm =
+                    SchedulerManager::new(Arc::clone(&server_manager), Arc::clone(&backup_manager))
+                        .await
+                        .context("failed to initialize scheduler manager")?;
+
+                // Load existing schedules
+                let instances = match instance_manager.list_instances().await {
+                    Ok(list) => list,
+                    Err(e) => {
+                        log::error!("Failed to list instances for scheduler: {}", e);
+                        Vec::new()
+                    }
+                };
+                for instance in instances {
+                    for task in instance.schedules {
+                        if task.enabled {
+                            let _ = sm.add_task(task).await;
+                        }
+                    }
+                }
+                Ok::<SchedulerManager, anyhow::Error>(sm)
+            })?);
+
+            app.manage(instance_manager);
+            app.manage(server_manager);
+            app.manage(backup_manager);
+            app.manage(scheduler_manager);
+            app.manage(config_manager);
+            app.manage(java_manager);
+            app.manage(AppState {
+                subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
             });
 
-            match settings.close_behavior {
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let app_handle = window.app_handle();
+                let config_manager = app_handle.state::<Arc<GlobalConfigManager>>();
+
+                // We need to block on this because on_window_event is sync
+                let settings = tauri::async_runtime::block_on(async {
+                    config_manager.load().await.unwrap_or_else(|e| {
+                        log::error!("Failed to load app settings on close: {}", e);
+                        Default::default()
+                    })
+                });
+
+                match settings.close_behavior {
                 CloseBehavior::HideToSystemTray => {
                     api.prevent_close();
                     let _ = window.hide();
+                    
+                    if settings.show_tray_notification {
+                        let _ = app_handle.notification()
+                            .builder()
+                            .title("Still Running")
+                            .body("Hey! MC Server Wrapper is still running and minimized to system tray. You can change this in the app settings")
+                            .show();
+                    }
                 }
                 CloseBehavior::HideToTaskbar => {
-                    api.prevent_close();
-                    let _ = window.minimize();
-                }
-                CloseBehavior::Exit => {
-                    // Let the window close
+                        api.prevent_close();
+                        let _ = window.minimize();
+                    }
+                    CloseBehavior::Exit => {
+                        // Let the window close
+                    }
                 }
             }
-        }
-    })
-    .invoke_handler(tauri::generate_handler![
-        commands::config::get_app_settings,
-        commands::config::update_app_settings,
-        commands::files::read_text_file,
-        commands::files::save_text_file,
-        commands::files::open_file_in_editor,
-        commands::instance::list_instances,
-        commands::instance::create_instance,
-        commands::instance::check_instance_name_exists,
-        commands::instance::import_instance,
-        commands::instance::list_archive_contents,
-        commands::instance::detect_server_type,
-        commands::instance::list_jars_in_source,
-        commands::instance::list_scripts_in_source,
-        commands::instance::check_server_properties_exists,
-        commands::instance::delete_instance,
-        commands::instance::delete_instance_by_name,
-        commands::instance::clone_instance,
-        commands::instance::open_instance_folder,
-        commands::instance::get_minecraft_versions,
-        commands::instance::get_bedrock_versions,
-        commands::instance::get_velocity_versions,
-        commands::instance::get_velocity_builds,
-        commands::instance::get_bungeecord_versions,
-        commands::instance::get_mod_loaders,
-        commands::instance::create_instance_full,
-        commands::instance::update_instance_settings,
-        commands::instance::update_instance_jar,
-        commands::instance::get_startup_preview,
-        commands::instance::list_bat_files,
-        commands::server::start_server,
-        commands::server::stop_server,
-        commands::server::kill_server,
-        commands::server::get_server_status,
-        commands::server::get_server_usage,
-        commands::server::send_command,
-        commands::server::read_latest_log,
-        commands::players::open_player_list_file,
-        commands::players::get_players,
-        commands::players::get_online_players,
-        commands::players::add_player,
-        commands::players::add_banned_ip,
-        commands::players::remove_player,
-        commands::config::get_server_properties,
-        commands::config::save_server_properties,
-        commands::config::get_available_configs,
-        commands::config::get_config_file,
-        commands::config::save_config_file,
-        commands::config::get_config_value,
-        commands::config::save_config_value,
-        commands::backups::list_backups,
-        commands::backups::create_backup,
-        commands::backups::delete_backup,
-        commands::backups::restore_backup,
-        commands::backups::open_backup,
-        commands::scheduler::add_scheduled_task,
-        commands::scheduler::remove_scheduled_task,
-        commands::scheduler::list_scheduled_tasks,
-        commands::java::get_managed_java_versions,
-        commands::java::download_java_version,
-        commands::java::delete_java_version,
-        commands::java::validate_custom_java,
-        commands::plugins::list_installed_plugins,
-        commands::plugins::toggle_plugin,
-        commands::plugins::bulk_toggle_plugins,
-        commands::plugins::uninstall_plugin,
-        commands::plugins::bulk_uninstall_plugins,
-        commands::plugins::search_plugins,
-        commands::plugins::install_plugin,
-        commands::plugins::update_plugin,
-        commands::plugins::check_for_plugin_updates,
-        commands::plugins::list_plugin_configs,
-        commands::plugins::get_plugin_dependencies,
-        commands::mods::list_installed_mods,
-        commands::mods::toggle_mod,
-        commands::mods::bulk_toggle_mods,
-        commands::mods::uninstall_mod,
-        commands::mods::bulk_uninstall_mods,
-        commands::mods::search_mods,
-        commands::mods::install_mod,
-        commands::mods::get_mod_dependencies,
-        commands::mods::get_mod_configs,
-        commands::mods::list_mod_config_files,
-        commands::mods::check_for_mod_updates,
-        commands::mods::update_mod,
-    ])
-    .run(tauri::generate_context!())
-    .context("error while running tauri application")?;
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::config::get_app_settings,
+            commands::config::update_app_settings,
+            commands::files::read_text_file,
+            commands::files::save_text_file,
+            commands::files::open_file_in_editor,
+            commands::instance::list_instances,
+            commands::instance::create_instance,
+            commands::instance::check_instance_name_exists,
+            commands::instance::import_instance,
+            commands::instance::list_archive_contents,
+            commands::instance::detect_server_type,
+            commands::instance::list_jars_in_source,
+            commands::instance::list_scripts_in_source,
+            commands::instance::check_server_properties_exists,
+            commands::instance::delete_instance,
+            commands::instance::delete_instance_by_name,
+            commands::instance::clone_instance,
+            commands::instance::open_instance_folder,
+            commands::instance::get_minecraft_versions,
+            commands::instance::get_bedrock_versions,
+            commands::instance::get_velocity_versions,
+            commands::instance::get_velocity_builds,
+            commands::instance::get_bungeecord_versions,
+            commands::instance::get_mod_loaders,
+            commands::instance::create_instance_full,
+            commands::instance::update_instance_settings,
+            commands::instance::update_instance_jar,
+            commands::instance::get_startup_preview,
+            commands::instance::list_bat_files,
+            commands::server::start_server,
+            commands::server::stop_server,
+            commands::server::kill_server,
+            commands::server::get_server_status,
+            commands::server::get_server_usage,
+            commands::server::send_command,
+            commands::server::read_latest_log,
+            commands::players::open_player_list_file,
+            commands::players::get_players,
+            commands::players::get_online_players,
+            commands::players::add_player,
+            commands::players::add_banned_ip,
+            commands::players::remove_player,
+            commands::config::get_server_properties,
+            commands::config::save_server_properties,
+            commands::config::get_available_configs,
+            commands::config::get_config_file,
+            commands::config::save_config_file,
+            commands::config::get_config_value,
+            commands::config::save_config_value,
+            commands::backups::list_backups,
+            commands::backups::create_backup,
+            commands::backups::delete_backup,
+            commands::backups::restore_backup,
+            commands::backups::open_backup,
+            commands::scheduler::add_scheduled_task,
+            commands::scheduler::remove_scheduled_task,
+            commands::scheduler::list_scheduled_tasks,
+            commands::java::get_managed_java_versions,
+            commands::java::download_java_version,
+            commands::java::delete_java_version,
+            commands::java::validate_custom_java,
+            commands::plugins::list_installed_plugins,
+            commands::plugins::toggle_plugin,
+            commands::plugins::bulk_toggle_plugins,
+            commands::plugins::uninstall_plugin,
+            commands::plugins::bulk_uninstall_plugins,
+            commands::plugins::search_plugins,
+            commands::plugins::install_plugin,
+            commands::plugins::update_plugin,
+            commands::plugins::check_for_plugin_updates,
+            commands::plugins::list_plugin_configs,
+            commands::plugins::get_plugin_dependencies,
+            commands::mods::list_installed_mods,
+            commands::mods::toggle_mod,
+            commands::mods::bulk_toggle_mods,
+            commands::mods::uninstall_mod,
+            commands::mods::bulk_uninstall_mods,
+            commands::mods::search_mods,
+            commands::mods::install_mod,
+            commands::mods::get_mod_dependencies,
+            commands::mods::get_mod_configs,
+            commands::mods::list_mod_config_files,
+            commands::mods::check_for_mod_updates,
+            commands::mods::update_mod,
+        ])
+        .run(tauri::generate_context!())
+        .context("error while running tauri application")?;
 
-  Ok(())
+    Ok(())
 }

@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use anyhow::{Result, Context};
 use tokio::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -18,25 +18,26 @@ pub struct AppSettings {
     pub display_ipv6: bool,
     pub hide_ip_address: bool,
     pub use_white_console_text: bool,
-    
+
     // Navigation
     pub start_page: String, // "Dashboard", "Global Dashboard", etc.
-    
+
     // Player List
     pub download_player_heads: bool,
     pub use_helm_heads: bool,
     pub query_heads_by_username: bool,
-    
+
     // Server Tabs
     pub display_server_icon: bool,
     pub display_online_player_count: bool,
     pub display_server_version: bool,
     pub display_server_status: bool,
     pub display_navigational_buttons: bool,
-    
+
     // Close Preference
     pub close_behavior: CloseBehavior,
-    
+    pub show_tray_notification: bool,
+
     // Appearance (Existing)
     pub accent_color: String,
     pub theme: String,
@@ -70,6 +71,7 @@ impl Default for AppSettings {
             display_server_status: true,
             display_navigational_buttons: true,
             close_behavior: CloseBehavior::HideToSystemTray,
+            show_tray_notification: true,
             accent_color: "Blue".to_string(),
             theme: "dark".to_string(),
             scaling: 0.8,
@@ -97,18 +99,22 @@ impl GlobalConfigManager {
         let content = fs::read_to_string(&self.config_path)
             .await
             .context("Failed to read app settings file")?;
-        let config: AppSettings = serde_json::from_str(&content)
-            .context("Failed to parse app settings JSON")?;
+        let config: AppSettings =
+            serde_json::from_str(&content).context("Failed to parse app settings JSON")?;
         Ok(config)
     }
 
     pub async fn save(&self, config: &AppSettings) -> Result<()> {
-        let content = serde_json::to_string_pretty(config)
-            .context("Failed to serialize app settings")?;
+        let content =
+            serde_json::to_string_pretty(config).context("Failed to serialize app settings")?;
         if let Some(parent) = self.config_path.parent() {
-            fs::create_dir_all(parent).await.context("Failed to create config directory")?;
+            fs::create_dir_all(parent)
+                .await
+                .context("Failed to create config directory")?;
         }
-        fs::write(&self.config_path, content).await.context("Failed to write app settings file")?;
+        fs::write(&self.config_path, content)
+            .await
+            .context("Failed to write app settings file")?;
         Ok(())
     }
 }

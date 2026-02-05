@@ -1,4 +1,4 @@
-use tauri::{App, Manager, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent}};
+use tauri::{App, Manager, menu::{Menu, MenuItem}, tray::{TrayIconBuilder, TrayIconEvent, MouseButton}};
 use anyhow::Result;
 
 pub fn setup_tray(app: &mut App) -> Result<()> {
@@ -23,7 +23,7 @@ pub fn setup_tray(app: &mut App) -> Result<()> {
             }
         })
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { .. } = event {
+            if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
                 let app = tray.app_handle();
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.show();
