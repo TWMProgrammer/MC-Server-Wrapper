@@ -1,3 +1,4 @@
+use mc_server_wrapper_core::instance::manager::detection::ParsedScriptInfo;
 use mc_server_wrapper_core::instance::{InstanceManager, InstanceMetadata};
 use serde::Serialize;
 use std::collections::HashSet;
@@ -19,6 +20,82 @@ pub struct ImportProgressPayload {
     pub current: u64,
     pub total: u64,
     pub message: String,
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn preview_script_import(
+    sourcePath: String,
+    scriptPath: String,
+    rootWithinZip: Option<String>,
+) -> CommandResult<ParsedScriptInfo> {
+    let path = PathBuf::from(&sourcePath);
+    let mut content = String::new();
+
+    if path.is_dir() {
+        let script_full_path = path.join(&scriptPath);
+        content = tokio::fs::read_to_string(script_full_path)
+            .await
+            .map_err(AppError::from)?;
+    } else if path.is_file() {
+        let extension = path
+            .extension()
+            .map_or("", |ext| ext.to_str().unwrap_or(""))
+            .to_lowercase();
+
+        let root = rootWithinZip.map(|r| {
+            if r.ends_with('/') {
+                r
+            } else {
+                format!("{}/", r)
+            }
+        });
+
+        let full_script_name = if let Some(r) = root {
+            format!("{}{}", r, scriptPath)
+        } else {
+            scriptPath.clone()
+        };
+
+        if extension == "zip" {
+            let file = std::fs::File::open(&path).map_err(AppError::from)?;
+            let mut archive =
+                zip::ZipArchive::new(file).map_err(|e| AppError::Config(e.to_string()))?;
+            let mut script_file = archive
+                .by_name(&full_script_name)
+                .map_err(|e| AppError::Config(e.to_string()))?;
+            std::io::Read::read_to_string(&mut script_file, &mut content)
+                .map_err(AppError::from)?;
+        } else if extension == "7z" {
+            sevenz_rust::SevenZReader::open(&path, "".into())
+                .map_err(|e| AppError::Config(e.to_string()))?
+                .for_each_entries(|entry, reader| {
+                    if entry.name() == full_script_name {
+                        let mut buf = Vec::new();
+                        reader.read_to_end(&mut buf)?;
+                        content = String::from_utf8_lossy(&buf).to_string();
+                        return Ok(false); // stop
+                    }
+                    Ok(true)
+                })
+                .map_err(|e| AppError::Config(e.to_string()))?;
+        }
+    }
+
+    // We don't need a real InstanceManager instance for this, but the method is on it.
+    // However, it doesn't use self, so we can just use it.
+    // Actually, it's defined on InstanceManager, so we need one or change it to static.
+    // Let's check if it uses self.
+
+    // In detection.rs:
+    // pub(crate) fn parse_script_content(&self, content: &str) -> ParsedScriptInfo
+
+    // It does take &self. Let's see if it's needed.
+    // Looking at detection.rs, it doesn't seem to use self.
+
+    // I'll use a temporary InstanceManager or just use the state.
+    // Actually, I have the state in the other commands.
+    Ok(mc_server_wrapper_core::instance::InstanceManager::parse_script_content(&content))
 }
 
 #[tauri::command]

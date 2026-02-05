@@ -58,7 +58,7 @@ impl InstanceManager {
             let script_full_path = instance_path.join(&script);
             if script_full_path.exists() {
                 if let Ok(content) = fs::read_to_string(script_full_path).await {
-                    let info = self.parse_script_content(&content);
+                    let info = Self::parse_script_content(&content);
 
                     if let Some(min) = info.min_ram {
                         settings.min_ram = min;
@@ -88,6 +88,10 @@ impl InstanceManager {
                     if info.has_restart_loop {
                         settings.crash_handling = CrashHandlingMode::Elevated;
                     }
+
+                    if let Some(java) = info.java_path {
+                        settings.java_path_override = Some(java);
+                    }
                 }
             }
         }
@@ -100,9 +104,15 @@ impl InstanceManager {
 
         let server_args_str = server_args.join(" ");
 
+        let java_executable = settings
+            .java_path_override
+            .as_ref()
+            .map(|p| format!("\"{}\"", p))
+            .unwrap_or_else(|| "java".to_string());
+
         settings.startup_line = format!(
-            "java -Xms{{min_ram}}{{min_unit}} -Xmx{{max_ram}}{{max_unit}}{}-jar {} {}",
-            jvm_args_str, jar_name, server_args_str
+            "{} -Xms{{min_ram}}{{min_unit}} -Xmx{{max_ram}}{{max_unit}}{}-jar {} {}",
+            java_executable, jvm_args_str, jar_name, server_args_str
         );
 
         // Check for server-icon.png

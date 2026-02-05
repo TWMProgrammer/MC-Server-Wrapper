@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion'
-import { HardDrive, FileWarning, Folder, FileArchive, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { HardDrive, FileWarning, Folder, FileArchive, ChevronDown, Cpu, Zap, FileCode, Terminal } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
 import { cn } from '../utils'
@@ -7,6 +7,18 @@ import { useState } from 'react'
 import { Select } from '../components/Select'
 import { ArchiveFileTree } from './ArchiveFileTree'
 import { useEffect } from 'react'
+
+interface ParsedScriptInfo {
+  min_ram?: number;
+  min_ram_unit?: string;
+  max_ram?: number;
+  max_ram_unit?: string;
+  jvm_args: string[];
+  jar_name?: string;
+  server_args: string[];
+  has_restart_loop: boolean;
+  java_path?: string;
+}
 
 interface ImportSourceProps {
   importSourcePath: string | null;
@@ -46,12 +58,44 @@ export function ImportSource({
   setRootWithinZip
 }: ImportSourceProps) {
   const [loading, setLoading] = useState(false);
+  const [scriptInfo, setScriptInfo] = useState<ParsedScriptInfo | null>(null);
+  const [parsingScript, setParsingScript] = useState(false);
 
   useEffect(() => {
     if (importSourcePath) {
       processSelection(importSourcePath, rootWithinZip);
     }
   }, [importSourcePath, rootWithinZip]);
+
+  useEffect(() => {
+    if (selectedScript && importSourcePath) {
+      handlePreviewScript(selectedScript);
+    } else {
+      setScriptInfo(null);
+    }
+  }, [selectedScript, importSourcePath, rootWithinZip]);
+
+  const handlePreviewScript = async (script: string) => {
+    setParsingScript(true);
+    try {
+      const info = await invoke<ParsedScriptInfo>('preview_script_import', {
+        sourcePath: importSourcePath,
+        scriptPath: script,
+        rootWithinZip
+      });
+      setScriptInfo(info);
+
+      // Auto-select JAR if found in script and not already selected
+      if (info.jar_name && !selectedJar && availableJars.includes(info.jar_name)) {
+        setSelectedJar(info.jar_name);
+      }
+    } catch (e) {
+      console.error('Failed to preview script:', e);
+      setScriptInfo(null);
+    } finally {
+      setParsingScript(false);
+    }
+  };
 
   const processSelection = async (path: string, root: string | null) => {
     setLoading(true);
@@ -230,21 +274,93 @@ export function ImportSource({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Import RAM from Script (Optional)</label>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Import settings from Script (Optional)</label>
                 <Select
                   value={selectedScript || ''}
                   onChange={setSelectedScript}
                   options={[
-                    { value: '', label: 'No script (use default RAM)' },
+                    { value: '', label: 'No script (use default settings)' },
                     ...availableScripts.map(script => ({ value: script, label: script }))
                   ]}
                   placeholder="Select a .bat or .cmd file..."
                   loading={loading}
                 />
                 <p className="text-[10px] text-gray-500 ml-1">
-                  Selecting a startup script will attempt to parse its RAM settings (-Xms, -Xmx) and apply them to this instance.
+                  Selecting a startup script will attempt to parse its RAM, JVM arguments, and JAR settings.
                 </p>
               </div>
+
+              <AnimatePresence>
+                {scriptInfo && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Terminal size={14} />
+                        <span className="text-xs font-black uppercase tracking-widest">Extracted from {selectedScript}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {(scriptInfo.min_ram || scriptInfo.max_ram) && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-gray-500 dark:text-white/40">
+                              <Cpu size={12} />
+                              <span className="text-[11px] font-bold uppercase tracking-wider">Memory</span>
+                            </div>
+                            <div className="text-sm font-medium">
+                              {scriptInfo.min_ram}{scriptInfo.min_ram_unit} - {scriptInfo.max_ram}{scriptInfo.max_ram_unit}
+                            </div>
+                          </div>
+                        )}
+
+                        {scriptInfo.jar_name && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 text-gray-500 dark:text-white/40">
+                              <FileCode size={12} />
+                              <span className="text-[11px] font-bold uppercase tracking-wider">Target JAR</span>
+                            </div>
+                            <div className="text-sm font-medium truncate">
+                              {scriptInfo.jar_name}
+                            </div>
+                          </div>
+                        )}
+
+                        {scriptInfo.jvm_args.length > 0 && (
+                          <div className="space-y-1 col-span-2">
+                            <div className="flex items-center gap-1.5 text-gray-500 dark:text-white/40">
+                              <Terminal size={12} />
+                              <span className="text-[11px] font-bold uppercase tracking-wider">JVM Flags</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {scriptInfo.jvm_args.map((arg, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/5 text-[10px] font-mono">
+                                  {arg}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {scriptInfo.java_path && (
+                          <div className="space-y-1 col-span-2">
+                            <div className="flex items-center gap-1.5 text-gray-500 dark:text-white/40">
+                              <Zap size={12} />
+                              <span className="text-[11px] font-bold uppercase tracking-wider">Custom Java Path</span>
+                            </div>
+                            <div className="text-sm font-mono p-2 rounded bg-black/10 dark:bg-white/5 truncate">
+                              {scriptInfo.java_path}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {availableJars.length === 0 && !loading && (
                 <div className="text-[10px] text-accent-rose font-bold uppercase tracking-wider ml-1 mt-1">

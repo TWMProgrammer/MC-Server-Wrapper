@@ -159,6 +159,7 @@ pub fn run() -> anyhow::Result<()> {
             commands::instance::list_instances,
             commands::instance::create_instance,
             commands::instance::check_instance_name_exists,
+            commands::instance::preview_script_import,
             commands::instance::import_instance,
             commands::instance::list_archive_contents,
             commands::instance::detect_server_type,
