@@ -186,6 +186,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [ ] Implement Stale-While-Revalidate pattern for manifest files.
   - [ ] Implement local asset caching for marketplace icons and player skins.
   - [ ] Add cache management UI in Settings.
+- [ ] **UI/UX & Tools Enhancement**
+  - [ ] Implement custom TitleBar with integrated window controls, "Powered by twmprogramer" subtitle, and version tag.
+  - [ ] Implement Database Explorer for SQLite and plugin data inspection (accessible via Settings/Dashboard).
+  - [ ] Add global action toolbar in TitleBar for common tasks (Upload, Notifications, Users).
 - [x] **Production Observability**
   - [x] Persistent file logging for production builds using `tauri-plugin-log`.
 

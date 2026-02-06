@@ -8,6 +8,7 @@ import { useAppSettings } from './hooks/useAppSettings'
 import { useConsoleScroll } from './hooks/useConsoleScroll'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
+import { TitleBar } from './components/TitleBar'
 import { EmptyState } from './components/EmptyState'
 import { GlobalDashboard } from './components/GlobalDashboard'
 import { TabRenderer } from './components/TabRenderer'
@@ -81,7 +82,7 @@ function App() {
 
   return (
     <div
-      className="fixed inset-0 overflow-hidden bg-background"
+      className="fixed inset-0 overflow-hidden bg-background flex flex-col"
       style={{
         width: `${100 / settings.scaling}%`,
         height: `${100 / settings.scaling}%`,
@@ -89,7 +90,8 @@ function App() {
         transformOrigin: 'top left',
       }}
     >
-      <div className="flex h-full text-gray-900 dark:text-white selection:bg-primary/30">
+      <TitleBar />
+      <div className="flex flex-1 overflow-hidden pt-10 text-gray-900 dark:text-white selection:bg-primary/30">
         <Sidebar
           instances={instances}
           selectedInstanceId={selectedInstanceId}

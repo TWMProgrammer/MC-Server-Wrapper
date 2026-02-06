@@ -1,0 +1,146 @@
+.titlebar {
+  height: 40px;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  user-select: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.titlebar-drag-region {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.titlebar-drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 150px; /* Leave space for window controls */
+  bottom: 0;
+  -webkit-app-region: drag;
+  pointer-events: auto;
+}
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 12px;
+  z-index: 10;
+  position: relative;
+}
+
+.titlebar-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.titlebar-title-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.titlebar-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--foreground));
+  line-height: 1.2;
+}
+
+.titlebar-subtitle {
+  font-size: 10px;
+  color: #71717a;
+  line-height: 1.2;
+}
+
+.titlebar-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  box-shadow: 0 2px 4px rgba(238, 90, 111, 0.3);
+  margin-left: 4px;
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  z-index: 10;
+  position: relative;
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
+}
+
+.titlebar-action-button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #71717a;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-action-button:hover {
+  background: rgba(var(--foreground), 0.05);
+  color: rgb(var(--foreground));
+}
+
+.titlebar-controls {
+  display: flex;
+  height: 100%;
+}
+
+.titlebar-control-button {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #71717a;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.dark .titlebar-control-button {
+  color: #a1a1aa;
+}
+
+.titlebar-control-button:hover {
+  background: rgba(var(--foreground), 0.05);
+  color: rgb(var(--foreground));
+}
+
+.titlebar-control-button.close:hover {
+  background: #ef4444 !important;
+  color: white !important;
+}

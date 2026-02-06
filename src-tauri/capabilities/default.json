@@ -13,6 +13,12 @@
     "opener:allow-open-url",
     "notification:default",
     "core:app:allow-version",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-focus",
     "log:default"
   ]
 }
