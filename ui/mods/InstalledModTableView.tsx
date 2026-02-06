@@ -41,11 +41,11 @@ export function InstalledModTableView({
   allSelected
 }: InstalledModTableViewProps) {
   return (
-    <div className="bg-white/5 rounded-3xl border border-white/5 overflow-hidden">
-      <table className="w-full text-left border-collapse">
+    <div className="w-full">
+      <table className="w-full text-left border-collapse table-fixed">
         <thead>
-          <tr className="bg-white/5 border-b border-white/5">
-            <th className="p-4 w-10">
+          <tr className="border-b border-white/5">
+            <th className="p-4 w-16 shrink-0">
               <button
                 onClick={onToggleAll}
                 className={`p-1 rounded-md transition-colors ${allSelected ? 'text-primary' : 'text-gray-600 hover:text-gray-400'}`}
@@ -53,11 +53,11 @@ export function InstalledModTableView({
                 {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
               </button>
             </th>
-            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Mod</th>
-            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Version</th>
-            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Loader</th>
-            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-auto">Mod</th>
+            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell w-32 shrink-0">Status</th>
+            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell w-48 shrink-0">Author</th>
+            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider hidden lg:table-cell w-32 shrink-0">Version</th>
+            <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right w-44 shrink-0">Actions</th>
           </tr>
         </thead>
         <motion.tbody

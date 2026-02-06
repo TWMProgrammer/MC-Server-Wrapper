@@ -182,32 +182,32 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left table-fixed">
             <thead>
               <tr className="text-gray-500 text-sm uppercase tracking-wider">
-                <th className="px-6 py-4 font-semibold">Name</th>
-                <th className="px-6 py-4 font-semibold">Date</th>
-                <th className="px-6 py-4 font-semibold">Size</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                <th className="px-6 py-4 font-semibold w-auto">Name</th>
+                <th className="px-6 py-4 font-semibold hidden md:table-cell w-48 shrink-0">Date</th>
+                <th className="px-6 py-4 font-semibold hidden sm:table-cell w-32 shrink-0">Size</th>
+                <th className="px-6 py-4 font-semibold text-right w-32 shrink-0">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {filteredBackups.length > 0 ? (
                 filteredBackups.map((backup) => (
                   <tr key={backup.name} className="hover:bg-white/5 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    <td className="px-6 py-4 w-full max-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
                           {backup.status === 'creating' ? (
                             <Loader2 size={20} className="animate-spin" />
                           ) : (
                             <FileArchive size={20} />
                           )}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{backup.name}</span>
+                        <div className="flex flex-col min-w-0 overflow-hidden">
+                          <span className="font-medium truncate">{backup.name}</span>
                           {backup.status === 'creating' && (
-                            <div className="mt-2 w-48">
+                            <div className="mt-2 w-full max-w-[192px]">
                               <div className="flex justify-between text-[10px] mb-1">
                                 <span className="text-primary font-bold">CREATING...</span>
                                 <span className="text-gray-400">{backup.progress || 0}%</span>
@@ -224,13 +224,13 @@ export function BackupsTab({ instanceId }: BackupsTabProps) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-sm">
+                    <td className="px-6 py-4 text-gray-400 text-sm hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         <Clock size={14} />
                         {new Date(backup.created_at).toLocaleString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-400 text-sm">
+                    <td className="px-6 py-4 text-gray-400 text-sm hidden sm:table-cell">
                       {backup.status === 'creating' ? 'Calculating...' : formatSize(backup.size)}
                     </td>
                     <td className="px-6 py-4 text-right">

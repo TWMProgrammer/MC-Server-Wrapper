@@ -250,11 +250,11 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
             </p>
           </div>
         ) : viewMode === 'table' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          <div className="w-full">
+            <table className="w-full text-left table-fixed">
               <thead>
                 <tr className="text-gray-500 text-sm uppercase tracking-wider">
-                  <th className="px-6 py-4 font-semibold w-10">
+                  <th className="px-6 py-4 font-semibold w-16 shrink-0">
                     <button
                       onClick={toggleAll}
                       className={`p-1 rounded transition-colors ${selectedFilenames.size === filteredPlugins.length && filteredPlugins.length > 0
@@ -268,11 +268,11 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
                       }
                     </button>
                   </th>
-                  <th className="px-6 py-4 font-semibold">Plugin</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold">Author</th>
-                  <th className="px-6 py-4 font-semibold">Version</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                  <th className="px-6 py-4 font-semibold w-auto">Plugin</th>
+                  <th className="px-6 py-4 font-semibold hidden sm:table-cell w-32 shrink-0">Status</th>
+                  <th className="px-6 py-4 font-semibold hidden md:table-cell w-48 shrink-0">Author</th>
+                  <th className="px-6 py-4 font-semibold hidden lg:table-cell w-32 shrink-0">Version</th>
+                  <th className="px-6 py-4 font-semibold text-right w-44 shrink-0">Actions</th>
                 </tr>
               </thead>
               <motion.tbody

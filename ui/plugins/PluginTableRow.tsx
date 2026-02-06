@@ -62,32 +62,32 @@ export function PluginTableRow({
           {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
         </button>
       </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
+      <td className="px-6 py-4 min-w-0 w-full max-w-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`p-2 rounded-lg shrink-0 ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
             <Package size={20} />
           </div>
-          <div>
-            <div className="font-medium flex items-center gap-2">
-              {plugin.name}
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="font-medium flex items-center gap-2 truncate">
+              <span className="truncate">{plugin.name}</span>
               {!plugin.enabled && (
-                <span className="text-[10px] bg-gray-500/20 text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                <span className="shrink-0 text-[10px] bg-gray-500/20 text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-tighter">
                   Disabled
                 </span>
               )}
               {update && (
-                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1">
+                <span className="shrink-0 text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded uppercase tracking-tighter flex items-center gap-1">
                   <ArrowUpCircle size={10} /> Update Available
                 </span>
               )}
             </div>
-            <div className="text-xs text-gray-500 line-clamp-1 max-w-[300px]" title={plugin.description || plugin.filename}>
+            <div className="text-xs text-gray-500 truncate" title={plugin.description || plugin.filename}>
               {plugin.description || plugin.filename}
             </div>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-4 hidden sm:table-cell">
         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${plugin.enabled
           ? 'bg-green-500/10 text-green-500'
           : 'bg-red-500/10 text-red-500'
@@ -96,26 +96,26 @@ export function PluginTableRow({
           {plugin.enabled ? 'Enabled' : 'Disabled'}
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-400">
+      <td className="px-6 py-4 text-sm text-gray-400 hidden md:table-cell max-w-[200px]">
         {plugin.author ? (
-          <div className="flex items-center gap-1.5">
-            <User size={14} className="opacity-50" />
-            {plugin.author}
+          <div className="flex items-start gap-1.5" title={plugin.author}>
+            <User size={14} className="opacity-50 shrink-0 mt-0.5" />
+            <span className="line-clamp-2 leading-tight">{plugin.author}</span>
           </div>
         ) : '—'}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-400">
-        <div className="flex flex-col">
-          <span>{plugin.version || 'Unknown'}</span>
+      <td className="px-6 py-4 text-sm text-gray-400 hidden lg:table-cell truncate">
+        <div className="flex flex-col truncate">
+          <span className="truncate">{plugin.version || 'Unknown'}</span>
           {update && (
-            <span className="text-[10px] text-blue-400 font-medium">
+            <span className="text-[10px] text-blue-400 font-medium truncate">
               → {update.latest_version}
             </span>
           )}
         </div>
       </td>
-      <td className="px-6 py-4 text-right">
-        <div className="flex items-center justify-end gap-2">
+      <td className="px-6 py-4 text-right shrink-0">
+        <div className="flex items-center justify-end gap-2 shrink-0">
           {update && (
             <button
               onClick={() => onUpdate(update)}

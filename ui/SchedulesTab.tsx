@@ -168,40 +168,42 @@ export function SchedulesTab({ instanceId }: SchedulesTabProps) {
                             key={task.id}
                             className="group p-4 bg-surface border border-white/5 rounded-2xl flex items-center justify-between hover:border-primary/30 transition-all"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-xl ${task.task_type === 'Backup' ? 'bg-blue-500/10 text-blue-500' : 'bg-orange-500/10 text-orange-500'
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className={`p-3 rounded-xl shrink-0 ${task.task_type === 'Backup' ? 'bg-blue-500/10 text-blue-500' : 'bg-orange-500/10 text-orange-500'
                                     }`}>
                                     {task.task_type === 'Backup' ? <Save className="w-5 h-5" /> : <RefreshCw className="w-5 h-5" />}
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-lg">{task.task_type}</h4>
-                                    <div className="flex items-center gap-3 mt-1">
-                                        <span className="flex items-center gap-1 text-sm text-gray-400">
+                                <div className="min-w-0">
+                                    <h4 className="font-bold text-lg truncate">{task.task_type}</h4>
+                                    <div className="flex items-center gap-3 mt-1 text-sm">
+                                        <span className="flex items-center gap-1 text-gray-400 shrink-0">
                                             <Clock className="w-3.5 h-3.5" />
                                             {task.cron}
                                         </span>
                                         {task.last_run && (
-                                            <span className="flex items-center gap-1 text-sm text-gray-500">
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500/70" />
-                                                Last run: {new Date(task.last_run).toLocaleString()}
+                                            <span className="flex items-center gap-1 text-gray-500 truncate">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500/70 shrink-0" />
+                                                <span className="truncate">Last run: {new Date(task.last_run).toLocaleString()}</span>
                                             </span>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            <ConfirmDropdown
-                                onConfirm={() => handleDeleteTask(task.id)}
-                                title="Delete Schedule"
-                                message={`Are you sure you want to delete this ${task.task_type.toLowerCase()} schedule?`}
-                                variant="danger"
-                            >
-                                <button
-                                    className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            <div className="shrink-0 ml-4">
+                                <ConfirmDropdown
+                                    onConfirm={() => handleDeleteTask(task.id)}
+                                    title="Delete Schedule"
+                                    message={`Are you sure you want to delete this ${task.task_type.toLowerCase()} schedule?`}
+                                    variant="danger"
                                 >
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
-                            </ConfirmDropdown>
+                                    <button
+                                        className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </ConfirmDropdown>
+                            </div>
                         </div>
                     ))
                 )}

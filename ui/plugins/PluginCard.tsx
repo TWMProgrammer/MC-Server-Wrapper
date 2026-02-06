@@ -54,27 +54,23 @@ export function PluginCard({
       layout
       variants={itemVariants}
       key={plugin.filename}
-      className={`bg-white/5 border rounded-2xl p-4 hover:border-primary/30 transition-all group flex flex-col h-full relative ${!plugin.enabled ? 'opacity-60 grayscale-[0.5]' : ''} ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/5' : 'border-white/5'}`}
+      className={`bg-white/5 border rounded-2xl p-4 transition-all group flex flex-col h-full relative ${!plugin.enabled ? 'opacity-60 grayscale-[0.5]' : ''} ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/5' : 'border-white/5'}`}
     >
-      <button
-        onClick={() => onToggleSelection(plugin.filename)}
-        className={`absolute top-4 right-4 p-1.5 rounded-lg transition-all z-10 ${isSelected
-          ? 'bg-primary text-white shadow-lg shadow-primary/20 opacity-100'
-          : 'bg-black/40 text-gray-500 opacity-0 group-hover:opacity-100 hover:text-white'
-          }`}
-      >
-        {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-      </button>
-
       <div className="flex items-start justify-between mb-3">
-        <div className={`relative p-3 rounded-xl overflow-hidden ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
+        <div className={`relative w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-white/5 group/icon ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
           {iconUrl ? (
             <img src={iconUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
           ) : (
             <Package size={24} className="relative z-10" />
           )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSelection(plugin.filename); }}
+            className={`absolute inset-0 flex items-center justify-center bg-primary/80 text-white transition-opacity z-10 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/icon:opacity-100'}`}
+          >
+            {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+          </button>
         </div>
-        <div className="flex items-center gap-1 mr-8">
+        <div className="flex items-center gap-1">
           {update && (
             <button
               onClick={() => onUpdate(update)}
@@ -139,7 +135,7 @@ export function PluginCard({
         <div className="flex items-center gap-3">
           <span className="flex flex-col">
             <span className="flex items-center gap-1">
-              <Info size={12} className="opacity-50" />
+              <Package size={12} className="opacity-50" />
               v{plugin.version || '?.?.?'}
             </span>
             {update && (
@@ -149,13 +145,13 @@ export function PluginCard({
             )}
           </span>
           {plugin.author && (
-            <span className="flex items-center gap-1 truncate max-w-[80px]">
+            <span className="flex items-center gap-1 truncate max-w-[120px]" title={plugin.author}>
               <User size={12} className="opacity-50" />
               {plugin.author}
             </span>
           )}
         </div>
-        <div className="font-mono opacity-30 text-[10px] truncate max-w-[80px]">
+        <div className="font-mono opacity-30 text-[10px] truncate max-w-[80px]" title={plugin.filename}>
           {plugin.filename}
         </div>
       </div>
