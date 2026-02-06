@@ -1,25 +1,25 @@
-use std::sync::Arc;
 use crate::cache::CacheManager;
+use crate::modrinth::ModrinthClient as CommonClient;
+use std::sync::Arc;
 
+pub mod download;
 pub mod search;
 pub mod versions;
-pub mod download;
 
 pub struct ModrinthClient {
-    pub(crate) client: reqwest::Client,
-    pub(crate) cache: Arc<CacheManager>,
+    pub(crate) inner: CommonClient,
 }
 
 impl ModrinthClient {
     pub fn new(cache: Arc<CacheManager>) -> Self {
         Self {
-            client: cache.get_client().clone(),
-            cache,
+            inner: CommonClient::new(cache),
         }
     }
 
-    pub fn with_base_url(_base_url: String, cache: Arc<CacheManager>) -> Self {
-        // base_url is ignored for now as it's not used in search/versions/download
-        Self::new(cache)
+    pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
+        Self {
+            inner: CommonClient::with_base_url(base_url, cache),
+        }
     }
 }

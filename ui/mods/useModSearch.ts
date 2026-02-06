@@ -78,11 +78,18 @@ export function useModSearch(instanceId: string, initialPageSize = 25) {
     setPage(1)
   }, [provider, activeCategory, sortOrder, query, pageSize])
 
+  const setProviderAndReset = (newProvider: ModProvider) => {
+    setProvider(newProvider)
+    setQuery('')
+    setActiveCategory(null)
+    setPage(1)
+  }
+
   return {
     query,
     setQuery,
     provider,
-    setProvider,
+    setProvider: setProviderAndReset,
     results,
     loading,
     activeCategory,

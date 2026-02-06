@@ -244,7 +244,9 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                 key={p}
                 onClick={() => {
                   setProvider(p)
+                  setQuery('') // Reset search query when switching providers
                   setActiveCategory(null) // Reset category when switching providers
+                  setPage(1) // Reset page when switching providers
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${provider === p
                   ? 'bg-primary text-white shadow-lg shadow-primary/20'

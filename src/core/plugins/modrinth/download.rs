@@ -18,8 +18,8 @@ impl ModrinthClient {
 
         let target_path = target_dir.as_ref().join(&file.filename);
         info!("Downloading plugin from {}: {} ({} bytes)", file.url, file.filename, file.size);
-
-        let response = self.client.get(&file.url).send().await?;
+ 
+        let response = self.inner.client.get(&file.url).send().await?;
         let mut f = fs::File::create(&target_path).await?;
 
         let mut stream = response.bytes_stream();

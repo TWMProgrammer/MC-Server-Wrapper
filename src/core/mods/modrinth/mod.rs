@@ -1,29 +1,25 @@
 use std::sync::Arc;
 use crate::cache::CacheManager;
+use crate::modrinth::ModrinthClient as CommonClient;
 
 pub mod search;
 pub mod download;
 pub mod versions;
 
 pub struct ModrinthClient {
-    pub(crate) client: reqwest::Client,
-    pub(crate) base_url: String,
-    pub(crate) cache: Arc<CacheManager>,
+    pub(crate) inner: CommonClient,
 }
 
 impl ModrinthClient {
     pub fn new(cache: Arc<CacheManager>) -> Self {
-        Self::with_base_url("https://api.modrinth.com/v2".to_string(), cache)
+        Self {
+            inner: CommonClient::new(cache),
+        }
     }
 
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
-                .build()
-                .expect("Failed to create reqwest client"),
-            base_url,
-            cache,
+            inner: CommonClient::with_base_url(base_url, cache),
         }
     }
 }

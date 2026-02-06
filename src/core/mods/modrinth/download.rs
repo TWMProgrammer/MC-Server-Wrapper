@@ -24,7 +24,7 @@ impl ModrinthClient {
         let target_path_clone = target_path.clone();
         retry_async(
             || async {
-                let response = self.client.get(&file.url).send().await?;
+                let response = self.inner.client.get(&file.url).send().await?;
                 let mut f = fs::File::create(&target_path_clone).await?;
 
                 let mut stream = response.bytes_stream();
