@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Check, Package, User, Download, ExternalLink, Star } from 'lucide-react'
 import { Project } from '../types'
+import { useAssetCache } from '../hooks/useAssetCache'
 
 interface ModCardProps {
   project: Project;
@@ -17,6 +18,8 @@ export function ModCard({
   onShowDetails,
   viewMode = 'grid'
 }: ModCardProps) {
+  const { localUrl: iconUrl } = useAssetCache(project.icon_url);
+
   if (viewMode === 'list') {
     return (
       <motion.div
@@ -28,7 +31,7 @@ export function ModCard({
       >
         <div className="relative shrink-0">
           {project.icon_url ? (
-            <img src={project.icon_url} alt="" className="w-12 h-12 rounded-xl object-cover bg-black/20 shadow-lg" />
+            <img src={iconUrl || project.icon_url} alt="" className="w-12 h-12 rounded-xl object-cover bg-black/20 shadow-lg" />
           ) : (
             <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-lg">
               <Package size={24} />
@@ -105,7 +108,7 @@ export function ModCard({
 
       <div className="flex items-start gap-4 mb-4">
         {project.icon_url ? (
-          <img src={project.icon_url} alt="" className="w-16 h-16 rounded-2xl object-cover bg-black/20 shadow-xl" />
+          <img src={iconUrl || project.icon_url} alt="" className="w-16 h-16 rounded-2xl object-cover bg-black/20 shadow-xl" />
         ) : (
           <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xl">
             <Package size={32} />

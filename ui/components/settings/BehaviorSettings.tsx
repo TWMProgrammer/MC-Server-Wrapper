@@ -103,10 +103,10 @@ export function BehaviorSettings({ settings, updateSettings, activeTab }: Behavi
             disabled={!settings.download_player_heads}
           />
           <Checkbox
-            label="Query heads by username"
-            description="Use usernames instead of UUIDs for head lookups"
-            checked={settings.query_heads_by_username}
-            onChange={(val) => updateSettings({ query_heads_by_username: val })}
+            label="Query heads by UUID"
+            description="Use UUIDs instead of usernames for head lookups"
+            checked={settings.query_heads_by_uuid}
+            onChange={(val) => updateSettings({ query_heads_by_uuid: val })}
             disabled={!settings.download_player_heads}
           />
         </div>

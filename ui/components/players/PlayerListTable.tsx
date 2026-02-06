@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, User } from 'lucide-react'
 import { PlayerEntry, OpEntry, BannedPlayerEntry, BannedIpEntry } from '../../types'
 import { AppSettings } from '../../hooks/useAppSettings'
+import { PlayerAvatar } from './PlayerAvatar'
 
 interface PlayerListTableProps {
   list: (PlayerEntry | OpEntry | BannedPlayerEntry | BannedIpEntry)[];
@@ -52,17 +52,6 @@ export function PlayerListTable({ list, onRemove, settings }: PlayerListTablePro
           const identifier = 'name' in player ? player.name : player.ip;
           const uuid = 'uuid' in player ? player.uuid : undefined;
 
-          const avatarUrl = useMemo(() => {
-            if (!settings.download_player_heads) return null;
-
-            // IPs don't have avatars in minotar generally, but we'll try username/uuid if available
-            if (!('name' in player) && !('uuid' in player)) return null;
-
-            const headIdentifier = settings.query_heads_by_username ? identifier : (uuid || identifier);
-            const type = settings.use_helm_heads ? 'helm' : 'avatar';
-            return `https://minotar.net/${type}/${headIdentifier}/48`;
-          }, [identifier, uuid, settings.download_player_heads, settings.query_heads_by_username, settings.use_helm_heads, player]);
-
           return (
             <motion.div
               layout
@@ -72,17 +61,12 @@ export function PlayerListTable({ list, onRemove, settings }: PlayerListTablePro
             >
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={identifier}
-                      className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400 border border-black/5 dark:border-white/5">
-                      <User size={24} />
-                    </div>
-                  )}
+                  <PlayerAvatar 
+                    name={identifier} 
+                    uuid={uuid} 
+                    settings={settings} 
+                    className="w-12 h-12"
+                  />
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="font-bold text-gray-900 dark:text-white tracking-tight truncate">

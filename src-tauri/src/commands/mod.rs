@@ -8,6 +8,7 @@ pub mod scheduler;
 pub mod plugins;
 pub mod mods;
 pub mod java;
+pub mod assets;
 
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;

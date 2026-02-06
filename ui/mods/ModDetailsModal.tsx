@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import {
@@ -13,10 +14,12 @@ import {
   AlertCircle,
   RefreshCw,
   Star,
-  Cpu
+  Cpu,
+  Image as ImageIcon
 } from 'lucide-react'
 import { Project } from '../types'
 import { useAppSettings } from '../hooks/useAppSettings'
+import { useAssetCache, useAssetsCache } from '../hooks/useAssetCache'
 
 interface ModDetailsModalProps {
   project: Project;
@@ -33,6 +36,9 @@ export function ModDetailsModal({
   isSelected
 }: ModDetailsModalProps) {
   const { settings } = useAppSettings()
+  const { localUrl: iconUrl } = useAssetCache(project.icon_url)
+  const { localUrls: screenshotUrls } = useAssetsCache(project.screenshot_urls)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
 
   return createPortal(
     <div
@@ -59,11 +65,39 @@ export function ModDetailsModal({
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           className="relative w-[75%] h-[90%] bg-[#0a0a0c] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
+          {/* Screenshot Preview Overlay */}
+          <AnimatePresence>
+            {selectedScreenshot && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedScreenshot(null)}
+                className="absolute inset-0 z-[110] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out"
+              >
+                <motion.img
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0.9 }}
+                  src={selectedScreenshot}
+                  alt="Screenshot Preview"
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                />
+                <button
+                  onClick={() => setSelectedScreenshot(null)}
+                  className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Header */}
           <div className="p-6 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
             <div className="flex items-center gap-5">
               {project.icon_url ? (
-                <img src={project.icon_url} alt="" className="w-20 h-20 rounded-2xl object-cover bg-black/40 shadow-xl" />
+                <img src={iconUrl || project.icon_url} alt="" className="w-20 h-20 rounded-2xl object-cover bg-black/40 shadow-xl" />
               ) : (
                 <div className="w-20 h-20 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xl">
                   <Package size={40} />
@@ -134,6 +168,35 @@ export function ModDetailsModal({
                     </div>
                   </div>
                 </section>
+
+                {screenshotUrls.length > 0 && (
+                  <section>
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                      <ImageIcon size={18} className="text-primary" />
+                      Gallery
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {screenshotUrls.map((url, idx) => (
+                        <motion.div
+                          key={idx}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSelectedScreenshot(url)}
+                          className="relative aspect-video rounded-xl overflow-hidden bg-white/5 border border-white/5 cursor-zoom-in group"
+                        >
+                          <img
+                            src={url}
+                            alt={`Screenshot ${idx + 1}`}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ImageIcon size={24} className="text-white" />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </div>
 
               <div className="space-y-6">

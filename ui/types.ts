@@ -163,6 +163,7 @@ export interface Project {
   description: string;
   downloads: number;
   icon_url?: string;
+  screenshot_urls?: string[];
   author: string;
   provider: PluginProvider | ModProvider;
   categories?: string[];

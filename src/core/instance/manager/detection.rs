@@ -254,7 +254,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join("test.db");
         let db = Arc::new(Database::new(db_path).await.unwrap());
-        let manager = InstanceManager::new(dir.path(), db).await.unwrap();
+        let _manager = InstanceManager::new(dir.path(), db).await.unwrap();
 
         let content = r#" @echo off 
   

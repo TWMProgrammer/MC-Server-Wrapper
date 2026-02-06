@@ -1,14 +1,14 @@
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods;
-use mc_server_wrapper_core::utils::{validate_rel_path, safe_join};
-use tempfile::tempdir;
+use mc_server_wrapper_core::utils::{safe_join, validate_rel_path};
 use std::fs;
+use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_intrusion_attack_protection() {
     let base_dir = tempdir().unwrap();
     let base_path = base_dir.path();
-    
+
     // Create a "secret" file outside our base path
     let secret_file = base_path.parent().unwrap().join("top_secret.txt");
     fs::write(&secret_file, "classified information").unwrap();
@@ -18,13 +18,13 @@ async fn test_intrusion_attack_protection() {
         "../top_secret.txt",
         "../../top_secret.txt",
         "some_dir/../../../top_secret.txt",
-        "%2e%2e/top_secret.txt",                // URL encoded ..
-        "%2e%2e%2f%2e%2e%2ftop_secret.txt",     // URL encoded ../../
-        "..\\top_secret.txt",                   // Windows style traversal
-        "C:\\Windows\\System32\\config\\SAM",   // Absolute Windows path
-        "/etc/shadow",                          // Absolute Linux path
-        "\\\\server\\share\\file.txt",          // UNC path
-        "subdir/..%2f..%2fsecret.txt",          // Mixed encoding
+        "%2e%2e/top_secret.txt",              // URL encoded ..
+        "%2e%2e%2f%2e%2e%2ftop_secret.txt",   // URL encoded ../../
+        "..\\top_secret.txt",                 // Windows style traversal
+        "C:\\Windows\\System32\\config\\SAM", // Absolute Windows path
+        "/etc/shadow",                        // Absolute Linux path
+        "\\\\server\\share\\file.txt",        // UNC path
+        "subdir/..%2f..%2fsecret.txt",        // Mixed encoding
     ];
 
     for payload in malicious_payloads {
@@ -62,14 +62,17 @@ async fn test_path_traversal_protection_in_mods() {
 
     // Try to "uninstall" the sensitive file using path traversal
     let traversal_filename = "../../sensitive.txt";
-    
+
     // We expect this to fail
     let result = mods::uninstall_mod(&instance_dir, traversal_filename.to_string(), false).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("Invalid filename"));
 
     // Verify the sensitive file still exists
-    assert!(sensitive_file.exists(), "Path traversal allowed deleting files outside the mods directory!");
+    assert!(
+        sensitive_file.exists(),
+        "Path traversal allowed deleting files outside the mods directory!"
+    );
 }
 
 #[tokio::test]
@@ -80,7 +83,7 @@ async fn test_path_traversal_protection_in_instance_manager() {
     let db_path = base_dir.path().join("test.db");
     let db = Arc::new(Database::new(db_path).await.unwrap());
     let _manager = InstanceManager::new(base_dir.path(), db).await.unwrap();
-    
+
     // Create a sensitive file
     let sensitive_file = base_dir.path().join("sensitive.txt");
     fs::write(&sensitive_file, "secret data").unwrap();
@@ -88,20 +91,20 @@ async fn test_path_traversal_protection_in_instance_manager() {
     // Try to create an instance with a name that could cause issues
     // Note: InstanceManager might sanitize names or use UUIDs for paths
     let _malicious_name = "../malicious";
-    
+
     // Check if we can get an instance with a traversal path if we were using it in commands
     // In src-tauri/src/commands/files.rs:
     // let file_path = instance.path.join(&rel_path);
-    
+
     let instance_path = base_dir.path().join("instance_1");
     fs::create_dir_all(&instance_path).unwrap();
-    
+
     let rel_path = "../sensitive.txt";
     let target_path = instance_path.join(rel_path);
-    
+
     // This is what the current code does in src-tauri/src/commands/files.rs
     // We want to ensure that we don't allow this in the future or that we handle it.
-    
+
     // For now, let's just document that the core should probably have a helper to validate paths.
     assert!(target_path.exists()); // Currently it DOES allow traversal because join() just appends
 }
@@ -129,11 +132,17 @@ async fn test_config_corruption_robustness() {
 async fn test_network_resilience_simulation() {
     use mc_server_wrapper_core::downloader::VersionDownloader;
     let base_dir = tempdir().unwrap();
-    let downloader = VersionDownloader::new(Some(base_dir.path().to_path_buf()));
+    let downloader = VersionDownloader::new(Some(base_dir.path().to_path_buf()), None, None);
 
     // Test with a non-existent version ID to trigger an error
     // In a real scenario, we might use a mock server to simulate intermittent connection
-    let result = downloader.download_server("non_existent_version", base_dir.path().join("server.jar"), |_, _| {}).await;
+    let result = downloader
+        .download_server(
+            "non_existent_version",
+            base_dir.path().join("server.jar"),
+            |_, _| {},
+        )
+        .await;
 
     assert!(result.is_err());
 }

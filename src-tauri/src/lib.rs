@@ -73,10 +73,37 @@ pub fn run() -> anyhow::Result<()> {
                 .context("failed to initialize instance manager")?,
             );
 
+            // Initialize CacheManager
+            let cache_manager = Arc::new(mc_server_wrapper_core::cache::CacheManager::new(
+                1024,
+                std::time::Duration::from_secs(86400),
+                Some(app_dirs.cache.clone()),
+            ));
+
+            // Initialize AssetManager
+            let asset_manager = Arc::new(mc_server_wrapper_core::assets::AssetManager::new(
+                app_dirs.assets,
+                Arc::clone(&cache_manager),
+            ));
+
             let server_manager = Arc::new(ServerManager::new(
                 Arc::clone(&instance_manager),
                 Arc::clone(&config_manager),
             ));
+
+            // Run maintenance tasks (migration and pruning) in the background
+            let sm_clone = Arc::clone(&server_manager);
+            let am_clone = Arc::clone(&asset_manager);
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = sm_clone.perform_maintenance().await {
+                    log::error!("Failed to perform server manager maintenance: {}", e);
+                }
+                
+                // Clean up assets older than 7 days
+                if let Err(e) = am_clone.cleanup_assets(std::time::Duration::from_secs(7 * 24 * 60 * 60)).await {
+                    log::error!("Failed to perform asset cleanup: {}", e);
+                }
+            });
             let backup_manager = Arc::new(BackupManager::new(app_dirs.backups));
             let scheduler_manager = Arc::new(tauri::async_runtime::block_on(async {
                 let sm =
@@ -108,6 +135,8 @@ pub fn run() -> anyhow::Result<()> {
             app.manage(scheduler_manager);
             app.manage(config_manager);
             app.manage(java_manager);
+            app.manage(cache_manager);
+            app.manage(asset_manager);
             app.manage(AppState {
                 subscribed_servers: Arc::new(TokioMutex::new(HashSet::new())),
             });
@@ -236,6 +265,10 @@ pub fn run() -> anyhow::Result<()> {
             commands::mods::list_mod_config_files,
             commands::mods::check_for_mod_updates,
             commands::mods::update_mod,
+            commands::assets::cache_asset,
+            commands::assets::get_player_head_path,
+            commands::assets::get_asset_cache_stats,
+            commands::assets::cleanup_assets,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

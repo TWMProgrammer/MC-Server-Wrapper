@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { FileText, Shield, Ban, User } from 'lucide-react'
 import { cn } from '../../utils'
 import { AppSettings } from '../../hooks/useAppSettings'
+import { PlayerAvatar } from './PlayerAvatar'
 
 interface PlayerCardProps {
   player: {
@@ -38,14 +38,6 @@ const itemVariants = {
 };
 
 export function PlayerCard({ player, index, onQuickAdd, settings }: PlayerCardProps) {
-  const avatarUrl = useMemo(() => {
-    if (!settings.download_player_heads) return null;
-
-    const identifier = settings.query_heads_by_username ? player.name : (player.uuid || player.name);
-    const type = settings.use_helm_heads ? 'helm' : 'avatar';
-    return `https://minotar.net/${type}/${identifier}/48`;
-  }, [player.name, player.uuid, settings.download_player_heads, settings.query_heads_by_username, settings.use_helm_heads]);
-
   return (
     <motion.div
       layout
@@ -55,17 +47,12 @@ export function PlayerCard({ player, index, onQuickAdd, settings }: PlayerCardPr
     >
       <div className="flex items-center gap-4">
         <div className="relative shrink-0">
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={player.name}
-              className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-black/10 dark:ring-white/10"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-gray-400 border border-black/5 dark:border-white/5">
-              <User size={24} />
-            </div>
-          )}
+          <PlayerAvatar 
+            name={player.name} 
+            uuid={player.uuid} 
+            settings={settings} 
+            className="w-12 h-12"
+          />
           <span className={cn(
             "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 shadow-sm transition-all duration-500",
             player.isOnline

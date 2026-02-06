@@ -25,7 +25,7 @@ pub struct AppSettings {
     // Player List
     pub download_player_heads: bool,
     pub use_helm_heads: bool,
-    pub query_heads_by_username: bool,
+    pub query_heads_by_uuid: bool,
 
     // Server Tabs
     pub display_server_icon: bool,
@@ -64,7 +64,7 @@ impl Default for AppSettings {
             start_page: "Dashboard".to_string(),
             download_player_heads: true,
             use_helm_heads: true,
-            query_heads_by_username: false,
+            query_heads_by_uuid: false,
             display_server_icon: true,
             display_online_player_count: true,
             display_server_version: true,

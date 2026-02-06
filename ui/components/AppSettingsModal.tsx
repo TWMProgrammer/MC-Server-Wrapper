@@ -1,4 +1,4 @@
-import { X, Settings, Palette, Layout, Users, ChevronRight } from 'lucide-react'
+import { X, Settings, Palette, Layout, Users, ChevronRight, Database } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import { cn } from '../utils'
@@ -6,6 +6,7 @@ import { AppSettings, useAppSettings } from '../hooks/useAppSettings'
 import { AppearanceSettings } from './settings/AppearanceSettings'
 import { BehaviorSettings } from './settings/BehaviorSettings'
 import { SystemSettings } from './settings/SystemSettings'
+import { CacheSettings } from './settings/CacheSettings'
 
 interface AppSettingsModalProps {
   isOpen: boolean;
@@ -14,7 +15,7 @@ interface AppSettingsModalProps {
   updateSettings: (newSettings: Partial<AppSettings>) => void;
 }
 
-type SettingsTab = 'general' | 'appearance' | 'interface' | 'players' | 'java';
+type SettingsTab = 'general' | 'appearance' | 'interface' | 'players' | 'cache' | 'java';
 
 interface TabItem {
   id: SettingsTab;
@@ -28,6 +29,7 @@ const TABS: TabItem[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Themes and visual styling' },
   { id: 'interface', label: 'Interface', icon: Layout, description: 'UI elements and layout' },
   { id: 'players', label: 'Players', icon: Users, description: 'Player skin and data settings' },
+  { id: 'cache', label: 'Cache', icon: Database, description: 'Manage cached images and data' },
   { id: 'java', label: 'Java', icon: Settings, description: 'Manage Java versions' },
 ];
 
@@ -184,6 +186,10 @@ export function AppSettingsModal({
                           settings={settings}
                           updateSettings={updateSettings}
                         />
+                      )}
+
+                      {activeTab === 'cache' && (
+                        <CacheSettings />
                       )}
                     </motion.div>
                   </AnimatePresence>

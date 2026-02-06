@@ -83,6 +83,7 @@ impl ModrinthClient {
                     description: h["description"].as_str().unwrap_or_default().to_string(),
                     downloads: h["downloads"].as_u64().unwrap_or(0),
                     icon_url: h["icon_url"].as_str().map(|s: &str| s.to_string()),
+                    screenshot_urls: None,
                     author: String::new(),
                     provider: ModProvider::Modrinth,
                     categories: h["categories"].as_array().map(|cats: &Vec<serde_json::Value>| {

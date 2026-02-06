@@ -2581,6 +2581,7 @@ dependencies = [
  "chrono",
  "flate2",
  "futures-util",
+ "hex",
  "moka",
  "regex",
  "reqwest 0.12.28",

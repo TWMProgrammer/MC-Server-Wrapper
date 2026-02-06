@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Package, Power, Settings, Trash2, ArrowUpCircle, Info, User, CheckSquare, Square } from 'lucide-react'
 import { InstalledPlugin, PluginUpdate } from '../types'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
+import { useAssetCache } from '../hooks/useAssetCache'
 
 interface PluginCardProps {
   plugin: InstalledPlugin;
@@ -45,6 +46,9 @@ export function PluginCard({
   onOpenConfig,
   onDelete
 }: PluginCardProps) {
+  // Use source icon if available (from marketplace)
+  const { localUrl: iconUrl } = useAssetCache(plugin.source?.project_id ? `https://api.modrinth.com/v2/project/${plugin.source.project_id}/icon` : null);
+
   return (
     <motion.div
       layout
@@ -63,8 +67,12 @@ export function PluginCard({
       </button>
 
       <div className="flex items-start justify-between mb-3">
-        <div className={`p-3 rounded-xl ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
-          <Package size={24} />
+        <div className={`relative p-3 rounded-xl overflow-hidden ${plugin.enabled ? 'bg-primary/10 text-primary' : 'bg-gray-500/10 text-gray-500'}`}>
+          {iconUrl ? (
+            <img src={iconUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+          ) : (
+            <Package size={24} className="relative z-10" />
+          )}
         </div>
         <div className="flex items-center gap-1 mr-8">
           {update && (

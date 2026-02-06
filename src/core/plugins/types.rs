@@ -50,6 +50,7 @@ pub struct Project {
     pub description: String,
     pub downloads: u64,
     pub icon_url: Option<String>,
+    pub screenshot_urls: Option<Vec<String>>,
     pub author: String,
     pub provider: PluginProvider,
 }

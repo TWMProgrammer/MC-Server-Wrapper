@@ -2370,6 +2370,7 @@ dependencies = [
  "chrono",
  "flate2",
  "futures-util",
+ "hex",
  "mockall",
  "moka",
  "regex",

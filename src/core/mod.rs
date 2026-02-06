@@ -1,6 +1,8 @@
 pub mod players;
 pub mod config;
 pub mod cache;
+pub mod assets;
+pub mod artifacts;
 pub mod app_config;
 pub mod server;
 pub mod instance;

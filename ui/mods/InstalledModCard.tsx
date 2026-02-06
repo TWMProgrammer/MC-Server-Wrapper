@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
-import { Layers, CheckSquare, Square, Power, ArrowUpCircle, User, Sliders, Trash2 } from 'lucide-react'
+import { Layers, CheckSquare, Square, Power, ArrowUpCircle, User, Sliders, Trash2, Package } from 'lucide-react'
 import { InstalledMod, ModUpdate } from '../types'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
+import { useAssetCache } from '../hooks/useAssetCache'
 
 interface InstalledModCardProps {
   mod: InstalledMod;
@@ -45,6 +46,9 @@ export function InstalledModCard({
   onDelete,
   onConfigure
 }: InstalledModCardProps) {
+  // Use source icon if available (from marketplace) or fallback to data icon
+  const { localUrl: iconUrl } = useAssetCache(mod.source?.project_id ? `https://api.modrinth.com/v2/project/${mod.source.project_id}/icon` : null);
+
   return (
     <motion.div
       layout
@@ -55,7 +59,9 @@ export function InstalledModCard({
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-12 bg-black/20 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 border border-white/5">
-            {mod.icon_data ? (
+            {iconUrl ? (
+              <img src={iconUrl} alt={mod.name} className="w-full h-full object-cover" />
+            ) : mod.icon_data ? (
               <img src={`data:image/png;base64,${mod.icon_data}`} alt={mod.name} className="w-full h-full object-cover" />
             ) : (
               <Layers size={24} className="text-gray-600" />

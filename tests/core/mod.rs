@@ -15,3 +15,5 @@ mod workflow_1_integration;
 mod workflow_2_integration;
 mod security_tests;
 mod retry_tests;
+mod cache_tests;
+mod asset_tests;

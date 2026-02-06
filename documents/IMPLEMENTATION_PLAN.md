@@ -180,6 +180,12 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [x] **Robust Error Handling**
   - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
   - [x] Implement React Error Boundaries in the frontend.
+- [ ] **Advanced Caching System**
+  - [ ] Implement persistent disk-backed cache for metadata.
+  - [ ] Create a global artifact store for shared server JARs and assets.
+  - [ ] Implement Stale-While-Revalidate pattern for manifest files.
+  - [ ] Implement local asset caching for marketplace icons and player skins.
+  - [ ] Add cache management UI in Settings.
 - [x] **Production Observability**
   - [x] Persistent file logging for production builds using `tauri-plugin-log`.
 

@@ -10,6 +10,8 @@ pub struct AppDirs {
     pub backups: PathBuf,
     pub resources: PathBuf,
     pub server: PathBuf,
+    pub cache: PathBuf,
+    pub assets: PathBuf,
 }
 
 /// Checks if the given directory contains unrelated files or folders.
@@ -21,7 +23,7 @@ pub async fn has_folder_clutter(exe_dir: &Path) -> Result<bool> {
     
     // Items created by the app
     let app_items: HashSet<&str> = [
-        "backups", "resources", "server", "java", "logs", "app_settings.json"
+        "backups", "resources", "server", "java", "logs", "app_settings.json", "cache"
     ].into_iter().collect();
 
     // Development environment items
@@ -98,11 +100,15 @@ pub async fn init_directories(base_path: &Path) -> Result<AppDirs> {
     let backups = base_path.join("backups");
     let resources = base_path.join("resources");
     let server = base_path.join("server");
+    let cache = base_path.join("cache");
+    let assets = cache.join("assets");
 
     let dirs = [
         (&backups, "backups"),
         (&resources, "resources"),
         (&server, "server"),
+        (&cache, "cache"),
+        (&assets, "assets"),
     ];
 
     for (path, name) in dirs {
@@ -118,5 +124,7 @@ pub async fn init_directories(base_path: &Path) -> Result<AppDirs> {
         backups,
         resources,
         server,
+        cache,
+        assets,
     })
 }

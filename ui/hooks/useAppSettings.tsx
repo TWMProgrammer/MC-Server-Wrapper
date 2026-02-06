@@ -39,7 +39,7 @@ export interface AppSettings {
   // Player List
   download_player_heads: boolean;
   use_helm_heads: boolean;
-  query_heads_by_username: boolean;
+  query_heads_by_uuid: boolean;
 
   // Server Tabs
   display_server_icon: boolean;
@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   start_page: "Dashboard",
   download_player_heads: true,
   use_helm_heads: true,
-  query_heads_by_username: false,
+  query_heads_by_uuid: false,
   display_server_icon: true,
   display_online_player_count: true,
   display_server_version: true,
