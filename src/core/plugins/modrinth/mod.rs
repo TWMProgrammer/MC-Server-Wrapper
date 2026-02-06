@@ -13,11 +13,13 @@ pub struct ModrinthClient {
 impl ModrinthClient {
     pub fn new(cache: Arc<CacheManager>) -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
-                .build()
-                .expect("Failed to create reqwest client"),
+            client: cache.get_client().clone(),
             cache,
         }
+    }
+
+    pub fn with_base_url(_base_url: String, cache: Arc<CacheManager>) -> Self {
+        // base_url is ignored for now as it's not used in search/versions/download
+        Self::new(cache)
     }
 }

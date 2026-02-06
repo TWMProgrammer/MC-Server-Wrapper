@@ -5,7 +5,7 @@ import { useToast } from '../hooks/useToast'
 
 const DEFAULT_PAGE_SIZE = 16
 
-export function useModSearch(instanceId: string, initialPageSize = DEFAULT_PAGE_SIZE) {
+export function useModSearch(instanceId: string, initialPageSize = 25) {
   const [query, setQuery] = useState('')
   const [provider, setProvider] = useState<ModProvider>('Modrinth')
   const [results, setResults] = useState<Project[]>([])
@@ -16,11 +16,6 @@ export function useModSearch(instanceId: string, initialPageSize = DEFAULT_PAGE_
   const [instance, setInstance] = useState<Instance | null>(null)
   const [pageSize, setPageSize] = useState(initialPageSize)
   const { showToast } = useToast()
-
-  // Update pageSize when it changes from outside
-  useEffect(() => {
-    setPageSize(initialPageSize)
-  }, [initialPageSize])
 
   // Load instance details to get default version and loader
   useEffect(() => {
@@ -81,7 +76,7 @@ export function useModSearch(instanceId: string, initialPageSize = DEFAULT_PAGE_
   // Reset page when filters change
   useEffect(() => {
     setPage(1)
-  }, [provider, activeCategory, sortOrder, query])
+  }, [provider, activeCategory, sortOrder, query, pageSize])
 
   return {
     query,
@@ -97,7 +92,8 @@ export function useModSearch(instanceId: string, initialPageSize = DEFAULT_PAGE_
     page,
     setPage,
     instance,
+    pageSize,
+    setPageSize,
     handleSearch,
-    pageSize
   }
 }

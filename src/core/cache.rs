@@ -50,6 +50,7 @@ pub struct CacheManager {
     dirty_keys: Arc<Mutex<HashSet<String>>>,
     default_ttl: Duration,
     background_task_started: Arc<std::sync::atomic::AtomicBool>,
+    client: reqwest::Client,
 }
 
 impl CacheManager {
@@ -61,18 +62,31 @@ impl CacheManager {
             .time_to_live(default_ttl * 2)
             .build();
         
+        let client = reqwest::Client::builder()
+            .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+        
         let manager = Self {
             cache,
             cache_dir,
             dirty_keys: Arc::new(Mutex::new(HashSet::new())),
             default_ttl,
             background_task_started: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            client,
         };
 
         // Try to start background flush task if cache_dir is provided
         manager.ensure_background_tasks();
 
         manager
+    }
+
+    /// Gets the shared reqwest client.
+    pub fn get_client(&self) -> &reqwest::Client {
+        &self.client
     }
 
     /// Ensures the background flush task is running if a cache directory is present.

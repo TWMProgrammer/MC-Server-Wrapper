@@ -25,7 +25,6 @@ import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
 import { Select } from '../components/Select'
 import { MarketplaceFloatingBar } from '../mods/MarketplaceFloatingBar'
-import { useGridPageSize } from '../hooks/useGridPageSize'
 
 interface MarketplaceProps {
   instanceId: string;
@@ -79,9 +78,6 @@ const SORT_OPTIONS = [
 ]
 
 export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) {
-  const gridContainerRef = useRef<HTMLDivElement>(null)
-  const pageSize = useGridPageSize(gridContainerRef)
-
   const [query, setQuery] = useState('')
   const [provider, setProvider] = useState<PluginProvider>('Modrinth')
   const [results, setResults] = useState<Project[]>([])
@@ -97,6 +93,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [page, setPage] = useState(1)
   const [instance, setInstance] = useState<Instance | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [pageSize, setPageSize] = useState(25)
 
   const { showToast } = useToast()
 
@@ -151,13 +148,15 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
   // Initial search on load or when instance/filters change
   useEffect(() => {
-    handleSearch()
+    if (instance) {
+      handleSearch()
+    }
   }, [provider, activeCategory, sortOrder, page, instance, pageSize])
 
   // Reset page when provider, category or sort changes
   useEffect(() => {
     setPage(1)
-  }, [provider, activeCategory, sortOrder, query])
+  }, [provider, activeCategory, sortOrder, query, pageSize])
 
   const togglePluginSelection = (project: Project) => {
     const newSelection = new Map(selectedPlugins)
@@ -306,6 +305,17 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
           </form>
 
           <div className="flex items-center gap-2">
+            <Select
+              value={pageSize.toString()}
+              onChange={(val) => setPageSize(parseInt(val))}
+              options={[
+                { value: '25', label: '25 per page' },
+                { value: '50', label: '50 per page' },
+                { value: '100', label: '100 per page' },
+              ]}
+              className="w-32"
+            />
+
             <div className="flex bg-black/20 border border-white/5 rounded-2xl p-1">
               <button
                 onClick={() => setViewMode('grid')}
@@ -338,7 +348,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
           </div>
         </div>
 
-        <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
           <div className={viewMode === 'grid'
             ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4"
             : "flex flex-col gap-3 pb-4"

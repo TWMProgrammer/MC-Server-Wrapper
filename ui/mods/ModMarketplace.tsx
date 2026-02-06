@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Search } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
@@ -12,7 +12,6 @@ import { MarketplaceHeader } from './MarketplaceHeader'
 import { ModCard } from './ModCard'
 import { MarketplacePagination } from './MarketplacePagination'
 import { MarketplaceFloatingBar } from './MarketplaceFloatingBar'
-import { useGridPageSize } from '../hooks/useGridPageSize'
 
 interface ModMarketplaceProps {
   instanceId: string;
@@ -20,9 +19,6 @@ interface ModMarketplaceProps {
 }
 
 export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceProps) {
-  const gridContainerRef = useRef<HTMLDivElement>(null)
-  const pageSize = useGridPageSize(gridContainerRef)
-
   const {
     query,
     setQuery,
@@ -36,8 +32,10 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
     setSortOrder,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     handleSearch
-  } = useModSearch(instanceId, pageSize)
+  } = useModSearch(instanceId)
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [selectedMods, setSelectedMods] = useState<Map<string, Project>>(new Map())
@@ -135,9 +133,11 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
           onSearch={handleSearch}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
         />
 
-        <div ref={gridContainerRef} className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
           <div className={viewMode === 'grid'
             ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4"
             : "flex flex-col gap-3 pb-4"

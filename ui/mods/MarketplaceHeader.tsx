@@ -11,6 +11,8 @@ interface MarketplaceHeaderProps {
   onSearch: (e?: React.FormEvent) => void;
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
+  pageSize: number;
+  setPageSize: (size: number) => void;
 }
 
 export function MarketplaceHeader({
@@ -20,7 +22,9 @@ export function MarketplaceHeader({
   setSortOrder,
   onSearch,
   viewMode,
-  setViewMode
+  setViewMode,
+  pageSize,
+  setPageSize
 }: MarketplaceHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row gap-4 shrink-0">
@@ -36,6 +40,17 @@ export function MarketplaceHeader({
       </form>
 
       <div className="flex items-center gap-2">
+        <Select
+          value={pageSize.toString()}
+          onChange={(val) => setPageSize(parseInt(val))}
+          options={[
+            { value: '25', label: '25 per page' },
+            { value: '50', label: '50 per page' },
+            { value: '100', label: '100 per page' },
+          ]}
+          className="w-32"
+        />
+
         <div className="flex bg-black/20 border border-white/5 rounded-2xl p-1">
           <button
             onClick={() => setViewMode('grid')}

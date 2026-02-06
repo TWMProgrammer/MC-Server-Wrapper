@@ -18,10 +18,7 @@ impl SpigetClient {
 
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
         Self {
-            client: reqwest::Client::builder()
-                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
-                .build()
-                .expect("Failed to create reqwest client"),
+            client: cache.get_client().clone(),
             base_url,
             cache,
         }
