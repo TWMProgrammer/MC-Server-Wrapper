@@ -1,20 +1,21 @@
-pub mod instance;
-pub mod server;
-pub mod players;
-pub mod config;
-pub mod files;
-pub mod backups;
-pub mod scheduler;
-pub mod plugins;
-pub mod mods;
-pub mod java;
 pub mod assets;
+pub mod backups;
+pub mod config;
+pub mod database;
+pub mod files;
+pub mod instance;
+pub mod java;
+pub mod mods;
+pub mod players;
+pub mod plugins;
+pub mod scheduler;
+pub mod server;
 
+use mc_server_wrapper_core::errors::AppError;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::Mutex as TokioMutex;
-use std::collections::HashSet;
 use uuid::Uuid;
-use mc_server_wrapper_core::errors::AppError;
 
 pub type CommandResult<T> = Result<T, AppError>;
 

@@ -18,6 +18,7 @@ import { BulkActions } from './BulkActions'
 interface InstalledPluginsProps {
   instanceId: string;
   refreshTrigger?: number;
+  onOpenDatabaseExplorer: () => void;
 }
 
 type ViewMode = 'table' | 'grid'
@@ -32,7 +33,7 @@ const containerVariants = {
   }
 };
 
-export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPluginsProps) {
+export function InstalledPlugins({ instanceId, refreshTrigger, onOpenDatabaseExplorer }: InstalledPluginsProps) {
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([])
   const [updates, setUpdates] = useState<PluginUpdate[]>([])
   const [loading, setLoading] = useState(true)
@@ -214,6 +215,7 @@ export function InstalledPlugins({ instanceId, refreshTrigger }: InstalledPlugin
         setViewMode={setViewMode}
         onCheckUpdates={handleCheckUpdates}
         onRefresh={loadPlugins}
+        onOpenDatabaseExplorer={onOpenDatabaseExplorer}
         loading={loading}
         checkingUpdates={checkingUpdates}
       />

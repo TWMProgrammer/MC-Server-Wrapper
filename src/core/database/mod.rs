@@ -3,6 +3,8 @@ use anyhow::{Result, Context};
 use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
 use std::str::FromStr;
 
+pub mod explorer;
+
 pub struct Database {
     pool: SqlitePool,
 }

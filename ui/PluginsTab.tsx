@@ -2,10 +2,10 @@ import { useState } from 'react'
 import {
   Puzzle,
   Plus,
-  Sparkles
 } from 'lucide-react'
 import { InstalledPlugins } from './plugins/InstalledPlugins'
 import { MarketplaceModal } from './plugins/MarketplaceModal'
+import { DatabaseExplorerModal } from './database/DatabaseExplorerModal'
 import { AnimatePresence } from 'framer-motion'
 
 interface PluginsTabProps {
@@ -14,6 +14,7 @@ interface PluginsTabProps {
 
 export function PluginsTab({ instanceId }: PluginsTabProps) {
   const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false)
+  const [isDbExplorerOpen, setIsDbExplorerOpen] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const handleInstallSuccess = () => {
@@ -45,7 +46,8 @@ export function PluginsTab({ instanceId }: PluginsTabProps) {
       <div className="min-h-[500px]">
         <InstalledPlugins 
           instanceId={instanceId} 
-          refreshTrigger={refreshTrigger} 
+          refreshTrigger={refreshTrigger}
+          onOpenDatabaseExplorer={() => setIsDbExplorerOpen(true)}
         />
       </div>
 
@@ -55,6 +57,12 @@ export function PluginsTab({ instanceId }: PluginsTabProps) {
             instanceId={instanceId}
             onClose={() => setIsMarketplaceOpen(false)}
             onInstallSuccess={handleInstallSuccess}
+          />
+        )}
+        {isDbExplorerOpen && (
+          <DatabaseExplorerModal
+            instanceId={instanceId}
+            onClose={() => setIsDbExplorerOpen(false)}
           />
         )}
       </AnimatePresence>

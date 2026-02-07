@@ -1,4 +1,4 @@
-import { Search, List, LayoutGrid, RefreshCw } from 'lucide-react'
+import { Search, List, LayoutGrid, RefreshCw, Database } from 'lucide-react'
 
 type ViewMode = 'table' | 'grid'
 
@@ -9,6 +9,7 @@ interface PluginFiltersProps {
   setViewMode: (mode: ViewMode) => void;
   onCheckUpdates: () => void;
   onRefresh: () => void;
+  onOpenDatabaseExplorer: () => void;
   loading: boolean;
   checkingUpdates: boolean;
 }
@@ -20,6 +21,7 @@ export function PluginFilters({
   setViewMode,
   onCheckUpdates,
   onRefresh,
+  onOpenDatabaseExplorer,
   loading,
   checkingUpdates
 }: PluginFiltersProps) {
@@ -69,6 +71,15 @@ export function PluginFilters({
           <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
+
+      <button
+        onClick={onOpenDatabaseExplorer}
+        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl transition-all border border-white/5 font-bold group"
+        title="Database Explorer"
+      >
+        <Database size={18} className="text-gray-500 group-hover:text-primary transition-colors" />
+        <span>DB Explorer</span>
+      </button>
     </div>
   )
 }
