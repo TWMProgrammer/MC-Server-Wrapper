@@ -111,10 +111,6 @@ vi.mock('../../../ui/mods/ModReviewModal', () => ({
     ),
 }));
 
-vi.mock('../../../ui/hooks/useGridPageSize', () => ({
-    useGridPageSize: () => 16,
-}));
-
 const mockInstance = {
     id: 'test-instance',
     name: 'Test Instance',
@@ -122,7 +118,7 @@ const mockInstance = {
     mod_loader: 'Fabric',
 };
 
-const mockProjects = Array.from({ length: 16 }, (_, i) => ({
+const mockProjects = Array.from({ length: 25 }, (_, i) => ({
     id: `mod-${i + 1}`,
     title: `Test Mod ${i + 1}`,
     description: `Description ${i + 1}`,
@@ -245,7 +241,7 @@ describe('ModMarketplace', () => {
             const calls = mockInvoke.mock.calls;
             const hasPageCall = calls.some(call =>
                 call[0] === 'search_mods' &&
-                call[1].options.offset === 16
+                call[1].options.offset === 25
             );
             expect(hasPageCall).toBe(true);
         });

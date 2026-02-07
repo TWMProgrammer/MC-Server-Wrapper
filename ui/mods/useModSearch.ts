@@ -3,8 +3,6 @@ import { invoke } from '@tauri-apps/api/core'
 import { Project, ModProvider, SortOrder, SearchOptions, Instance } from '../types'
 import { useToast } from '../hooks/useToast'
 
-const DEFAULT_PAGE_SIZE = 16
-
 export function useModSearch(instanceId: string, initialPageSize = 25) {
   const [query, setQuery] = useState('')
   const [provider, setProvider] = useState<ModProvider>('Modrinth')
