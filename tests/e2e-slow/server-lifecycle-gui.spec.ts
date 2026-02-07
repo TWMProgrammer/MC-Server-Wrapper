@@ -73,10 +73,16 @@ test('Server Full Lifecycle Flow', async () => {
     console.log('Version 1.20.1 selected');
     await delay(500);
 
-    // Toggle off "Start Server after creation"
+    // Toggle off "Start Server after creation" if it's on
     console.log('Toggling off "Start Server after creation"...');
     const toggleButton = page.locator('button').filter({ hasText: 'Start Server' }).filter({ hasText: 'After Creation' });
-    await toggleButton.click();
+    const isToggledOn = await toggleButton.evaluate(el => el.classList.contains('bg-primary/10'));
+    if (isToggledOn) {
+      await toggleButton.click();
+      console.log('Toggle was ON, clicked to turn OFF');
+    } else {
+      console.log('Toggle was already OFF, skipping click');
+    }
     
     // Verify toggle state changed (it should now have the "text-gray-400" or similar class indicating it's off)
     // or just check that the bg-primary/10 class is gone if possible, but simpler is to check for the absence of the "active" style

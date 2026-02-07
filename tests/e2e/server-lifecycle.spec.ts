@@ -66,12 +66,18 @@ test('Server Full Lifecycle Flow', async () => {
     await versionRow.click();
     console.log('Version 1.21.1 selected');
 
-    // Toggle off "Start Server after creation"
+    // Toggle off "Start Server after creation" if it's on
     console.log('Toggling off "Start Server after creation"...');
     const toggleButton = page.locator('button').filter({ hasText: 'Start Server' }).filter({ hasText: 'After Creation' });
-    await toggleButton.click();
+    const isToggledOn = await toggleButton.evaluate(el => el.classList.contains('bg-primary/10'));
+    if (isToggledOn) {
+      await toggleButton.click();
+      console.log('Toggle was ON, clicked to turn OFF');
+    } else {
+      console.log('Toggle was already OFF, skipping click');
+    }
     
-    // Verify toggle state changed
+    // Verify toggle state is OFF
     await expect(toggleButton).not.toHaveClass(/bg-primary\/10/);
     console.log('Toggle verified off');
 
