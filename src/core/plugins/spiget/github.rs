@@ -1,11 +1,10 @@
-use anyhow::Result;
-use std::path::Path;
-use tokio::fs;
-use tokio::io::AsyncWriteExt;
-use futures_util::StreamExt;
-use reqwest::header::USER_AGENT;
-use regex::Regex;
 use super::SpigetClient;
+use crate::utils::{DownloadOptions, download_with_resumption};
+use anyhow::Result;
+use regex::Regex;
+use reqwest::header::USER_AGENT;
+use std::path::Path;
+use tracing::info;
 
 impl SpigetClient {
     pub async fn download_from_github(
@@ -42,7 +41,10 @@ impl SpigetClient {
         let response = self
             .client
             .get(&api_url)
-            .header(USER_AGENT, concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
+            .header(
+                USER_AGENT,
+                concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")),
+            )
             .send()
             .await?;
 
@@ -50,7 +52,9 @@ impl SpigetClient {
             return Err(anyhow::anyhow!(
                 "Failed to fetch release info from GitHub for '{}' ({}): {}. \
                 The plugin might not have a public release or the URL is invalid.",
-                title, api_url, response.status()
+                title,
+                api_url,
+                response.status()
             ));
         }
 
@@ -65,7 +69,14 @@ impl SpigetClient {
         let loader_l = loader.map(|l| l.to_lowercase());
         let gv_l = game_version.map(|gv| gv.to_lowercase());
 
-        let other_loaders = ["fabric", "forge", "neoforge", "quilt", "bungeecord", "velocity"];
+        let other_loaders = [
+            "fabric",
+            "forge",
+            "neoforge",
+            "quilt",
+            "bungeecord",
+            "velocity",
+        ];
         let exclusion_list: Vec<&str> = other_loaders
             .iter()
             .filter(|&&l| loader_l.as_ref().map_or(true, |curr| curr != l))
@@ -86,7 +97,10 @@ impl SpigetClient {
                     }
                 }
 
-                if loader_l.as_ref().map_or(true, |l| l == "paper" || l == "spigot") {
+                if loader_l
+                    .as_ref()
+                    .map_or(true, |l| l == "paper" || l == "spigot")
+                {
                     if name.contains("-mod-") || name.contains(".mod.") {
                         return false;
                     }
@@ -98,67 +112,52 @@ impl SpigetClient {
 
         let asset = candidates
             .iter()
-            .find(|a| {
+            .max_by_key(|a| {
                 let name = a["name"].as_str().unwrap_or_default().to_lowercase();
-                let loader_match = loader_l.as_ref().map_or(true, |l| name.contains(l));
-                let gv_match = gv_l.as_ref().map_or(true, |gv| name.contains(gv));
-                loader_match && gv_match && (name.contains(&title_l) || name.contains(&repo_l))
+                let mut score = 0;
+                if name.contains(&title_l) || name.contains(&repo_l) {
+                    score += 10;
+                }
+                if let Some(ref l) = loader_l {
+                    if name.contains(l) {
+                        score += 5;
+                    }
+                }
+                if let Some(ref gv) = gv_l {
+                    if name.contains(gv) {
+                        score += 3;
+                    }
+                }
+                score
             })
-            .or_else(|| {
-                candidates.iter().find(|a| {
-                    let name = a["name"].as_str().unwrap_or_default().to_lowercase();
-                    let loader_match = loader_l.as_ref().map_or(true, |l| name.contains(l));
-                    let gv_match = gv_l.as_ref().map_or(true, |gv| name.contains(gv));
-                    loader_match && gv_match
-                })
-            })
-            .or_else(|| {
-                candidates.iter().find(|a| {
-                    let name = a["name"].as_str().unwrap_or_default().to_lowercase();
-                    name.contains(&title_l) || name.contains(&repo_l)
-                })
-            })
-            .or_else(|| candidates.first())
-            .copied()
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "No suitable JAR asset found in GitHub release for '{}' after filtering.",
+                    "No suitable .jar asset found in GitHub release for '{}'",
                     title
                 )
             })?;
 
-        let download_url = asset["browser_download_url"].as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing download URL for asset in GitHub release"))?;
-        let filename = asset["name"].as_str()
-            .ok_or_else(|| anyhow::anyhow!("Missing name for asset in GitHub release"))?
-            .to_string();
+        let download_url = asset["browser_download_url"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing download URL for asset"))?;
+        let filename = asset["name"].as_str().unwrap_or("plugin.jar");
+        let size = asset["size"].as_u64();
 
-        let response = self.client.get(download_url)
-            .header(USER_AGENT, concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
-            .send()
-            .await?.error_for_status()?;
+        let target_path = target_dir.as_ref().join(filename);
+        info!("Downloading plugin from GitHub: {}", download_url);
 
-        if !target_dir.as_ref().exists() {
-            fs::create_dir_all(&target_dir).await?;
-        }
+        download_with_resumption(
+            &self.client,
+            DownloadOptions {
+                url: download_url,
+                target_path: &target_path,
+                expected_hash: None,
+                total_size: size,
+            },
+            |_, _| {},
+        )
+        .await?;
 
-        let target_path = target_dir.as_ref().join(&filename);
-        let mut f = fs::File::create(&target_path).await?;
-        let mut stream = response.bytes_stream();
-        let mut downloaded = 0;
-
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            f.write_all(&chunk).await?;
-            downloaded += chunk.len();
-        }
-
-        f.flush().await?;
-        
-        if downloaded == 0 {
-            return Err(anyhow::anyhow!("Downloaded GitHub asset for '{}' is empty.", title));
-        }
-
-        Ok(filename)
+        Ok(filename.to_string())
     }
 }

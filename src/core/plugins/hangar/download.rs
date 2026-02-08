@@ -1,15 +1,24 @@
+use super::HangarClient;
+use crate::plugins::types::ProjectVersion;
 use anyhow::{Result, anyhow};
 use std::path::Path;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
-use futures_util::StreamExt;
 use tracing::info;
-use super::HangarClient;
-use crate::plugins::types::ProjectVersion;
+
+use crate::artifacts::HashAlgorithm;
+use crate::utils::{DownloadOptions, download_with_resumption};
 
 impl HangarClient {
-    pub async fn download_version(&self, version: &ProjectVersion, target_dir: impl AsRef<Path>) -> Result<String> {
-        let file = version.files.iter().find(|f| f.primary).or_else(|| version.files.first())
+    pub async fn download_version(
+        &self,
+        version: &ProjectVersion,
+        target_dir: impl AsRef<Path>,
+    ) -> Result<String> {
+        let file = version
+            .files
+            .iter()
+            .find(|f| f.primary)
+            .or_else(|| version.files.first())
             .ok_or_else(|| anyhow!("No files found for version"))?;
 
         if !target_dir.as_ref().exists() {
@@ -24,23 +33,26 @@ impl HangarClient {
         };
 
         let target_path = target_dir.as_ref().join(&file.filename);
-        info!("Downloading plugin from {}: {}", download_url, file.filename);
+        info!(
+            "Downloading plugin from {}: {}",
+            download_url, file.filename
+        );
 
-        let response = self.client.get(&download_url).send().await?;
-        
-        if !response.status().is_success() {
-            return Err(anyhow!("Failed to download plugin: HTTP {}", response.status()));
-        }
+        download_with_resumption(
+            &self.client,
+            DownloadOptions {
+                url: &download_url,
+                target_path: &target_path,
+                expected_hash: file
+                    .sha1
+                    .as_ref()
+                    .map(|h| (h.as_str(), HashAlgorithm::Sha1)),
+                total_size: Some(file.size),
+            },
+            |_, _| {},
+        )
+        .await?;
 
-        let mut f = fs::File::create(&target_path).await?;
-
-        let mut stream = response.bytes_stream();
-        while let Some(chunk_result) = stream.next().await {
-            let chunk = chunk_result?;
-            f.write_all(&chunk).await?;
-        }
-
-        f.flush().await?;
         Ok(file.filename.clone())
     }
 }

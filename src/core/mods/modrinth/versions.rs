@@ -14,7 +14,12 @@ impl ModrinthClient {
     ) -> Result<Vec<ResolvedDependency>> {
         let deps = self
             .inner
-            .get_dependencies(project_id, game_version, loader, Some(ModrinthProjectType::Mod))
+            .get_dependencies(
+                project_id,
+                game_version,
+                loader,
+                Some(ModrinthProjectType::Mod),
+            )
             .await?;
 
         Ok(deps
@@ -62,6 +67,7 @@ impl ModrinthClient {
                         filename: f.filename,
                         primary: f.primary,
                         size: f.size,
+                        sha1: f.hashes.sha1,
                     })
                     .collect(),
                 loaders: v.loaders,

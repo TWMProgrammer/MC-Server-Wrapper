@@ -22,6 +22,7 @@ impl ModrinthClient {
                     filename: f.filename,
                     primary: f.primary,
                     size: f.size,
+                    sha1: f.hashes.sha1,
                 }).collect(),
                 loaders: v.loaders,
                 game_versions: v.game_versions,

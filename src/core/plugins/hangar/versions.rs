@@ -45,6 +45,7 @@ impl HangarClient {
                                     filename: format!("{}-{}.jar", project_id.split('/').last().unwrap_or("plugin"), version_name),
                                     primary: true,
                                     size: 0, // Hangar doesn't always provide size in this view
+                                    sha1: None,
                                 });
                             }
                         }

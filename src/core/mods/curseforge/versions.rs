@@ -100,6 +100,10 @@ impl CurseForgeClient {
                 filename: v["fileName"].as_str().unwrap_or_default().to_string(),
                 primary: true,
                 size: v["fileLength"].as_u64().unwrap_or(0),
+                sha1: v["hashes"].as_array().and_then(|h| {
+                    h.iter().find(|hash| hash["algo"].as_u64() == Some(1)) // 1 is SHA1
+                        .and_then(|hash| hash["value"].as_str().map(|s| s.to_string()))
+                }),
             }],
             loaders: v["gameVersions"].as_array().map(|gv| {
                 gv.iter().filter_map(|s: &serde_json::Value| s.as_str().map(|s| s.to_string()))

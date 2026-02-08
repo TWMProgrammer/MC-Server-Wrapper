@@ -2,18 +2,15 @@ pub mod types;
 
 pub use types::*;
 
-use crate::cache::CacheManager;
 use crate::artifacts::{ArtifactStore, HashAlgorithm};
-use crate::utils::retry_async;
-use anyhow::{Result, anyhow, Context};
-use futures_util::StreamExt;
-use sha1::{Digest, Sha1};
+use crate::cache::CacheManager;
+use crate::utils::{DownloadOptions, download_with_resumption, retry_async};
+use anyhow::{Result, anyhow};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 const VERSION_MANIFEST_URL: &str = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
 
@@ -163,8 +160,13 @@ impl VersionDownloader {
         // 1. Check ArtifactStore first
         if let Some(ref store) = self.artifact_store {
             if store.exists(&expected_sha1, HashAlgorithm::Sha1).await {
-                debug!("Version {} found in artifact store, provisioning...", version_id);
-                store.provision(&expected_sha1, HashAlgorithm::Sha1, target_path).await?;
+                debug!(
+                    "Version {} found in artifact store, provisioning...",
+                    version_id
+                );
+                store
+                    .provision(&expected_sha1, HashAlgorithm::Sha1, target_path)
+                    .await?;
                 on_progress(total_size, total_size);
                 return Ok(());
             }
@@ -176,66 +178,48 @@ impl VersionDownloader {
             version_id, server_download.url, total_size
         );
 
-        let temp_dir = self.cache_dir.as_ref()
+        let temp_dir = self
+            .cache_dir
+            .as_ref()
             .map(|p| p.join("temp"))
             .unwrap_or_else(|| std::env::temp_dir());
-        
+
         if !temp_dir.exists() {
             fs::create_dir_all(&temp_dir).await?;
         }
-        
-        let temp_file_path = temp_dir.join(format!("mc_server_{}_{}.jar.tmp", version_id, expected_sha1));
 
-        retry_async(
-            || async {
-                let response = self.client.get(&server_download.url).send().await?;
-                on_progress(0, total_size);
+        let temp_file_path = temp_dir.join(format!(
+            "mc_server_{}_{}.jar.tmp",
+            version_id, expected_sha1
+        ));
 
-                let mut file = fs::File::create(&temp_file_path).await?;
-                let mut hasher = Sha1::new();
-                let mut downloaded: u64 = 0;
-
-                let mut stream = response.bytes_stream();
-                while let Some(chunk_result) = stream.next().await {
-                    let chunk = chunk_result?;
-                    file.write_all(&chunk).await?;
-                    hasher.update(&chunk);
-                    downloaded += chunk.len() as u64;
-                    on_progress(downloaded, total_size);
-                }
-
-                file.flush().await?;
-
-                let actual_sha1 = format!("{:x}", hasher.finalize());
-                if actual_sha1 != expected_sha1 {
-                    let _ = fs::remove_file(&temp_file_path).await;
-                    return Err(anyhow!(
-                        "SHA1 mismatch! Expected: {}, Got: {}",
-                        expected_sha1,
-                        actual_sha1
-                    ));
-                }
-                Ok(())
+        download_with_resumption(
+            &self.client,
+            DownloadOptions {
+                url: &server_download.url,
+                target_path: &temp_file_path,
+                expected_hash: Some((&expected_sha1, HashAlgorithm::Sha1)),
+                total_size: Some(total_size),
             },
-            3,
-            Duration::from_secs(2),
-            &format!("Download server JAR for {}", version_id),
+            on_progress,
         )
         .await?;
 
-        // 3. Add to ArtifactStore and then provision (or move if store not available)
+        // 3. Add to ArtifactStore
         if let Some(ref store) = self.artifact_store {
-            store.add_artifact(&temp_file_path, &expected_sha1, HashAlgorithm::Sha1).await?;
-            store.provision(&expected_sha1, HashAlgorithm::Sha1, target_path).await?;
-            let _ = fs::remove_file(&temp_file_path).await;
-        } else {
-            // Fallback: move temp file to target path
-            if let Some(parent) = target_path.parent() {
-                fs::create_dir_all(parent).await?;
-            }
-            fs::rename(&temp_file_path, target_path).await
-                .with_context(|| format!("Failed to move temp file to {:?}", target_path))?;
+            store
+                .add_artifact(&temp_file_path, &expected_sha1, HashAlgorithm::Sha1)
+                .await?;
         }
+
+        // 4. Move to target path
+        if let Some(parent) = target_path.parent() {
+            fs::create_dir_all(parent).await?;
+        }
+        fs::copy(&temp_file_path, target_path).await?;
+
+        // Clean up temp file
+        let _ = fs::remove_file(&temp_file_path).await;
 
         info!(
             "Successfully downloaded and verified server JAR for version {}",

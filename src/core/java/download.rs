@@ -1,16 +1,29 @@
+use super::JavaManager;
+use super::types::AdoptiumRelease;
+use crate::app_config::ManagedJavaVersion;
 use anyhow::{Result, anyhow};
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
-use futures_util::StreamExt;
-use crate::app_config::ManagedJavaVersion;
-use super::types::AdoptiumRelease;
-use super::JavaManager;
+
+use crate::artifacts::HashAlgorithm;
+use crate::utils::{DownloadOptions, download_with_resumption};
 
 impl JavaManager {
     /// Fetches the latest available Java release for a given major version from Adoptium.
     pub async fn get_latest_release(&self, major_version: u32) -> Result<AdoptiumRelease> {
-        let os = if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "mac" } else { "linux" };
-        let arch = if cfg!(target_arch = "x86_64") { "x64" } else if cfg!(target_arch = "aarch64") { "aarch64" } else { "x64" };
+        let os = if cfg!(windows) {
+            "windows"
+        } else if cfg!(target_os = "macos") {
+            "mac"
+        } else {
+            "linux"
+        };
+        let arch = if cfg!(target_arch = "x86_64") {
+            "x64"
+        } else if cfg!(target_arch = "aarch64") {
+            "aarch64"
+        } else {
+            "x64"
+        };
 
         let url = format!(
             "https://api.adoptium.net/v3/assets/latest/{}/hotspot?architecture={}&image_type=jdk&os={}&vendor=eclipse",
@@ -19,21 +32,35 @@ impl JavaManager {
 
         let response = self.client.get(&url).send().await?;
         if !response.status().is_success() {
-            return Err(anyhow!("Failed to fetch Java release: {}", response.status()));
+            return Err(anyhow!(
+                "Failed to fetch Java release: {}",
+                response.status()
+            ));
         }
 
         let releases: Vec<AdoptiumRelease> = response.json().await?;
-        releases.into_iter().next().ok_or_else(|| anyhow!("No releases found for Java {}", major_version))
+        releases
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow!("No releases found for Java {}", major_version))
     }
 
     /// Downloads and extracts a Java release.
-    pub async fn download_and_install<F>(&self, release: AdoptiumRelease, mut progress_callback: F) -> Result<ManagedJavaVersion>
+    pub async fn download_and_install<F>(
+        &self,
+        release: AdoptiumRelease,
+        progress_callback: F,
+    ) -> Result<ManagedJavaVersion>
     where
-        F: FnMut(u64, u64) + Send + 'static,
+        F: Fn(u64, u64) + Send + Sync + 'static,
     {
-        let binary = release.binaries.first().ok_or_else(|| anyhow!("No binaries in release"))?;
+        let binary = release
+            .binaries
+            .first()
+            .ok_or_else(|| anyhow!("No binaries in release"))?;
         let url = &binary.package.link;
         let filename = &binary.package.name;
+        let expected_sha256 = &binary.package.checksum;
 
         // 1. Download to temporary file
         let temp_dir = std::env::temp_dir().join("mc-server-wrapper-java");
@@ -42,19 +69,17 @@ impl JavaManager {
         }
         let temp_file_path = temp_dir.join(filename);
 
-        let response = self.client.get(url).send().await?;
-        let total_size = response.content_length().unwrap_or(0);
-        let mut downloaded: u64 = 0;
-        let mut stream = response.bytes_stream();
-        let mut file = fs::File::create(&temp_file_path).await?;
-
-        while let Some(item) = stream.next().await {
-            let chunk = item?;
-            file.write_all(&chunk).await?;
-            downloaded += chunk.len() as u64;
-            progress_callback(downloaded, total_size);
-        }
-        file.flush().await?;
+        download_with_resumption(
+            &self.client,
+            DownloadOptions {
+                url,
+                target_path: &temp_file_path,
+                expected_hash: Some((expected_sha256, HashAlgorithm::Sha256)),
+                total_size: Some(binary.package.size),
+            },
+            progress_callback,
+        )
+        .await?;
 
         // 2. Extract
         let install_dir = self.base_dir.join(&release.release_name);
@@ -68,7 +93,10 @@ impl JavaManager {
 
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&temp_file_path_clone)?;
-            if temp_file_path_clone.extension().map_or(false, |ext| ext == "zip") {
+            if temp_file_path_clone
+                .extension()
+                .map_or(false, |ext| ext == "zip")
+            {
                 let mut archive = zip::ZipArchive::new(file)?;
                 archive.extract(&install_dir_clone)?;
             } else {
@@ -78,7 +106,8 @@ impl JavaManager {
                 archive.unpack(&install_dir_clone)?;
             }
             Ok::<(), anyhow::Error>(())
-        }).await??;
+        })
+        .await??;
 
         // 3. Cleanup temp file
         let _ = fs::remove_file(&temp_file_path).await;
@@ -94,9 +123,11 @@ impl JavaManager {
         }
 
         // 5. Finalize version info
-        let version_info = self.identify_java_version(&actual_root).await
+        let version_info = self
+            .identify_java_version(&actual_root)
+            .await
             .ok_or_else(|| anyhow!("Failed to identify installed Java version"))?;
-        
+
         Ok(version_info)
     }
 }

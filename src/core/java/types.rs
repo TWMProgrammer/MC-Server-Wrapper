@@ -17,4 +17,6 @@ pub struct AdoptiumBinary {
 pub struct AdoptiumPackage {
     pub link: String,
     pub name: String,
+    pub checksum: String,
+    pub size: u64,
 }

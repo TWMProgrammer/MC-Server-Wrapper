@@ -92,6 +92,7 @@ pub struct ProjectFile {
     pub filename: String,
     pub primary: bool,
     pub size: u64,
+    pub sha1: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
