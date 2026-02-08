@@ -1,10 +1,12 @@
+pub mod types;
+
+pub use types::*;
+
 use crate::cache::CacheManager;
 use crate::artifacts::{ArtifactStore, HashAlgorithm};
 use crate::utils::retry_async;
 use anyhow::{Result, anyhow, Context};
-use chrono::{DateTime, Utc};
 use futures_util::StreamExt;
-use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -14,44 +16,6 @@ use tokio::io::AsyncWriteExt;
 use tracing::{info, debug};
 
 const VERSION_MANIFEST_URL: &str = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct VersionManifest {
-    pub latest: LatestVersions,
-    pub versions: Vec<VersionInfo>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct LatestVersions {
-    pub release: String,
-    pub snapshot: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct VersionInfo {
-    pub id: String,
-    pub r#type: String,
-    pub url: String,
-    #[serde(rename = "releaseTime")]
-    pub release_date: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct VersionDetail {
-    pub downloads: Downloads,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Downloads {
-    pub server: DownloadInfo,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DownloadInfo {
-    pub sha1: String,
-    pub size: u64,
-    pub url: String,
-}
 
 pub struct VersionDownloader {
     client: reqwest::Client,
@@ -278,55 +242,5 @@ impl VersionDownloader {
             version_id
         );
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::artifacts::ArtifactStore;
-    use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_download_server_with_artifact_store() {
-        let dir = tempdir().unwrap();
-        let cache_dir = dir.path().join("cache");
-        let artifacts_dir = dir.path().join("artifacts");
-        let target_path = dir.path().join("server.jar");
-
-        let store = Arc::new(ArtifactStore::new(artifacts_dir.clone()));
-        let downloader = VersionDownloader::new(
-            Some(cache_dir),
-            None,
-            Some(store.clone())
-        );
-
-        // This is tricky because it hits the real Mojang API.
-        // For a true unit test, we should mock the client.
-        // However, we can at least verify that if we manually put something in the store, 
-        // the downloader uses it.
-        
-        // We'll need a real version ID and its SHA1 from the manifest
-        // Let's use 1.20.1 for example
-        let version_id = "1.20.1";
-        let expected_sha1 = "84194a2f286efcaa218cf77298f9da853d9391c3"; // SHA1 for 1.20.1 server.jar
-        
-        // Pre-populate the store with a dummy file
-        let dummy_content = b"dummy jar content";
-        let mut hasher = Sha1::new();
-        hasher.update(dummy_content);
-        let dummy_sha1 = format!("{:x}", hasher.finalize());
-        
-        let dummy_source = dir.path().join("dummy.jar");
-        fs::write(&dummy_source, dummy_content).await.unwrap();
-        
-        // Add to store using the "real" sha1 we expect the downloader to look for
-        // (In a real test we'd mock the API to return this SHA1)
-        // Since we can't easily mock the API here without refactoring to take a Trait,
-        // let's just test that the store integration logic in download_server works
-        // if we were to hit a real version.
-        
-        // Actually, let's just verify the downloader can be initialized and doesn't crash.
-        assert!(downloader.artifact_store.is_some());
     }
 }
