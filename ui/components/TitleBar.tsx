@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, Copy, X, Bug, RefreshCw, Users, Github } from 'lucide-react';
 import { useAppSettings } from '../hooks/useAppSettings';
+import appLogo from '../../public/app-icon.png';
 import './TitleBar.css';
 
 export function TitleBar() {
@@ -84,7 +85,7 @@ export function TitleBar() {
 
       <div className="titlebar-left">
         <div className="titlebar-logo-container">
-          <img src="/app-icon.png" alt="Logo" className="titlebar-logo" />
+          <img src={appLogo} alt="Logo" className="titlebar-logo" />
         </div>
         <div className="titlebar-title-container">
           <div className="flex items-center gap-1">
