@@ -269,6 +269,8 @@ export function ImportSource({
                       { value: 'forge', label: 'Forge' },
                       { value: 'fabric', label: 'Fabric' },
                       { value: 'quilt', label: 'Quilt' },
+                      { value: 'velocity', label: 'Velocity (Proxy)' },
+                      { value: 'bungeecord', label: 'BungeeCord (Proxy)' },
                       { value: 'custom', label: 'Custom/Other' },
                     ]}
                     placeholder="Select server type..."

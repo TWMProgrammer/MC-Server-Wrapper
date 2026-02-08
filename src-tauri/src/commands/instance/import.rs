@@ -637,6 +637,16 @@ pub async fn detect_server_type(
         return Ok("paper".to_string());
     }
 
+    // Velocity
+    if files.contains("velocity.toml") {
+        return Ok("velocity".to_string());
+    }
+
+    // BungeeCord
+    if files.iter().any(|f| f.to_lowercase().contains("bungeecord") && f.to_lowercase().ends_with(".jar")) {
+        return Ok("bungeecord".to_string());
+    }
+
     // Vanilla
     if folders.contains("world") || files.contains("server.properties") {
         return Ok("vanilla".to_string());
