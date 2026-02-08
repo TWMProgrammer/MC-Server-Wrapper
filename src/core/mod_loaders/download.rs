@@ -1,9 +1,10 @@
+use super::client::ModLoaderClient;
+use crate::utils::fs::is_jar_valid;
+use crate::utils::retry_async;
 use anyhow::{Result, anyhow};
 use futures_util::StreamExt;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
-use crate::utils::retry_async;
-use super::client::ModLoaderClient;
 
 impl ModLoaderClient {
     pub(crate) async fn download_with_progress<F>(
@@ -58,7 +59,7 @@ impl ModLoaderClient {
     where
         F: Fn(u64, u64) + Send + Sync + 'static,
     {
-        match loader_name.to_lowercase().as_str() {
+        let result = match loader_name.to_lowercase().as_str() {
             "paper" => {
                 let build = match loader_version {
                     Some(v) => v.to_string(),
@@ -72,19 +73,19 @@ impl ModLoaderClient {
                             .clone()
                     }
                 };
-                self.download_paper(mc_version, &build, target_path, on_progress)
+                self.download_paper(mc_version, &build, target_path.as_ref(), on_progress)
                     .await
             }
             "fabric" => {
                 let version = loader_version
                     .ok_or_else(|| anyhow::anyhow!("Fabric requires a loader version"))?;
-                self.download_fabric(mc_version, version, target_path, on_progress)
+                self.download_fabric(mc_version, version, target_path.as_ref(), on_progress)
                     .await
             }
             "forge" => {
                 let version =
                     loader_version.ok_or_else(|| anyhow::anyhow!("Forge requires a version"))?;
-                self.download_forge(mc_version, version, target_path, on_progress)
+                self.download_forge(mc_version, version, target_path.as_ref(), on_progress)
                     .await
             }
             "purpur" => {
@@ -100,13 +101,13 @@ impl ModLoaderClient {
                             .clone()
                     }
                 };
-                self.download_purpur(mc_version, &build, target_path, on_progress)
+                self.download_purpur(mc_version, &build, target_path.as_ref(), on_progress)
                     .await
             }
             "neoforge" => {
                 let version =
                     loader_version.ok_or_else(|| anyhow::anyhow!("NeoForge requires a version"))?;
-                self.download_neoforge(version, target_path, on_progress)
+                self.download_neoforge(version, target_path.as_ref(), on_progress)
                     .await
             }
             "velocity" => {
@@ -123,12 +124,12 @@ impl ModLoaderClient {
                             .clone()
                     }
                 };
-                self.download_velocity(version, &build, target_path, on_progress)
+                self.download_velocity(version, &build, target_path.as_ref(), on_progress)
                     .await
             }
             "bungeecord" => {
                 let version = loader_version.unwrap_or("latest");
-                self.download_bungeecord(version, target_path, on_progress)
+                self.download_bungeecord(version, target_path.as_ref(), on_progress)
                     .await
             }
             "bedrock" => {
@@ -142,6 +143,22 @@ impl ModLoaderClient {
                     .await
             }
             _ => Err(anyhow::anyhow!("Unsupported mod loader: {}", loader_name)),
+        };
+
+        if result.is_ok() && loader_name.to_lowercase() != "bedrock" {
+            let path = target_path.as_ref();
+            // If it's a jar file, verify it's a valid zip
+            if path.extension().and_then(|s| s.to_str()) == Some("jar") {
+                if !is_jar_valid(path) {
+                    let _ = tokio::fs::remove_file(path).await;
+                    return Err(anyhow!(
+                        "Downloaded JAR file for {} is invalid or corrupt",
+                        loader_name
+                    ));
+                }
+            }
         }
+
+        result
     }
 }

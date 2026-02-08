@@ -178,8 +178,13 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [x] Frontend unit & component tests using `Vitest` and `React Testing Library`.
   - [x] E2E tests for critical user flows (Create Instance, Start/Stop Server) using `Playwright`.
 - [x] **Robust Error Handling**
-  - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
-  - [x] Implement React Error Boundaries in the frontend.
+    - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
+    - [x] Implement React Error Boundaries in the frontend.
+- [x] **JAR Integrity & Redownload System**
+    - [x] Implement universal JAR validity check (ZIP archive validation).
+    - [x] Integrate validity checks into the server installation lifecycle.
+    - [x] Implement automatic redownload of corrupt or invalid server JARs.
+    - [x] Add post-download validation for all JAR-based mod loaders.
 - [ ] **Advanced Caching System**
   - [ ] Implement persistent disk-backed cache for metadata.
   - [ ] Create a global artifact store for shared server JARs and assets.

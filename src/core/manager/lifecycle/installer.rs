@@ -1,5 +1,6 @@
 use super::super::ServerManager;
 use crate::server::ServerHandle;
+use crate::utils::fs::is_jar_valid;
 use anyhow::{Result, anyhow};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
@@ -9,11 +10,11 @@ use uuid::Uuid;
 impl ServerManager {
     pub async fn prepare_server(&self, instance_id: Uuid) -> Result<Arc<ServerHandle>> {
         let server = self.get_or_create_server(instance_id).await?;
-        let instance = self
+        let mut instance = self
             .instance_manager
             .get_instance(instance_id)
             .await?
-            .ok_or_else(|| anyhow!("Instance not found"))?;
+            .ok_or_else(|| anyhow!("Instance not found: {}", instance_id))?;
 
         let is_bedrock = instance
             .mod_loader
@@ -29,8 +30,12 @@ impl ServerManager {
 
         // Robust check for existing installation using the built config
         let config = server.get_config().await;
-        let exists = if let Some(jar) = &config.jar_path {
-            jar.exists()
+        let mut is_installed = if let Some(jar) = &config.jar_path {
+            if is_bedrock {
+                jar.exists() && std::fs::metadata(jar).map(|m| m.len() > 0).unwrap_or(false)
+            } else {
+                is_jar_valid(jar)
+            }
         } else if let Some(script) = &config.run_script {
             instance.path.join(script).exists()
         } else {
@@ -42,13 +47,67 @@ impl ServerManager {
                         .unwrap_or(false))
         };
 
+        // If we think it's installed but it's Fabric/Quilt, double check the specific loader jar
+        // because build_server_config might have picked a non-existent jar if the loader jar is corrupt
+        if is_installed {
+            if let Some(loader) = &instance.mod_loader {
+                let loader_lower = loader.to_lowercase();
+                if loader_lower == "fabric" || loader_lower == "quilt" {
+                    let loader_jar_name = format!("{}-server.jar", loader_lower);
+                    let loader_jar_path = instance.path.join(loader_jar_name);
+                    if !is_jar_valid(&loader_jar_path) {
+                        is_installed = false;
+                        // Also invalidate server.jar for Fabric/Quilt if the loader jar is corrupt
+                        // as they need to be installed together
+                        let _ = std::fs::remove_file(instance.path.join("server.jar"));
+                    }
+                }
+            }
+        }
+
         // Determine the target JAR path for download if missing
-        let download_jar_path = config
+        let mut download_jar_path = config
             .jar_path
+            .clone()
             .unwrap_or_else(|| instance.path.join("server.jar"));
 
-        // Download jar/binary if missing
-        if !exists {
+        // For Fabric/Quilt, if we are not installed, the download_jar_path MUST be server.jar
+        // because build_server_config might have pointed it to fabric-server.jar which we just invalidated
+        if !is_installed {
+            if let Some(loader) = &instance.mod_loader {
+                let loader_lower = loader.to_lowercase();
+                if loader_lower == "fabric" || loader_lower == "quilt" {
+                    download_jar_path = instance.path.join("server.jar");
+                }
+            }
+        }
+
+        // Download jar/binary if missing or corrupt
+        if !is_installed {
+            // Delete potentially corrupt JAR if it exists
+            let jar_to_delete = if let Some(loader) = &instance.mod_loader {
+                let loader_lower = loader.to_lowercase();
+                if loader_lower == "fabric" || loader_lower == "quilt" {
+                    Some(instance.path.join(format!("{}-server.jar", loader_lower)))
+                } else {
+                    config.jar_path.clone()
+                }
+            } else {
+                config.jar_path.clone()
+            };
+
+            if let Some(jar) = jar_to_delete {
+                if jar.exists() {
+                    let msg = format!(
+                        "Existing JAR/binary at {:?} is invalid or corrupt. Redownloading...",
+                        jar
+                    );
+                    info!("{}", msg);
+                    server.emit_log(msg);
+                    let _ = std::fs::remove_file(jar);
+                }
+            }
+
             if instance.version == "Imported" {
                 return Err(anyhow!(
                     "Imported instance is missing its executable (jar or bat file). Please check the instance settings."
@@ -63,8 +122,21 @@ impl ServerManager {
 
                 if is_fabric {
                     self.install_fabric(Arc::clone(&server), &instance).await?;
+                    // Force update instance metadata after installation to ensure
+                    // build_server_config sees the new fabric-server.jar
+                    instance = self
+                        .instance_manager
+                        .get_instance(instance_id)
+                        .await?
+                        .unwrap();
                 } else if is_quilt {
                     self.install_quilt(Arc::clone(&server), &instance).await?;
+                    // Force update instance metadata after installation
+                    instance = self
+                        .instance_manager
+                        .get_instance(instance_id)
+                        .await?
+                        .unwrap();
                 } else if is_forge {
                     self.install_forge(Arc::clone(&server), &instance).await?;
                 } else if is_neoforge {
@@ -164,8 +236,8 @@ impl ServerManager {
         }
 
         // Update server config after potential installation (in case jar path changed or was created)
-        let config = self.build_server_config(&instance).await;
-        server.update_config(config).await;
+        let new_config = self.build_server_config(&instance).await;
+        server.update_config(new_config).await;
         Ok(server)
     }
 }
