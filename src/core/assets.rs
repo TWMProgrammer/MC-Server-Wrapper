@@ -16,9 +16,19 @@ pub struct AssetManager {
 
 impl AssetManager {
     pub fn new(cache_dir: PathBuf, _cache_manager: Arc<CacheManager>) -> Self {
+        // Ensure cache directory exists
+        if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+            tracing::error!(
+                "Failed to create asset cache directory {:?}: {}",
+                cache_dir,
+                e
+            );
+        }
+
         Self {
             cache_dir,
             client: reqwest::Client::builder()
+                .user_agent(concat!("mc-server-wrapper/", env!("CARGO_PKG_VERSION")))
                 .timeout(Duration::from_secs(30))
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new()),
@@ -37,9 +47,18 @@ impl AssetManager {
         };
 
         // Determine extension from URL if possible, default to .png
-        let extension = url.split('.').last().unwrap_or("png");
-        let extension = if extension.len() > 5 {
-            "png"
+        // Strip query parameters first to avoid illegal characters in filenames on Windows
+        let url_path = url.split('?').next().unwrap_or(url);
+        let extension = url_path.split('.').last().unwrap_or("png");
+
+        // Sanitize extension: only allow alphanumeric characters and keep it short
+        let extension = extension
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .collect::<String>();
+
+        let extension = if extension.is_empty() || extension.len() > 5 {
+            "png".to_string()
         } else {
             extension
         };
@@ -49,17 +68,20 @@ impl AssetManager {
 
         // Check if file exists and is not too old
         if target_path.exists() {
-            let metadata = fs::metadata(&target_path).await?;
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(elapsed) = modified.elapsed() {
-                    if elapsed < self.default_ttl {
-                        return Ok(target_path);
+            if let Ok(metadata) = fs::metadata(&target_path).await {
+                if let Ok(modified) = metadata.modified() {
+                    if let Ok(elapsed) = modified.elapsed() {
+                        if elapsed < self.default_ttl {
+                            return Ok(target_path);
+                        }
                     }
                 }
             }
         }
 
         // Download the asset
+        tracing::debug!("Downloading asset: {} -> {:?}", url, target_path);
+
         let client = self.client.clone();
         let url_owned = url.to_string();
 
@@ -67,12 +89,21 @@ impl AssetManager {
             || async {
                 let response = client.get(&url_owned).send().await?;
                 if !response.status().is_success() {
-                    return Err(anyhow::anyhow!(
-                        "Failed to download asset: {}",
+                    let err_msg = format!(
+                        "Failed to download asset: {} (Status: {})",
+                        url_owned,
                         response.status()
-                    ));
+                    );
+                    tracing::error!("{}", err_msg);
+                    return Err(anyhow::anyhow!(err_msg));
                 }
-                Ok(response.bytes().await?)
+                let bytes = response.bytes().await?;
+                tracing::debug!(
+                    "Successfully downloaded {} bytes from {}",
+                    bytes.len(),
+                    url_owned
+                );
+                Ok(bytes)
             },
             3,
             Duration::from_secs(2),
@@ -82,7 +113,9 @@ impl AssetManager {
 
         fs::write(&target_path, data)
             .await
-            .context("Failed to write asset to cache")?;
+            .with_context(|| format!("Failed to write asset to cache at {:?}", target_path))?;
+
+        tracing::info!("Cached asset: {} -> {:?}", url, target_path);
 
         Ok(target_path)
     }
