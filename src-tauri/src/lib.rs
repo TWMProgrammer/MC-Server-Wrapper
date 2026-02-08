@@ -22,6 +22,7 @@ pub fn run() -> anyhow::Result<()> {
         env!("CARGO_PKG_VERSION")
     );
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
       setup::setup_window(app);
             setup::setup_tray(app).context("failed to setup tray")?;
@@ -37,7 +38,7 @@ pub fn run() -> anyhow::Result<()> {
 
             app.handle().plugin(tauri_plugin_dialog::init())?;
             app.handle().plugin(tauri_plugin_opener::init())?;
-            app.handle().plugin(tauri_plugin_notification::init())?;
+            // Removed: app.handle().plugin(tauri_plugin_notification::init())?;
 
             setup::check_clutter(app, &exe_path);
 
@@ -162,11 +163,13 @@ pub fn run() -> anyhow::Result<()> {
                     let _ = window.hide();
                     
                     if settings.show_tray_notification {
-                        let _ = app_handle.notification()
+                        if let Err(e) = app_handle.notification()
                             .builder()
                             .title("Still Running")
                             .body("Hey! MC Server Wrapper is still running and minimized to system tray. You can change this in the app settings")
-                            .show();
+                            .show() {
+                                log::error!("Failed to show notification: {}", e);
+                            }
                     }
                 }
                 CloseBehavior::HideToTaskbar => {
