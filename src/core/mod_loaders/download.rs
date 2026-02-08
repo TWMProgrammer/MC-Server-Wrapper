@@ -24,6 +24,8 @@ impl ModLoaderClient {
                 }
 
                 let total_size = response.content_length().unwrap_or(0);
+                on_progress(0, total_size);
+
                 let mut file = tokio::fs::File::create(target_path_ref).await?;
                 let mut downloaded: u64 = 0;
                 let mut stream = response.bytes_stream();

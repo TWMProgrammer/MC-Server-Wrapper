@@ -1,9 +1,10 @@
-use std::sync::Arc;
-use std::collections::HashSet;
-use tokio::sync::{Mutex, broadcast};
-use tokio::process::{Child, ChildStdin};
-use super::types::{ServerStatus, ResourceUsage, ProgressPayload};
 use super::super::config::ServerConfig;
+use super::types::{ProgressPayload, ResourceUsage, ServerStatus};
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::process::{Child, ChildStdin};
+use tokio::sync::{Mutex, broadcast};
 
 use std::time::Instant;
 
@@ -77,6 +78,48 @@ impl ServerHandle {
             total,
             message,
         });
+    }
+
+    /// Handles download progress by emitting logs with an ASCII bar and progress events.
+    /// Logs are throttled to every 5% or when 100% is reached.
+    pub fn handle_download_progress(
+        &self,
+        current: u64,
+        total: u64,
+        message: &str,
+        last_percent: &AtomicU32,
+    ) {
+        let percent = if total > 0 {
+            (current as f64 / total as f64 * 100.0) as u32
+        } else {
+            0
+        };
+
+        let prev = last_percent.load(Ordering::Relaxed);
+
+        // Initial log or progress update
+        let should_log = if prev == 0 && current == 0 {
+            true // Log the very first 0% call
+        } else if total > 0 {
+            percent >= prev + 5 || percent == 100
+        } else {
+            // For chunked downloads (total == 0), log every 5MB
+            let current_mb = (current / (5 * 1024 * 1024)) as u32;
+            current_mb > prev
+        };
+
+        if should_log {
+            if total > 0 {
+                last_percent.store(percent, Ordering::Relaxed);
+                let bar = generate_ascii_bar(current, total);
+                self.emit_log(bar);
+            } else {
+                let current_mb = (current / (5 * 1024 * 1024)) as u32;
+                last_percent.store(current_mb, Ordering::Relaxed);
+                self.emit_log(format!("{} MB", current / (1024 * 1024)));
+            }
+        }
+        self.emit_progress(current, total, message.to_string());
     }
 }
 

@@ -1,8 +1,8 @@
 use super::super::ServerManager;
-use crate::server::{ServerHandle, generate_ascii_bar};
+use crate::server::ServerHandle;
 use anyhow::{Result, anyhow};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use tracing::info;
 use uuid::Uuid;
 
@@ -89,6 +89,8 @@ impl ServerManager {
                     server.emit_log(msg);
 
                     let last_percent = Arc::new(AtomicU32::new(0));
+                    let final_size = Arc::new(AtomicU64::new(0));
+                    let final_size_clone = Arc::clone(&final_size);
                     let display_name_clone = display_name.clone();
                     self.mod_loader_client
                         .download_loader(
@@ -97,28 +99,28 @@ impl ServerManager {
                             instance.loader_version.as_deref(),
                             &download_jar_path,
                             move |current, total| {
-                                let percent = if total > 0 {
-                                    (current as f64 / total as f64 * 100.0) as u32
-                                } else {
-                                    0
-                                };
-                                let prev = last_percent.load(Ordering::Relaxed);
-                                if percent >= prev + 5 || percent == 100 {
-                                    last_percent.store(percent, Ordering::Relaxed);
-                                    let bar = generate_ascii_bar(current, total);
-                                    server_clone.emit_log(format!(
-                                        "Downloading {}... {}",
-                                        display_name_clone, bar
-                                    ));
-                                }
-                                server_clone.emit_progress(
+                                final_size_clone.store(current, Ordering::Relaxed);
+                                server_clone.handle_download_progress(
                                     current,
                                     total,
-                                    format!("Downloading {}...", display_name_clone),
+                                    &format!("Downloading {}...", display_name_clone),
+                                    &last_percent,
                                 );
                             },
                         )
                         .await?;
+
+                    let size_mb = final_size.load(Ordering::Relaxed) / (1024 * 1024);
+                    server.emit_log(format!("Final size: {} MB", size_mb));
+
+                    if loader.to_lowercase() == "bedrock" {
+                        server.emit_log("Extracting Bedrock server...".to_string());
+                    } else if loader.to_lowercase() == "paper"
+                        || loader.to_lowercase() == "velocity"
+                    {
+                        server.emit_log("Verifying checksum...".to_string());
+                    }
+
                     server.emit_log("Download complete!".to_string());
                 }
             } else {
@@ -130,31 +132,25 @@ impl ServerManager {
                 server.emit_log(msg);
                 let server_clone = Arc::clone(&server);
                 let last_percent = Arc::new(AtomicU32::new(0));
+                let final_size = Arc::new(AtomicU64::new(0));
+                let final_size_clone = Arc::clone(&final_size);
                 self.downloader
                     .download_server(
                         &instance.version,
                         &download_jar_path,
                         move |current, total| {
-                            let percent = if total > 0 {
-                                (current as f64 / total as f64 * 100.0) as u32
-                            } else {
-                                0
-                            };
-                            let prev = last_percent.load(Ordering::Relaxed);
-                            if percent >= prev + 5 || percent == 100 {
-                                last_percent.store(percent, Ordering::Relaxed);
-                                let bar = generate_ascii_bar(current, total);
-                                server_clone
-                                    .emit_log(format!("Downloading vanilla server... {}", bar));
-                            }
-                            server_clone.emit_progress(
+                            final_size_clone.store(current, Ordering::Relaxed);
+                            server_clone.handle_download_progress(
                                 current,
                                 total,
-                                "Downloading vanilla server...".to_string(),
+                                "Downloading vanilla server...",
+                                &last_percent,
                             );
                         },
                     )
                     .await?;
+                let size_mb = final_size.load(Ordering::Relaxed) / (1024 * 1024);
+                server.emit_log(format!("Final size: {} MB", size_mb));
                 server.emit_log("Download complete!".to_string());
             }
 

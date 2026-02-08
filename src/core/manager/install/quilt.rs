@@ -1,9 +1,9 @@
 use super::ServerManager;
 use crate::instance::InstanceMetadata;
-use crate::server::{ServerHandle, generate_ascii_bar};
+use crate::server::ServerHandle;
 use anyhow::{Result, anyhow};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 impl ServerManager {
     pub(crate) async fn install_quilt(
@@ -25,27 +25,22 @@ impl ServerManager {
 
         let server_clone = Arc::clone(&server);
         let last_percent = Arc::new(AtomicU32::new(0));
+        let final_size = Arc::new(AtomicU64::new(0));
+        let final_size_clone = Arc::clone(&final_size);
         server.emit_log("Starting download of Quilt installer...".to_string());
         self.mod_loader_client
             .download_quilt_installer(latest_installer, &installer_path, move |current, total| {
-                let percent = if total > 0 {
-                    (current as f64 / total as f64 * 100.0) as u32
-                } else {
-                    0
-                };
-                let prev = last_percent.load(Ordering::Relaxed);
-                if percent >= prev + 5 || percent == 100 {
-                    last_percent.store(percent, Ordering::Relaxed);
-                    let bar = generate_ascii_bar(current, total);
-                    server_clone.emit_log(format!("Downloading Quilt installer... {}", bar));
-                }
-                server_clone.emit_progress(
+                final_size_clone.store(current, Ordering::Relaxed);
+                server_clone.handle_download_progress(
                     current,
                     total,
-                    "Downloading Quilt installer...".to_string(),
+                    "Downloading Quilt installer...",
+                    &last_percent,
                 );
             })
             .await?;
+        let size_mb = final_size.load(Ordering::Relaxed) / (1024 * 1024);
+        server.emit_log(format!("Final size: {} MB", size_mb));
         server.emit_log("Quilt installer download complete!".to_string());
 
         let mut cmd = tokio::process::Command::new("java");

@@ -225,6 +225,8 @@ impl VersionDownloader {
         retry_async(
             || async {
                 let response = self.client.get(&server_download.url).send().await?;
+                on_progress(0, total_size);
+
                 let mut file = fs::File::create(&temp_file_path).await?;
                 let mut hasher = Sha1::new();
                 let mut downloaded: u64 = 0;
