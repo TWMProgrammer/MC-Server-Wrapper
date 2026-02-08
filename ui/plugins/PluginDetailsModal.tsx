@@ -19,6 +19,7 @@ import {
 import { Project } from '../types'
 import { useAppSettings } from '../hooks/useAppSettings'
 import { useAssetCache, useAssetsCache } from '../hooks/useAssetCache'
+import { formatNumber } from '../utils'
 import { useState } from 'react'
 
 interface PluginDetailsModalProps {
@@ -118,7 +119,7 @@ export function PluginDetailsModal({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Download size={14} className="text-primary" />
-                    {project.downloads.toLocaleString()} downloads
+                    {formatNumber(project.downloads)} downloads
                   </span>
                   {project.provider === 'Modrinth' && (
                     <span className="flex items-center gap-1.5">

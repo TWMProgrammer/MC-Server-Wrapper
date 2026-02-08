@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { Project, PluginProvider, SortOrder, SearchOptions, Instance, ResolvedDependency, PluginDependencies } from '../types'
 import { useToast } from '../hooks/useToast'
+import { formatNumber } from '../utils'
 import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
 import { Select } from '../components/Select'
@@ -182,7 +183,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
           projectId: plugin.id,
           provider: plugin.provider
         })
-        
+
         // Handle mandatory dependencies
         for (const depProject of deps.mandatory) {
           if (!seenIds.has(depProject.id)) {
@@ -191,7 +192,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             queue.push(depProject)
           }
         }
-        
+
         // Handle optional dependencies
         for (const depProject of deps.optional) {
           if (!seenIds.has(depProject.id)) {
@@ -418,7 +419,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                       <div className="flex items-center gap-6 shrink-0 ml-4 px-6 border-l border-white/5">
                         <div className="flex flex-col items-center gap-1">
                           <Download size={14} className="text-primary" />
-                          <span className="text-[10px] font-bold text-gray-500">{(project.downloads / 1000).toFixed(1)}k</span>
+                          <span className="text-[10px] font-bold text-gray-500">{formatNumber(project.downloads)}</span>
                         </div>
                         <div className="flex flex-col items-center gap-1">
                           <Star size={14} className="text-primary" />
@@ -492,7 +493,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
                       <div className="flex items-center gap-3 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-1 text-gray-500 shrink-0">
                           <Download size={14} className="text-primary" />
-                          <span className="text-[10px] font-bold truncate">{(project.downloads / 1000).toFixed(1)}k</span>
+                          <span className="text-[10px] font-bold truncate">{formatNumber(project.downloads)}</span>
                         </div>
                         <div className="flex items-center gap-1 text-gray-500 shrink-0">
                           <Star size={14} className="text-primary" />

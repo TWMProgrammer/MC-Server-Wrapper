@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Check, Package, User, Download, ExternalLink, Star } from 'lucide-react'
 import { Project } from '../types'
 import { useAssetCache } from '../hooks/useAssetCache'
+import { formatNumber } from '../utils'
 
 interface ModCardProps {
   project: Project;
@@ -62,7 +63,7 @@ export function ModCard({
         <div className="flex items-center gap-6 shrink-0 ml-4 px-6 border-l border-white/5">
           <div className="flex flex-col items-center gap-1">
             <Download size={14} className="text-primary" />
-            <span className="text-[10px] font-bold text-gray-500">{(project.downloads / 1000).toFixed(1)}k</span>
+            <span className="text-[10px] font-bold text-gray-500">{formatNumber(project.downloads)}</span>
           </div>
           <div className="flex flex-col items-center gap-1">
             <Star size={14} className="text-primary" />
@@ -133,7 +134,7 @@ export function ModCard({
         <div className="flex items-center gap-3 min-w-0 overflow-hidden">
           <div className="flex items-center gap-1 text-gray-500 shrink-0">
             <Download size={14} className="text-primary" />
-            <span className="text-[10px] font-bold truncate">{(project.downloads / 1000).toFixed(1)}k</span>
+            <span className="text-[10px] font-bold truncate">{formatNumber(project.downloads)}</span>
           </div>
           <div className="flex items-center gap-1 text-gray-500 shrink-0">
             <Star size={14} className="text-primary" />

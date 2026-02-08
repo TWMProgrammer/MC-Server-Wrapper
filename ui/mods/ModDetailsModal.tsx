@@ -20,6 +20,7 @@ import {
 import { Project } from '../types'
 import { useAppSettings } from '../hooks/useAppSettings'
 import { useAssetCache, useAssetsCache } from '../hooks/useAssetCache'
+import { formatNumber } from '../utils'
 
 interface ModDetailsModalProps {
   project: Project;
@@ -118,7 +119,7 @@ export function ModDetailsModal({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Download size={14} className="text-primary" />
-                    {project.downloads.toLocaleString()} downloads
+                    {formatNumber(project.downloads)} downloads
                   </span>
                   {project.categories && project.categories.length > 0 && (
                     <span className="flex items-center gap-1.5">
