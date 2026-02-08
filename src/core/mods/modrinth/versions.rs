@@ -1,4 +1,5 @@
 use super::ModrinthClient;
+use crate::modrinth::ModrinthProjectType;
 use crate::mods::types::{
     Dependency, ModProvider, Project, ProjectFile, ProjectVersion, ResolvedDependency,
 };
@@ -13,7 +14,7 @@ impl ModrinthClient {
     ) -> Result<Vec<ResolvedDependency>> {
         let deps = self
             .inner
-            .get_dependencies(project_id, game_version, loader)
+            .get_dependencies(project_id, game_version, loader, Some(ModrinthProjectType::Mod))
             .await?;
 
         Ok(deps

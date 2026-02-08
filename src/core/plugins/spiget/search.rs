@@ -108,6 +108,7 @@ impl SpigetClient {
                             screenshot_urls: None,
                             author: format!("User {}", h["author"]["id"]),
                             provider: PluginProvider::Spiget,
+                            categories: h["category"]["id"].as_u64().map(|id| vec![id.to_string()]),
                         })
                         .collect();
 
@@ -204,6 +205,7 @@ impl SpigetClient {
                         screenshot_urls: None,
                         author: format!("User {}", h["author"]["id"]),
                         provider: PluginProvider::Spiget,
+                        categories: h["category"]["id"].as_u64().map(|id| vec![id.to_string()]),
                     };
 
                     Ok(project)

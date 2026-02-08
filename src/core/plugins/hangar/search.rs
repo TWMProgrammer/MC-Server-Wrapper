@@ -75,6 +75,7 @@ impl HangarClient {
                                     screenshot_urls: None,
                                     author: owner.to_string(),
                                     provider: PluginProvider::Hangar,
+                                    categories: None,
                                 }
                             })
                             .collect();
@@ -114,6 +115,7 @@ impl HangarClient {
                         screenshot_urls: None,
                         author: owner.to_string(),
                         provider: PluginProvider::Hangar,
+                        categories: None,
                     };
 
                     Ok(project)
@@ -122,11 +124,16 @@ impl HangarClient {
             .await
     }
 
-    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<ResolvedDependency>> {
-        let cache_key = format!("hangar_dependencies_{}", project_id);
+    pub async fn get_dependencies(
+        &self,
+        project_id: &str,
+        loader: Option<&str>,
+    ) -> Result<Vec<ResolvedDependency>> {
+        let cache_key = format!("hangar_dependencies_{}_lo:{:?}", project_id, loader);
         let client = self.client.clone();
         let base_url = self.base_url.clone();
         let project_id = project_id.to_string();
+        let loader = loader.map(|s| s.to_uppercase());
         let cache = Arc::clone(&self.cache);
 
         self.cache
@@ -134,6 +141,7 @@ impl HangarClient {
                 let client = client.clone();
                 let base_url = base_url.clone();
                 let project_id = project_id.clone();
+                let loader = loader.clone();
                 let cache = Arc::clone(&cache);
                 async move {
                     // Hangar dependencies are listed per version. We'll get the latest version and its dependencies.
@@ -150,8 +158,17 @@ impl HangarClient {
                     let latest_version = &result[0];
                     let mut resolved_deps = Vec::new();
 
-                    // Check for plugin dependencies in PAPER platform
-                    if let Some(plugin_deps) = latest_version["pluginDependencies"].get("PAPER") {
+                    // Map our loader to Hangar platforms
+                    // Hangar platforms: PAPER, WATERFALL, VELOCITY
+                    let platform = match loader.as_deref() {
+                        Some("PAPER") | Some("SPIGOT") | Some("BUKKIT") | Some("PURPUR") => "PAPER",
+                        Some("VELOCITY") => "VELOCITY",
+                        Some("WATERFALL") | Some("BUNGEECORD") => "WATERFALL",
+                        _ => "PAPER", // Default to PAPER
+                    };
+
+                    // Check for plugin dependencies in the matched platform
+                    if let Some(plugin_deps) = latest_version["pluginDependencies"].get(platform) {
                         if let Some(deps_array) = plugin_deps.as_array() {
                             for dep in deps_array {
                                 let name = dep["name"].as_str().unwrap_or("Unknown").to_string();
@@ -193,6 +210,7 @@ impl HangarClient {
                                                     screenshot_urls: None,
                                                     author: owner.to_string(),
                                                     provider: PluginProvider::Hangar,
+                                                    categories: None,
                                                 },
                                                 dependency_type,
                                             });
@@ -214,6 +232,7 @@ impl HangarClient {
                                             screenshot_urls: None,
                                             author: "External".to_string(),
                                             provider: PluginProvider::Hangar,
+                                            categories: None,
                                         },
                                         dependency_type,
                                     });

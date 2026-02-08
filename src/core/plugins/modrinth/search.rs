@@ -38,12 +38,26 @@ impl ModrinthClient {
                 screenshot_urls: p.screenshot_urls,
                 author: p.author,
                 provider: PluginProvider::Modrinth,
+                categories: p.categories,
             })
             .collect())
     }
 
-    pub async fn get_dependencies(&self, project_id: &str) -> Result<Vec<ResolvedDependency>> {
-        let deps = self.inner.get_dependencies(project_id, None, None).await?;
+    pub async fn get_dependencies(
+        &self,
+        project_id: &str,
+        game_version: Option<&str>,
+        loader: Option<&str>,
+    ) -> Result<Vec<ResolvedDependency>> {
+        let deps = self
+            .inner
+            .get_dependencies(
+                project_id,
+                game_version,
+                loader,
+                Some(ModrinthProjectType::Plugin),
+            )
+            .await?;
 
         Ok(deps
             .into_iter()
@@ -58,6 +72,7 @@ impl ModrinthClient {
                     screenshot_urls: p.screenshot_urls,
                     author: p.author,
                     provider: PluginProvider::Modrinth,
+                    categories: p.categories,
                 },
                 dependency_type: dep_type,
             })
@@ -76,6 +91,7 @@ impl ModrinthClient {
             screenshot_urls: p.screenshot_urls,
             author: p.author,
             provider: PluginProvider::Modrinth,
+            categories: p.categories,
         })
     }
 }

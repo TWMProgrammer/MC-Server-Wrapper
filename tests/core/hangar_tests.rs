@@ -121,7 +121,7 @@ async fn test_hangar_get_dependencies() {
         .mount(&mock_server)
         .await;
 
-    let deps = client.get_dependencies("test-project").await.unwrap();
+    let deps = client.get_dependencies("test-project", Some("PAPER")).await.unwrap();
     assert_eq!(deps.len(), 2);
 
     // Check Vault (internal dependency)

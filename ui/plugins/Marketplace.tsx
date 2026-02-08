@@ -19,7 +19,7 @@ import {
   List
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Project, PluginProvider, SortOrder, SearchOptions, Instance, ResolvedDependency } from '../types'
+import { Project, PluginProvider, SortOrder, SearchOptions, Instance, ResolvedDependency, PluginDependencies } from '../types'
 import { useToast } from '../hooks/useToast'
 import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
@@ -177,15 +177,29 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     try {
       while (queue.length > 0) {
         const plugin = queue.shift()!
-        const deps = await invoke<ResolvedDependency[]>('get_plugin_dependencies', {
+        const deps = await invoke<PluginDependencies>('get_plugin_dependencies', {
+          instanceId,
           projectId: plugin.id,
           provider: plugin.provider
         })
-        for (const dep of deps) {
-          if (!seenIds.has(dep.project.id)) {
-            allDeps.set(dep.project.id, dep)
-            seenIds.add(dep.project.id)
-            queue.push(dep.project) // Add to queue to find its dependencies
+        
+        // Handle mandatory dependencies
+        for (const depProject of deps.mandatory) {
+          if (!seenIds.has(depProject.id)) {
+            allDeps.set(depProject.id, { project: depProject, dependency_type: 'required' })
+            seenIds.add(depProject.id)
+            queue.push(depProject)
+          }
+        }
+        
+        // Handle optional dependencies
+        for (const depProject of deps.optional) {
+          if (!seenIds.has(depProject.id)) {
+            allDeps.set(depProject.id, { project: depProject, dependency_type: 'optional' })
+            seenIds.add(depProject.id)
+            // We don't necessarily need to recurse for optional dependencies unless the user selects them,
+            // but for simplicity in the review screen we can just resolve them one level.
+            // If we want full recursion: queue.push(depProject)
           }
         }
       }

@@ -174,6 +174,11 @@ export interface ResolvedDependency {
   dependency_type: string;
 }
 
+export interface PluginDependencies {
+  mandatory: Project[];
+  optional: Project[];
+}
+
 export interface InstalledMod {
   name: string;
   filename: string;

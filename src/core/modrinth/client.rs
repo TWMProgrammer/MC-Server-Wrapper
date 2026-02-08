@@ -292,10 +292,11 @@ impl ModrinthClient {
         project_id: &str,
         game_version: Option<&str>,
         loader: Option<&str>,
+        project_type: Option<ModrinthProjectType>,
     ) -> Result<Vec<(ModrinthProject, String)>> {
         let cache_key = format!(
-            "modrinth_common_deps_{}_v:{:?}_lo:{:?}",
-            project_id, game_version, loader
+            "modrinth_common_deps_{}_v:{:?}_lo:{:?}_t:{:?}",
+            project_id, game_version, loader, project_type
         );
 
         if let Ok(Some(cached)) = self
@@ -321,6 +322,11 @@ impl ModrinthClient {
                     if let Some(dep_id) = dep.project_id {
                         if dep.dependency_type == "required" || dep.dependency_type == "optional" {
                             if let Ok(project) = self.get_project(&dep_id).await {
+                                if let Some(target_type) = project_type {
+                                    if project.project_type != target_type {
+                                        continue;
+                                    }
+                                }
                                 resolved.push((project, dep.dependency_type));
                             }
                         }
@@ -369,6 +375,12 @@ impl ModrinthClient {
                     "datapack" => ModrinthProjectType::DataPack,
                     _ => ModrinthProjectType::Mod,
                 };
+
+                if let Some(target_type) = project_type {
+                    if p_type != target_type {
+                        continue;
+                    }
+                }
 
                 resolved.push((
                     ModrinthProject {

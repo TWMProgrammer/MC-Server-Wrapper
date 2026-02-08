@@ -1,4 +1,4 @@
-use mc_server_wrapper_core::plugins::{self, Project, PluginProvider, SearchOptions, ResolvedDependency};
+use mc_server_wrapper_core::plugins::{self, Project, PluginProvider, SearchOptions, PluginDependencies};
 use mc_server_wrapper_core::manager::ServerManager;
 use tauri::State;
 use std::sync::Arc;
@@ -17,10 +17,21 @@ pub async fn search_plugins(
 #[tauri::command]
 pub async fn get_plugin_dependencies(
     server_manager: State<'_, Arc<ServerManager>>,
+    instance_id: Uuid,
     project_id: String,
     provider: PluginProvider,
-) -> CommandResult<Vec<ResolvedDependency>> {
-    plugins::get_plugin_dependencies(&project_id, provider, server_manager.get_cache()).await.map_err(AppError::from)
+) -> CommandResult<PluginDependencies> {
+    let instances = server_manager.get_instance_manager().list_instances().await.map_err(AppError::from)?;
+    let instance = instances.iter().find(|i| i.id == instance_id)
+        .ok_or_else(|| AppError::NotFound(format!("Instance not found: {}", instance_id)))?;
+
+    plugins::get_plugin_dependencies(
+        &project_id, 
+        provider, 
+        Some(instance.version.as_str()), 
+        instance.mod_loader.as_deref(), 
+        server_manager.get_cache()
+    ).await.map_err(AppError::from)
 }
 
 #[tauri::command]

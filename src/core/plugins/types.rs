@@ -53,12 +53,19 @@ pub struct Project {
     pub screenshot_urls: Option<Vec<String>>,
     pub author: String,
     pub provider: PluginProvider,
+    pub categories: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ResolvedDependency {
     pub project: Project,
     pub dependency_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PluginDependencies {
+    pub mandatory: Vec<Project>,
+    pub optional: Vec<Project>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
