@@ -42,6 +42,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     setSelectedJar,
     serverPropertiesExists,
     setServerPropertiesExists,
+    bypassServerPropertiesCheck,
+    setBypassServerPropertiesCheck,
     rootWithinZip,
     setRootWithinZip,
     importProgress,
@@ -259,6 +261,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                       setSelectedJar={setSelectedJar}
                       serverPropertiesExists={serverPropertiesExists}
                       setServerPropertiesExists={setServerPropertiesExists}
+                      bypassServerPropertiesCheck={bypassServerPropertiesCheck}
+                      setBypassServerPropertiesCheck={setBypassServerPropertiesCheck}
                       rootWithinZip={rootWithinZip}
                       setRootWithinZip={setRootWithinZip}
                       availableScripts={availableScripts}
@@ -299,6 +303,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             importSourcePath={importSourcePath}
             selectedJar={selectedJar}
             serverPropertiesExists={serverPropertiesExists}
+            bypassServerPropertiesCheck={bypassServerPropertiesCheck}
             startAfterCreation={startAfterCreation}
             setStartAfterCreation={setStartAfterCreation}
             nameExists={nameExists}

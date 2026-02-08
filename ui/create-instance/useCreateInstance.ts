@@ -31,6 +31,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [availableScripts, setAvailableScripts] = useState<string[]>([]);
   const [selectedScript, setSelectedScript] = useState<string | null>(null);
   const [serverPropertiesExists, setServerPropertiesExists] = useState<boolean>(true);
+  const [bypassServerPropertiesCheck, setBypassServerPropertiesCheck] = useState<boolean>(false);
   const [rootWithinZip, setRootWithinZip] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<{ current: number, total: number, message: string } | null>(null);
 
@@ -51,6 +52,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setAvailableScripts([]);
     setSelectedScript(null);
     setServerPropertiesExists(true);
+    setBypassServerPropertiesCheck(false);
     setRootWithinZip(null);
     setImportProgress(null);
     setError(null);
@@ -332,6 +334,8 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setSelectedScript,
     serverPropertiesExists,
     setServerPropertiesExists,
+    bypassServerPropertiesCheck,
+    setBypassServerPropertiesCheck,
     rootWithinZip,
     setRootWithinZip,
     importProgress,

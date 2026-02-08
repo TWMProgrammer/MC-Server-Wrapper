@@ -15,6 +15,7 @@ interface FooterProps {
   importSourcePath: string | null;
   selectedJar: string | null;
   serverPropertiesExists: boolean;
+  bypassServerPropertiesCheck: boolean;
   startAfterCreation: boolean;
   setStartAfterCreation: (val: boolean) => void;
   nameExists?: boolean;
@@ -31,6 +32,7 @@ export function Footer({
   importSourcePath,
   selectedJar,
   serverPropertiesExists,
+  bypassServerPropertiesCheck,
   startAfterCreation,
   setStartAfterCreation,
   nameExists = false
@@ -40,7 +42,7 @@ export function Footer({
     ? !name || !importSourcePath || !selectedJar || creating || nameExists
     : !name || !selectedVersion || creating || loadingModLoaders || nameExists;
 
-  const showWarning = isImport && !serverPropertiesExists && !isDisabled;
+  const showWarning = isImport && !serverPropertiesExists && !isDisabled && !bypassServerPropertiesCheck;
 
   const getReadyMessage = () => {
     if (isImport) {

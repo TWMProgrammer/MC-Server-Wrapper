@@ -35,6 +35,8 @@ interface ImportSourceProps {
   setSelectedScript: (script: string | null) => void;
   serverPropertiesExists: boolean;
   setServerPropertiesExists: (exists: boolean) => void;
+  bypassServerPropertiesCheck: boolean;
+  setBypassServerPropertiesCheck: (bypass: boolean) => void;
   rootWithinZip: string | null;
   setRootWithinZip: (path: string | null) => void;
 }
@@ -54,6 +56,8 @@ export function ImportSource({
   setSelectedScript,
   serverPropertiesExists,
   setServerPropertiesExists,
+  bypassServerPropertiesCheck,
+  setBypassServerPropertiesCheck,
   rootWithinZip,
   setRootWithinZip
 }: ImportSourceProps) {
@@ -215,12 +219,22 @@ export function ImportSource({
 
               {!serverPropertiesExists && (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-accent-amber/10 border border-accent-amber/20 text-accent-amber">
-                    <FileWarning size={16} className="mt-0.5 shrink-0" />
-                    <div className="text-[11px] font-medium leading-relaxed">
-                      This source doesn't seem to be a standard Minecraft server (missing server.properties).
+                  {!bypassServerPropertiesCheck && (
+                    <div className="flex items-start justify-between gap-3 p-3 rounded-lg bg-accent-amber/10 border border-accent-amber/20 text-accent-amber">
+                      <div className="flex items-start gap-3">
+                        <FileWarning size={16} className="mt-0.5 shrink-0" />
+                        <div className="text-[11px] font-medium leading-relaxed">
+                          This source doesn't seem to be a standard Minecraft server (missing server.properties).
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setBypassServerPropertiesCheck(true)}
+                        className="text-[9px] font-black uppercase tracking-widest bg-accent-amber/20 hover:bg-accent-amber/30 px-2 py-1 rounded transition-colors whitespace-nowrap"
+                      >
+                        I know what I'm doing
+                      </button>
                     </div>
-                  </div>
+                  )}
 
                   {(importSourcePath.endsWith('.zip') || importSourcePath.endsWith('.7z')) && (
                     <ArchiveFileTree
