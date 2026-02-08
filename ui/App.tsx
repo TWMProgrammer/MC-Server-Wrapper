@@ -42,13 +42,21 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [downloadingInstance, setDownloadingInstance] = useState<{ id: string, name: string } | null>(null)
   const [command, setCommand] = useState('')
+  const [commandHistory, setCommandHistory] = useState<string[]>([])
 
   const consoleEndRef = useConsoleScroll(logs, selectedInstanceId)
 
   const handleSendCommand = (e: React.FormEvent) => {
     e.preventDefault()
-    if (command) {
+    if (command.trim()) {
       sendCommand(command)
+      setCommandHistory(prev => {
+        // Don't add if it's the same as the last command
+        if (prev.length > 0 && prev[prev.length - 1] === command) {
+          return prev;
+        }
+        return [...prev, command].slice(-50); // Keep last 50 commands
+      })
       setCommand('')
     }
   }
@@ -146,6 +154,7 @@ function App() {
                       command={command}
                       onCommandChange={setCommand}
                       onSendCommand={handleSendCommand}
+                      commandHistory={commandHistory}
                       onSetActiveTab={setActiveTab}
                       onInstancesUpdated={loadInstances}
                       settings={settings}

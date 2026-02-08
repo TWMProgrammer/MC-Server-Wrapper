@@ -30,6 +30,7 @@ interface TabRendererProps {
   logs: string[];
   consoleEndRef: React.RefObject<HTMLDivElement | null>;
   command: string;
+  commandHistory?: string[];
   onCommandChange: (val: string) => void;
   onSendCommand: (e: React.FormEvent) => void;
   onSetActiveTab: (tab: TabId) => void;
@@ -46,6 +47,7 @@ export function TabRenderer({
   logs,
   consoleEndRef,
   command,
+  commandHistory,
   onCommandChange,
   onSendCommand,
   onSetActiveTab,
@@ -69,6 +71,7 @@ export function TabRenderer({
               logs={logs}
               consoleEndRef={consoleEndRef}
               command={command}
+              commandHistory={commandHistory}
               onCommandChange={onCommandChange}
               onSendCommand={onSendCommand}
               onViewFull={() => onSetActiveTab('console')}
@@ -86,6 +89,7 @@ export function TabRenderer({
           logs={logs}
           consoleEndRef={consoleEndRef}
           command={command}
+          commandHistory={commandHistory}
           onCommandChange={onCommandChange}
           onSendCommand={onSendCommand}
           settings={settings}

@@ -58,8 +58,35 @@ vi.mock('ansi-to-react', () => ({
     default: ({ children }: any) => <span>{children}</span>,
 }));
 
+const ConsoleHistoryTestWrapper = ({
+    commandHistory,
+    mockOnCommandChange,
+    consoleEndRef,
+    onSendCommand
+}: {
+    commandHistory: string[],
+    mockOnCommandChange: (val: string) => void,
+    consoleEndRef: React.RefObject<HTMLDivElement | null>,
+    onSendCommand: (e: React.FormEvent) => void
+}) => {
+    const [cmd, setCmd] = React.useState('current typed');
+    return (
+        <Console
+            logs={[]}
+            consoleEndRef={consoleEndRef}
+            command={cmd}
+            commandHistory={commandHistory}
+            onCommandChange={(val) => {
+                setCmd(val);
+                mockOnCommandChange(val);
+            }}
+            onSendCommand={onSendCommand}
+        />
+    );
+};
+
 describe('Console', () => {
-    const consoleEndRef = { current: null };
+    const consoleEndRef = React.createRef<HTMLDivElement>();
     const onCommandChange = vi.fn();
     const onSendCommand = vi.fn();
 
@@ -190,5 +217,35 @@ describe('Console', () => {
         // Should have simple flex container
         const flexContainer = container.querySelector('.flex.flex-col');
         expect(flexContainer).not.toBeNull();
+    });
+
+    it('handles up and down arrow keys for command history', async () => {
+        const commandHistory = ['command1', 'command2', 'command3'];
+        const mockOnCommandChange = vi.fn();
+
+        render(
+            <ConsoleHistoryTestWrapper
+                commandHistory={commandHistory}
+                mockOnCommandChange={mockOnCommandChange}
+                consoleEndRef={consoleEndRef}
+                onSendCommand={onSendCommand}
+            />
+        );
+
+        // Press Up arrow
+        fireEvent.keyDown(screen.getByPlaceholderText(/Enter server command/i), { key: 'ArrowUp' });
+        await waitFor(() => expect(mockOnCommandChange).toHaveBeenCalledWith('command3'));
+
+        // Press Up arrow again
+        fireEvent.keyDown(screen.getByPlaceholderText(/Enter server command/i), { key: 'ArrowUp' });
+        await waitFor(() => expect(mockOnCommandChange).toHaveBeenCalledWith('command2'));
+
+        // Press Down arrow
+        fireEvent.keyDown(screen.getByPlaceholderText(/Enter server command/i), { key: 'ArrowDown' });
+        await waitFor(() => expect(mockOnCommandChange).toHaveBeenCalledWith('command3'));
+
+        // Press Down arrow to return to original typed command
+        fireEvent.keyDown(screen.getByPlaceholderText(/Enter server command/i), { key: 'ArrowDown' });
+        await waitFor(() => expect(mockOnCommandChange).toHaveBeenCalledWith('current typed'));
     });
 });

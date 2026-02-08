@@ -10,6 +10,7 @@ interface ConsoleProps {
   logs: string[];
   consoleEndRef: React.RefObject<HTMLDivElement | null>;
   command: string;
+  commandHistory?: string[];
   onCommandChange: (val: string) => void;
   onSendCommand: (e: React.FormEvent) => void;
   isFull?: boolean;
@@ -21,6 +22,7 @@ export function Console({
   logs,
   consoleEndRef,
   command,
+  commandHistory = [],
   onCommandChange,
   onSendCommand,
   isFull = false,
@@ -33,9 +35,53 @@ export function Console({
   const [isWrapped, setIsWrapped] = useState(true);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  const historyIndexRef = useRef(-1);
+  const tempCommandRef = useRef('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isAutoScrolling = useRef(false);
   const LINE_HEIGHT = 18; // Approximate height of a log line
+
+  // Reset history index when command is cleared (usually after sending)
+  useEffect(() => {
+    if (command === '') {
+      historyIndexRef.current = -1;
+      tempCommandRef.current = '';
+    }
+  }, [command]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp') {
+      if (commandHistory.length === 0) return;
+
+      const nextIndex = historyIndexRef.current + 1;
+      if (nextIndex < commandHistory.length) {
+        e.preventDefault();
+        if (historyIndexRef.current === -1) {
+          tempCommandRef.current = command;
+        }
+        const historyCommand = commandHistory[commandHistory.length - 1 - nextIndex];
+        historyIndexRef.current = nextIndex;
+        onCommandChange(historyCommand);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+
+      const nextIndex = historyIndexRef.current - 1;
+      if (nextIndex >= 0) {
+        const historyCommand = commandHistory[commandHistory.length - 1 - nextIndex];
+        historyIndexRef.current = nextIndex;
+        onCommandChange(historyCommand);
+      } else if (historyIndexRef.current !== -1) {
+        historyIndexRef.current = -1;
+        onCommandChange(tempCommandRef.current);
+      }
+    } else if (e.key === 'Escape') {
+      if (historyIndexRef.current !== -1) {
+        historyIndexRef.current = -1;
+        onCommandChange(tempCommandRef.current);
+      }
+    }
+  };
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -257,6 +303,7 @@ export function Console({
             type="text"
             value={command}
             onChange={(e) => onCommandChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Enter server command..."
             className={cn(
               "w-full bg-transparent border-none focus:ring-0 focus:outline-none font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 transition-all",
