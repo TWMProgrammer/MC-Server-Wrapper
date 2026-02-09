@@ -1,5 +1,10 @@
 import { Monaco } from '@monaco-editor/react';
 
+export const registerCustomLanguages = (monaco: Monaco) => {
+  registerSkriptLanguage(monaco);
+  registerTomlLanguage(monaco);
+};
+
 export const registerSkriptLanguage = (monaco: Monaco) => {
   // Register Skript language
   monaco.languages.register({ id: 'skript' });
@@ -95,6 +100,77 @@ export const registerSkriptLanguage = (monaco: Monaco) => {
       { open: '[', close: ']' },
       { open: '(', close: ')' },
       { open: '"', close: '"' },
+    ],
+  });
+};
+
+export const registerTomlLanguage = (monaco: Monaco) => {
+  // Register TOML language if it's not already registered
+  // Monaco usually has TOML built-in, but just in case or for custom themes
+  monaco.languages.register({ id: 'toml' });
+
+  monaco.languages.setMonarchTokensProvider('toml', {
+    defaultToken: '',
+    tokenPostfix: '.toml',
+
+    tokenizer: {
+      root: [
+        // Sections
+        [/^\[.*\]/, 'keyword'],
+        
+        // Keys
+        [/[a-zA-Z0-9_-]+(?=\s*=)/, 'variable'],
+        
+        // Strings
+        [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
+        [/'/, { token: 'string.quote', bracket: '@open', next: '@string_single' }],
+        
+        // Numbers
+        [/\d+(\.\d+)?/, 'number'],
+        
+        // Booleans
+        [/\b(true|false)\b/, 'keyword'],
+        
+        // Comments
+        [/#.*$/, 'comment'],
+        
+        // Whitespace
+        { include: '@whitespace' },
+      ],
+
+      whitespace: [
+        [/[ \t\r\n]+/, 'white'],
+      ],
+
+      string: [
+        [/[^\\"]+/, 'string'],
+        [/\\./, 'string.escape'],
+        [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }],
+      ],
+
+      string_single: [
+        [/[^\\']+/, 'string'],
+        [/\\./, 'string.escape'],
+        [/'/, { token: 'string.quote', bracket: '@close', next: '@pop' }],
+      ],
+    },
+  });
+
+  monaco.languages.setLanguageConfiguration('toml', {
+    comments: {
+      lineComment: '#',
+    },
+    brackets: [
+      ['{', '}'],
+      ['[', ']'],
+      ['(', ')'],
+    ],
+    autoClosingPairs: [
+      { open: '{', close: '}' },
+      { open: '[', close: ']' },
+      { open: '(', close: ')' },
+      { open: '"', close: '"' },
+      { open: "'", close: "'" },
     ],
   });
 };

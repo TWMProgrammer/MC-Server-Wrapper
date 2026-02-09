@@ -22,6 +22,7 @@ pub async fn list_available_configs(instance_path: &Path, _mod_loader: Option<&s
         ("help.yml", ConfigFormat::Yaml),
         ("permissions.yml", ConfigFormat::Yaml),
         ("fabric-loader.json", ConfigFormat::Json),
+        ("velocity.toml", ConfigFormat::Toml),
     ];
 
     for (file, format) in root_files {

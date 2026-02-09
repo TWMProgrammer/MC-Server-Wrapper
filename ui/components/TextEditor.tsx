@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Save, X, Maximize2, Minimize2, Share } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Editor from '@monaco-editor/react'
-import { registerSkriptLanguage, getLanguageFromExtension } from '../utils/monaco'
+import { registerCustomLanguages, getLanguageFromExtension } from '../utils/monaco'
 import { cn } from '../utils'
 
 interface TextEditorProps {
@@ -24,7 +24,7 @@ export function TextEditor({ initialValue, onSave, onClose, onOpenExternal, titl
   const language = useMemo(() => propLanguage || getLanguageFromExtension(title), [propLanguage, title])
 
   const handleEditorWillMount = (monaco: any) => {
-    registerSkriptLanguage(monaco)
+    registerCustomLanguages(monaco)
   }
 
   const handleEditorDidMount = (editor: any) => {
