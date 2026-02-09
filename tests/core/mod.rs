@@ -17,3 +17,4 @@ mod security_tests;
 mod retry_tests;
 mod cache_tests;
 mod asset_tests;
+mod monitor_tests;
