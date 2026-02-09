@@ -12,6 +12,7 @@ import { MarketplaceHeader } from './MarketplaceHeader'
 import { ModCard } from './ModCard'
 import { MarketplacePagination } from './MarketplacePagination'
 import { MarketplaceFloatingBar } from './MarketplaceFloatingBar'
+import { InstallationProgressModal } from '../components/InstallationProgressModal'
 
 interface ModMarketplaceProps {
   instanceId: string;
@@ -44,6 +45,7 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
   const [isResolvingDeps, setIsResolvingDeps] = useState(false)
   const [resolvedDeps, setResolvedDeps] = useState<ResolvedDependency[]>([])
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [installProgress, setInstallProgress] = useState({ current: 0, total: 0, name: '' })
 
   const { showToast } = useToast()
 
@@ -94,8 +96,14 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
 
   const handleConfirmInstall = async (mods: Project[]) => {
     setIsInstalling(true)
+    setInstallProgress({ current: 0, total: mods.length, name: mods[0]?.title || '' })
+    setShowReview(false)
+
     try {
-      for (const mod of mods) {
+      for (let i = 0; i < mods.length; i++) {
+        const mod = mods[i]
+        setInstallProgress(prev => ({ ...prev, current: i, name: mod.title }))
+
         await invoke('install_mod', {
           instanceId,
           projectId: mod.id,
@@ -103,9 +111,13 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
           versionId: null // Latest compatible
         })
       }
+
+      setInstallProgress(prev => ({ ...prev, current: mods.length }))
+      // Small delay to show completion state
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
       showToast(`Successfully installed ${mods.length} mods!`, 'success')
       setSelectedMods(new Map())
-      setShowReview(false)
       onInstallSuccess?.()
     } catch (err) {
       console.error('Installation failed:', err)
@@ -212,6 +224,13 @@ export function ModMarketplace({ instanceId, onInstallSuccess }: ModMarketplaceP
             isInstalling={isInstalling}
           />
         )}
+        <InstallationProgressModal
+          isOpen={isInstalling}
+          currentCount={installProgress.current}
+          totalCount={installProgress.total}
+          currentName={installProgress.name}
+          type="mod"
+        />
       </AnimatePresence>
     </div>
   )

@@ -17,6 +17,7 @@ export function ModsTab({ instanceId }: ModsTabProps) {
 
   const handleInstallSuccess = () => {
     setRefreshTrigger(prev => prev + 1)
+    setIsMarketplaceOpen(false)
   }
 
   return (

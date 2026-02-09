@@ -19,6 +19,7 @@ export function PluginsTab({ instanceId }: PluginsTabProps) {
 
   const handleInstallSuccess = () => {
     setRefreshTrigger(prev => prev + 1)
+    setIsMarketplaceOpen(false)
   }
 
   return (

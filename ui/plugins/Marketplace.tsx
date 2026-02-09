@@ -26,6 +26,7 @@ import { PluginDetailsModal } from './PluginDetailsModal'
 import { ReviewModal } from './ReviewModal'
 import { Select } from '../components/Select'
 import { MarketplaceFloatingBar } from '../mods/MarketplaceFloatingBar'
+import { InstallationProgressModal } from '../components/InstallationProgressModal'
 
 interface MarketplaceProps {
   instanceId: string;
@@ -95,6 +96,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   const [instance, setInstance] = useState<Instance | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [pageSize, setPageSize] = useState(25)
+  const [installProgress, setInstallProgress] = useState({ current: 0, total: 0, name: '' })
 
   const { showToast } = useToast()
 
@@ -217,8 +219,14 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
 
   const handleConfirmInstall = async (plugins: Project[]) => {
     setIsInstalling(true)
+    setInstallProgress({ current: 0, total: plugins.length, name: plugins[0]?.title || '' })
+    setShowReview(false)
+
     try {
-      for (const plugin of plugins) {
+      for (let i = 0; i < plugins.length; i++) {
+        const plugin = plugins[i]
+        setInstallProgress(prev => ({ ...prev, current: i, name: plugin.title }))
+
         await invoke('install_plugin', {
           instanceId,
           projectId: plugin.id,
@@ -226,9 +234,13 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
           versionId: null // Latest
         })
       }
+
+      setInstallProgress(prev => ({ ...prev, current: plugins.length }))
+      // Small delay to show completion state
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
       showToast(`Successfully installed ${plugins.length} plugins!`, 'success')
       setSelectedPlugins(new Map())
-      setShowReview(false)
       onInstallSuccess?.()
     } catch (err) {
       console.error('Installation failed:', err)
@@ -614,6 +626,13 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             isInstalling={isInstalling}
           />
         )}
+        <InstallationProgressModal
+          isOpen={isInstalling}
+          currentCount={installProgress.current}
+          totalCount={installProgress.total}
+          currentName={installProgress.name}
+          type="plugin"
+        />
       </AnimatePresence>
     </div>
   )
