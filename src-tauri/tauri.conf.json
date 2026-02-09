@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost http://asset.localhost blob: data: https://cdn.modrinth.com https://*.modrinth.com https://*.curseforge.com https://mc-heads.net; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';",
+      "csp": null,
       "assetProtocol": {
         "enable": true,
         "scope": [
