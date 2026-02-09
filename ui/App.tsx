@@ -73,6 +73,18 @@ function App() {
     }
   }, [currentInstance, activeTab, tabs]);
 
+  // Disable browser context menu
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
   const isAppLoading = serverLoading || settingsLoading;
 
   if (isAppLoading) {
