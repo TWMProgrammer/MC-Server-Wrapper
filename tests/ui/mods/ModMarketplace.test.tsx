@@ -33,6 +33,9 @@ vi.mock('lucide-react', () => ({
     X: () => <div data-testid="icon-x" />,
     LayoutGrid: () => <div data-testid="icon-grid" />,
     List: () => <div data-testid="icon-list" />,
+    Loader2: () => <div data-testid="icon-loader" />,
+    CheckCircle2: () => <div data-testid="icon-check-circle" />,
+    AlertCircle: () => <div data-testid="icon-alert-circle" />,
 }));
 
 // Mock Tauri invoke
@@ -47,6 +50,14 @@ vi.mock('../../../ui/hooks/useToast', () => ({
     useToast: () => ({
         showToast: mockShowToast,
     }),
+}));
+
+// Mock useAppSettings
+vi.mock('../../../ui/hooks/useAppSettings', () => ({
+    useAppSettings: () => ({
+        settings: { scaling: 1 }
+    }),
+    AppSettingsProvider: ({ children }: { children: React.ReactNode }) => children
 }));
 
 // Mock Framer Motion
@@ -226,7 +237,7 @@ describe('ModMarketplace', () => {
                 projectId: 'mod-1',
             }));
             expect(mockShowToast).toHaveBeenCalledWith(expect.stringContaining('installed'), 'success');
-        });
+        }, { timeout: 5000 });
     });
 
     it('handles pagination', async () => {

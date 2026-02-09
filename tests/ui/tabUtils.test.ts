@@ -8,6 +8,7 @@ describe('tabUtils', () => {
       expect(supportsPlugins('Purpur')).toBe(true);
       expect(supportsPlugins('SPIGOT')).toBe(true);
       expect(supportsPlugins('bukkit')).toBe(true);
+      expect(supportsPlugins('velocity')).toBe(true);
     });
 
     it('returns false for unsupported loaders or empty input', () => {
@@ -46,6 +47,13 @@ describe('tabUtils', () => {
 
     it('includes plugins for paper', () => {
       const tabs = getAvailableTabs('paper');
+      const tabIds = tabs.map(t => t.id);
+      expect(tabIds).toContain('plugins');
+      expect(tabIds).not.toContain('mods');
+    });
+
+    it('includes plugins for velocity', () => {
+      const tabs = getAvailableTabs('velocity');
       const tabIds = tabs.map(t => t.id);
       expect(tabIds).toContain('plugins');
       expect(tabIds).not.toContain('mods');

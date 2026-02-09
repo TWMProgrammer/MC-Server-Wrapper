@@ -116,6 +116,8 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
     loadInstance()
   }, [instanceId])
 
+  const isVelocity = instance?.mod_loader?.toLowerCase() === 'velocity'
+
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault()
     setLoading(true)
@@ -132,8 +134,10 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
         sort: sortOrder,
         offset: (page - 1) * pageSize,
         limit: pageSize,
-        game_version: instance?.version,
-        loader: instance?.server_type,
+        // Don't filter by version for Velocity as it's a proxy and plugins are version-independent usually,
+        // or the version numbering is different from game versions.
+        game_version: isVelocity ? undefined : instance?.version,
+        loader: isVelocity ? 'velocity' : instance?.server_type?.toLowerCase(),
       }
 
       const searchResults = await invoke<Project[]>('search_plugins', {
@@ -152,9 +156,13 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
   // Initial search on load or when instance/filters change
   useEffect(() => {
     if (instance) {
-      handleSearch()
+      if (isVelocity && provider !== 'Modrinth') {
+        setProvider('Modrinth')
+      } else {
+        handleSearch()
+      }
     }
-  }, [provider, activeCategory, sortOrder, page, instance, pageSize])
+  }, [provider, activeCategory, sortOrder, page, instance, pageSize, isVelocity])
 
   // Reset page when provider, category or sort changes
   useEffect(() => {
@@ -266,24 +274,33 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             Providers
           </div>
           <div className="space-y-1">
-            {(['Modrinth', 'Spiget', 'Hangar'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => {
-                  setProvider(p)
-                  setQuery('') // Reset search query when switching providers
-                  setActiveCategory(null) // Reset category when switching providers
-                  setPage(1) // Reset page when switching providers
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${provider === p
-                  ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                  }`}
-              >
-                <div className={`w-2 h-2 rounded-full ${p === 'Modrinth' ? 'bg-green-500' : p === 'Spiget' ? 'bg-orange-500' : 'bg-blue-500'}`} />
-                {p}
-              </button>
-            ))}
+            {(['Modrinth', 'Spiget', 'Hangar'] as const).map((p) => {
+              const isDisabled = isVelocity && p !== 'Modrinth';
+              if (isVelocity && p !== 'Modrinth') return null; // Hide other providers for Velocity
+
+              return (
+                <button
+                  key={p}
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    setProvider(p)
+                    setQuery('') // Reset search query when switching providers
+                    setActiveCategory(null) // Reset category when switching providers
+                    setPage(1) // Reset page when switching providers
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${provider === p
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                    : isDisabled
+                      ? 'opacity-50 cursor-not-allowed text-gray-600'
+                      : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                    }`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${p === 'Modrinth' ? 'bg-green-500' : p === 'Spiget' ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                  {p}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -326,7 +343,7 @@ export function Marketplace({ instanceId, onInstallSuccess }: MarketplaceProps) 
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
             <input
               type="text"
-              placeholder={`Search ${provider} plugins...`}
+              placeholder={isVelocity ? "Search Modrinth plugins for Velocity..." : `Search ${provider} plugins...`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-black/20 border border-white/5 rounded-2xl focus:outline-none focus:border-primary/50 transition-colors"

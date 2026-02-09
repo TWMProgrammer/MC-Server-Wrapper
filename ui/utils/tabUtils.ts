@@ -30,7 +30,7 @@ export const ALL_TABS: { id: TabId; label: string; icon: any }[] = [
 export const supportsPlugins = (loader?: string) => {
   if (!loader) return false;
   const l = loader.toLowerCase();
-  return ['paper', 'purpur', 'spigot', 'bukkit'].includes(l);
+  return ['paper', 'purpur', 'spigot', 'bukkit', 'velocity'].includes(l);
 };
 
 export const supportsMods = (loader?: string) => {
