@@ -150,10 +150,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
 - [x] **Plugin/Mod Downloader**
   - [x] Modrinth API integration for mods and plugins.
   - [x] Spigot (Spiget) API integration.
-141→    - [x] CurseForge API support.
-142→    - [x] Hangar API integration for Paper/Velocity plugins.
-143→    - [x] Dependency resolution for complex mods and plugins (Modrinth, CurseForge, Hangar).
-144→- [x] **Resource Monitoring**
+    - [x] CurseForge API support.
+    - [x] Hangar API integration for Paper/Velocity plugins.
+    - [x] Dependency resolution for complex mods and plugins (Modrinth, CurseForge, Hangar).
+- [x] **Resource Monitoring**
   - [x] Live CPU/RAM usage tracking.
   - [x] Disk I/O monitoring.
   - [x] Historical usage graphs with `recharts`.
@@ -178,17 +178,17 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [x] Frontend unit & component tests using `Vitest` and `React Testing Library`.
   - [x] E2E tests for critical user flows (Create Instance, Start/Stop Server) using `Playwright`.
 - [x] **Robust Error Handling**
-    - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
-    - [x] Implement React Error Boundaries in the frontend.
+  - [x] Replace `unwrap()`/`expect()` with proper error handling in `lib.rs`.
+  - [x] Implement React Error Boundaries in the frontend.
 - [x] **JAR Integrity & Redownload System**
-    - [x] Implement universal JAR validity check (ZIP archive validation).
-    - [x] Integrate validity checks into the server installation lifecycle.
-    - [x] Implement automatic redownload of corrupt or invalid server JARs.
-    - [x] Add post-download validation for all JAR-based mod loaders.
+  - [x] Implement universal JAR validity check (ZIP archive validation).
+  - [x] Integrate validity checks into the server installation lifecycle.
+  - [x] Implement automatic redownload of corrupt or invalid server JARs.
+  - [x] Add post-download validation for all JAR-based mod loaders.
 - [x] **Modrinth API Refactoring**
-    - [x] Refactor manual Modrinth API client to use `ferinth` structures.
-    - [x] Restore custom base URL support by wrapping `reqwest` directly.
-    - [x] Align test suites with strict `ferinth` serialization requirements.
+  - [x] Refactor manual Modrinth API client to use `ferinth` structures.
+  - [x] Restore custom base URL support by wrapping `reqwest` directly.
+  - [x] Align test suites with strict `ferinth` serialization requirements.
 - [ ] **Advanced Caching System**
   - [ ] Implement persistent disk-backed cache for metadata.
   - [ ] Create a global artifact store for shared server JARs and assets.
