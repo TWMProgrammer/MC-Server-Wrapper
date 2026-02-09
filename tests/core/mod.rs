@@ -18,3 +18,4 @@ mod retry_tests;
 mod cache_tests;
 mod asset_tests;
 mod monitor_tests;
+mod bungeecord_tests;

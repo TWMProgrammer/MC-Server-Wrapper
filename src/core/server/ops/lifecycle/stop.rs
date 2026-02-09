@@ -13,10 +13,13 @@ impl ServerHandle {
         }
 
         *status = ServerStatus::Stopping;
-        let stop_timeout = self.config.lock().await.stop_timeout;
+        let config = self.config.lock().await;
+        let stop_timeout = config.stop_timeout;
+        let stop_command = config.stop_command.clone();
+        drop(config);
         drop(status);
 
-        if let Err(e) = self.send_command("stop").await {
+        if let Err(e) = self.send_command(&stop_command).await {
             warn!("Failed to send stop command: {}. Falling back to kill.", e);
         }
 

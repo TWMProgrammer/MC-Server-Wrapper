@@ -124,6 +124,12 @@ impl ServerManager {
             u => u,
         };
 
+        let stop_command = if loader_lower.as_deref() == Some("bungeecord") {
+            "exit".to_string()
+        } else {
+            "stop".to_string()
+        };
+
         ServerConfig {
             name: instance.name.clone(),
             max_memory: format!("{}{}", instance.settings.max_ram, max_ram_unit),
@@ -135,6 +141,7 @@ impl ServerManager {
             java_path,
             crash_handling: instance.settings.crash_handling.clone(),
             stop_timeout: 30,
+            stop_command,
         }
     }
 }
