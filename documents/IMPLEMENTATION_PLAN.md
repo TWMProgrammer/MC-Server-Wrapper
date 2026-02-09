@@ -185,6 +185,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] Integrate validity checks into the server installation lifecycle.
     - [x] Implement automatic redownload of corrupt or invalid server JARs.
     - [x] Add post-download validation for all JAR-based mod loaders.
+- [x] **Modrinth API Refactoring**
+    - [x] Refactor manual Modrinth API client to use `ferinth` structures.
+    - [x] Restore custom base URL support by wrapping `reqwest` directly.
+    - [x] Align test suites with strict `ferinth` serialization requirements.
 - [ ] **Advanced Caching System**
   - [ ] Implement persistent disk-backed cache for metadata.
   - [ ] Create a global artifact store for shared server JARs and assets.

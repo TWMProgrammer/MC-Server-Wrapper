@@ -49,7 +49,7 @@ impl ModrinthClient {
         game_version: Option<&str>,
         loader: Option<&str>,
     ) -> Result<Vec<ResolvedDependency>> {
-        let deps = self
+        let deps: Vec<(crate::modrinth::ModrinthProject, String)> = self
             .inner
             .get_dependencies(
                 project_id,

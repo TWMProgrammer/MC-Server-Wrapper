@@ -1,3 +1,4 @@
+pub mod converters;
 pub mod types;
 pub mod client;
 

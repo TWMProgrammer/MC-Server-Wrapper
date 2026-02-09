@@ -1,14 +1,15 @@
 use super::types::*;
 use crate::cache::CacheManager;
-use crate::utils::retry_async;
-use anyhow::{Result, anyhow};
-use reqwest::Client;
+use anyhow::{Result, anyhow, Context};
+use ferinth::structures::{project::Project, version::Version, search::Response as SearchResponse};
 use std::sync::Arc;
 use std::time::Duration;
+use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 
 pub struct ModrinthClient {
-    pub client: Client,
-    pub base_url: String,
+    base_url: String,
+    pub(crate) client: reqwest::Client,
     pub cache: Arc<CacheManager>,
 }
 
@@ -18,210 +19,104 @@ impl ModrinthClient {
     }
 
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
+        let client = reqwest::Client::builder()
+            .user_agent(format!(
+                "{}/{}",
+                env!("CARGO_CRATE_NAME"),
+                env!("CARGO_PKG_VERSION")
+            ))
+            .build()
+            .unwrap_or_default();
+
         Self {
-            client: cache.get_client().clone(),
-            base_url,
+            base_url: base_url.trim_end_matches('/').to_string(),
+            client,
             cache,
         }
     }
 
     pub async fn search(&self, options: &ModrinthSearchOptions) -> Result<Vec<ModrinthProject>> {
-        let cache_key = format!("modrinth_common_search_{}", options.cache_key());
+        let cache_key = format!("modrinth_search_{}", options.cache_key());
         let client = self.client.clone();
-        let base_url = self.base_url.clone();
         let options = options.clone();
+        let base_url = self.base_url.clone();
 
         self.cache
             .fetch_with_options(cache_key, Duration::from_secs(3600), false, move || {
                 let client = client.clone();
-                let base_url = base_url.clone();
                 let options = options.clone();
+                let base_url = base_url.clone();
                 async move {
-                    let mut url = format!(
-                        "{}/search?query={}",
-                        base_url,
-                        urlencoding::encode(&options.query)
-                    );
+                    let mut query_params = vec![
+                        ("query", options.query.clone()),
+                        ("offset", options.offset.unwrap_or(0).to_string()),
+                        ("limit", options.limit.unwrap_or(20).to_string()),
+                    ];
 
-                    let mut and_groups: Vec<Vec<String>> = Vec::new();
-
-                    if let Some(facets) = &options.facets {
-                        for f in facets {
-                            and_groups.push(vec![f.clone()]);
-                        }
-                    }
-
-                    if let Some(project_type) = options.project_type {
-                        let type_str = match project_type {
-                            ModrinthProjectType::Mod => "mod",
-                            ModrinthProjectType::Plugin => "plugin",
-                            ModrinthProjectType::ResourcePack => "resourcepack",
-                            ModrinthProjectType::DataPack => "datapack",
-                        };
-                        and_groups.push(vec![format!("project_type:{}", type_str)]);
-                    }
-
-                    if let Some(version) = &options.game_version {
-                        if !version.is_empty() {
-                            and_groups.push(vec![format!("versions:{}", version)]);
-                        }
-                    }
-
-                    if let Some(loader) = &options.loader {
-                        if !loader.is_empty() {
-                            // Modrinth uses 'categories' for loaders in search facets
-                            and_groups.push(vec![format!("categories:{}", loader.to_lowercase())]);
-                        }
-                    }
-
-                    if !and_groups.is_empty() {
-                        let facets_json = serde_json::to_string(&and_groups)?;
-                        url.push_str(&format!("&facets={}", urlencoding::encode(&facets_json)));
-                    }
-
-                    if let Some(sort) = options.sort {
-                        let index = match sort {
+                    if let Some(sort) = &options.sort {
+                        let sort_str = match sort {
                             ModrinthSortOrder::Relevance => "relevance",
                             ModrinthSortOrder::Downloads => "downloads",
                             ModrinthSortOrder::Follows => "follows",
                             ModrinthSortOrder::Newest => "newest",
                             ModrinthSortOrder::Updated => "updated",
                         };
-                        url.push_str(&format!("&index={}", index));
+                        query_params.push(("index", sort_str.to_string()));
                     }
 
-                    if let Some(offset) = options.offset {
-                        url.push_str(&format!("&offset={}", offset));
-                    }
-
-                    if let Some(limit) = options.limit {
-                        url.push_str(&format!("&limit={}", limit));
-                    }
-
-                    let response_text = retry_async(
-                        || async {
-                            let res = client.get(&url).send().await?;
-                            let text = res.text().await.map_err(|e| anyhow!(e))?;
-                            Ok(text)
-                        },
-                        3,
-                        Duration::from_secs(2),
-                        &format!("Modrinth search: {}", options.query),
-                    )
-                    .await?;
-
-                    let response: serde_json::Value = serde_json::from_str(&response_text)?;
-                    let hits = response["hits"]
-                        .as_array()
-                        .ok_or_else(|| anyhow!("Missing hits field"))?;
-
-                    let projects: Vec<ModrinthProject> = hits
-                        .iter()
-                        .map(|h| {
-                            let p_type = match h["project_type"].as_str().unwrap_or_default() {
-                                "mod" => ModrinthProjectType::Mod,
-                                "plugin" => ModrinthProjectType::Plugin,
-                                "resourcepack" => ModrinthProjectType::ResourcePack,
-                                "datapack" => ModrinthProjectType::DataPack,
-                                _ => ModrinthProjectType::Mod, // Default
-                            };
-
-                            ModrinthProject {
-                                id: h["project_id"].as_str().unwrap_or_default().to_string(),
-                                slug: h["slug"].as_str().unwrap_or_default().to_string(),
-                                title: h["title"].as_str().unwrap_or_default().to_string(),
-                                description: h["description"]
-                                    .as_str()
-                                    .unwrap_or_default()
-                                    .to_string(),
-                                downloads: h["downloads"].as_u64().unwrap_or(0),
-                                icon_url: h["icon_url"].as_str().map(|s| s.to_string()),
-                                screenshot_urls: h["gallery"].as_array().map(|gallery| {
-                                    gallery
-                                        .iter()
-                                        .filter_map(|item| {
-                                            item["url"].as_str().map(|s| s.to_string())
-                                        })
-                                        .collect()
-                                }),
-                                author: h["author"].as_str().unwrap_or_default().to_string(),
-                                project_type: p_type,
-                                categories: h["categories"].as_array().map(|cats| {
-                                    cats.iter()
-                                        .filter_map(|c| c.as_str().map(|s| s.to_string()))
-                                        .collect()
-                                }),
+                    if let Some(facets) = &options.facets {
+                        if !facets.is_empty() {
+                            let mut facet_list = Vec::new();
+                            for f in facets {
+                                facet_list.push(format!("\"{}\"", f));
                             }
-                        })
-                        .collect();
+                            let facets_str = format!("[[{}]]", facet_list.join(","));
+                            query_params.push(("facets", facets_str));
+                        }
+                    }
 
-                    Ok(projects)
+                    let url = format!("{}/search", base_url);
+                    let response = client.get(&url)
+                        .query(&query_params)
+                        .send()
+                        .await
+                        .context("Failed to send search request")?;
+
+                    if !response.status().is_success() {
+                        return Err(anyhow!("Search request failed with status: {}", response.status()));
+                    }
+
+                    let search_response: SearchResponse = response.json().await
+                        .context("Failed to parse search response")?;
+
+                    Ok(search_response.hits.into_iter().map(Into::into).collect())
                 }
             })
             .await
     }
 
     pub async fn get_project(&self, id: &str) -> Result<ModrinthProject> {
-        let cache_key = format!("modrinth_common_project_{}", id);
+        let cache_key = format!("modrinth_project_{}", id);
         let client = self.client.clone();
-        let base_url = self.base_url.clone();
-        let id = id.to_string();
+        let url = format!("{}/project/{}", self.base_url, id);
 
         self.cache
             .fetch_with_cache(cache_key, Duration::from_secs(3600), move || {
                 let client = client.clone();
-                let base_url = base_url.clone();
-                let id = id.clone();
+                let url = url.clone();
                 async move {
-                    let url = format!("{}/project/{}", base_url, id);
-                    let response: serde_json::Value = retry_async(
-                        || async {
-                            client
-                                .get(&url)
-                                .send()
-                                .await?
-                                .json()
-                                .await
-                                .map_err(|e| anyhow!(e))
-                        },
-                        3,
-                        Duration::from_secs(2),
-                        &format!("Get Modrinth project: {}", id),
-                    )
-                    .await?;
+                    let response = client.get(&url)
+                        .send()
+                        .await
+                        .context("Failed to send project request")?;
 
-                    let p_type = match response["project_type"].as_str().unwrap_or_default() {
-                        "mod" => ModrinthProjectType::Mod,
-                        "plugin" => ModrinthProjectType::Plugin,
-                        "resourcepack" => ModrinthProjectType::ResourcePack,
-                        "datapack" => ModrinthProjectType::DataPack,
-                        _ => ModrinthProjectType::Mod,
-                    };
+                    if !response.status().is_success() {
+                        return Err(anyhow!("Project request failed with status: {}", response.status()));
+                    }
 
-                    Ok(ModrinthProject {
-                        id: response["id"].as_str().unwrap_or_default().to_string(),
-                        slug: response["slug"].as_str().unwrap_or_default().to_string(),
-                        title: response["title"].as_str().unwrap_or_default().to_string(),
-                        description: response["description"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string(),
-                        downloads: response["downloads"].as_u64().unwrap_or(0),
-                        icon_url: response["icon_url"].as_str().map(|s| s.to_string()),
-                        screenshot_urls: response["gallery"].as_array().map(|gallery| {
-                            gallery
-                                .iter()
-                                .filter_map(|item| item["url"].as_str().map(|s| s.to_string()))
-                                .collect()
-                        }),
-                        author: String::new(), // Author is not directly in project response in the same way as search
-                        project_type: p_type,
-                        categories: response["categories"].as_array().map(|cats| {
-                            cats.iter()
-                                .filter_map(|c| c.as_str().map(|s| s.to_string()))
-                                .collect()
-                        }),
-                    })
+                    let p: Project = response.json().await
+                        .context("Failed to parse project response")?;
+                    Ok(p.into())
                 }
             })
             .await
@@ -234,7 +129,7 @@ impl ModrinthClient {
         loader: Option<&str>,
     ) -> Result<Vec<ModrinthVersion>> {
         let cache_key = format!(
-            "modrinth_common_versions_{}_v:{:?}_lo:{:?}",
+            "modrinth_versions_{}_v:{:?}_lo:{:?}",
             project_id, game_version, loader
         );
         let client = self.client.clone();
@@ -251,163 +146,70 @@ impl ModrinthClient {
                 let game_version = game_version.clone();
                 let loader = loader.clone();
                 async move {
-                    let mut url = format!("{}/project/{}/version", base_url, project_id);
                     let mut query_params = Vec::new();
-                    if let Some(gv) = game_version {
-                        query_params.push(format!("game_versions=[\"{}\"]", gv));
+                    if let Some(gv) = &game_version {
+                        query_params.push(("game_versions", format!("[\"{}\"]", gv)));
                     }
-                    if let Some(l) = loader {
-                        query_params.push(format!("loaders=[\"{}\"]", l.to_lowercase()));
-                    }
-
-                    if !query_params.is_empty() {
-                        url.push_str("?");
-                        url.push_str(&query_params.join("&"));
+                    if let Some(l) = &loader {
+                        query_params.push(("loaders", format!("[\"{}\"]", l)));
                     }
 
-                    let versions: Vec<ModrinthVersion> = retry_async(
-                        || async {
-                            client
-                                .get(&url)
-                                .send()
-                                .await?
-                                .json()
-                                .await
-                                .map_err(|e| anyhow!(e))
-                        },
-                        3,
-                        Duration::from_secs(2),
-                        &format!("Get Modrinth versions: {}", project_id),
-                    )
-                    .await?;
+                    let url = format!("{}/project/{}/version", base_url, project_id);
+                    let response = client.get(&url)
+                        .query(&query_params)
+                        .send()
+                        .await
+                        .context("Failed to send versions request")?;
 
-                    Ok(versions)
+                    if !response.status().is_success() {
+                        return Err(anyhow!("Versions request failed with status: {}", response.status()));
+                    }
+
+                    let versions: Vec<Version> = response.json().await
+                        .context("Failed to parse versions response")?;
+
+                    Ok(versions.into_iter().map(Into::into).collect())
                 }
             })
             .await
     }
 
-    pub async fn get_dependencies(
-        &self,
-        project_id: &str,
-        game_version: Option<&str>,
-        loader: Option<&str>,
-        project_type: Option<ModrinthProjectType>,
-    ) -> Result<Vec<(ModrinthProject, String)>> {
-        let cache_key = format!(
-            "modrinth_common_deps_{}_v:{:?}_lo:{:?}_t:{:?}",
-            project_id, game_version, loader, project_type
-        );
+    pub fn get_dependencies<'a>(
+        &'a self,
+        project_id: &'a str,
+        game_version: Option<&'a str>,
+        loader: Option<&'a str>,
+        _project_type: Option<ModrinthProjectType>,
+    ) -> BoxFuture<'a, Result<Vec<(ModrinthProject, String)>>> {
+        async move {
+            // 1. Get versions to find a suitable one
+            let versions = self.get_versions(project_id, game_version, loader).await?;
+            let version = versions.first().ok_or_else(|| anyhow!("No versions found for project {}", project_id))?;
 
-        if let Ok(Some(cached)) = self
-            .cache
-            .get::<Vec<(ModrinthProject, String)>>(&cache_key)
-            .await
-        {
-            return Ok(cached);
-        }
+            // 2. Get dependencies for that version
+            let url = format!("{}/version/{}", self.base_url, version.id);
+            let response = self.client.get(&url)
+                .send()
+                .await
+                .context("Failed to send version request for dependencies")?;
 
-        let mut resolved = Vec::new();
-
-        // If version/loader provided, try to get specific version dependencies
-        if let (Some(gv), Some(l)) = (game_version, loader) {
-            let versions = self.get_versions(project_id, Some(gv), Some(l)).await?;
-            let l_lower = l.to_lowercase();
-
-            if let Some(version) = versions.into_iter().find(|v| {
-                v.game_versions.contains(&gv.to_string())
-                    && v.loaders.iter().any(|vl| vl.to_lowercase() == l_lower)
-            }) {
-                for dep in version.dependencies {
-                    if let Some(dep_id) = dep.project_id {
-                        if dep.dependency_type == "required" || dep.dependency_type == "optional" {
-                            if let Ok(project) = self.get_project(&dep_id).await {
-                                if let Some(target_type) = project_type {
-                                    if project.project_type != target_type {
-                                        continue;
-                                    }
-                                }
-                                resolved.push((project, dep.dependency_type));
-                            }
-                        }
-                    }
-                }
-                let _ = self.cache.set(cache_key, resolved.clone()).await;
-                return Ok(resolved);
+            if !response.status().is_success() {
+                return Err(anyhow!("Version request failed with status: {}", response.status()));
             }
-        }
 
-        // Fallback to project-wide dependencies
-        let url = format!("{}/project/{}/dependencies", self.base_url, project_id);
-        let response: serde_json::Value = retry_async(
-            || async {
-                self.client
-                    .get(&url)
-                    .send()
-                    .await?
-                    .json()
-                    .await
-                    .map_err(|e| anyhow!(e))
-            },
-            3,
-            Duration::from_secs(2),
-            &format!("Get Modrinth dependencies: {}", project_id),
-        )
-        .await?;
+            let version_data: Version = response.json().await
+                .context("Failed to parse version response for dependencies")?;
 
-        if let (Some(projects), Some(versions)) = (
-            response["projects"].as_array(),
-            response["versions"].as_array(),
-        ) {
-            for p_json in projects {
-                let id = p_json["id"].as_str().unwrap_or_default().to_string();
-                let dep_type = versions
-                    .iter()
-                    .find(|v| v["project_id"].as_str() == Some(&id))
-                    .and_then(|v| v["dependency_type"].as_str())
-                    .unwrap_or("required")
-                    .to_string();
-
-                let p_type = match p_json["project_type"].as_str().unwrap_or_default() {
-                    "mod" => ModrinthProjectType::Mod,
-                    "plugin" => ModrinthProjectType::Plugin,
-                    "resourcepack" => ModrinthProjectType::ResourcePack,
-                    "datapack" => ModrinthProjectType::DataPack,
-                    _ => ModrinthProjectType::Mod,
-                };
-
-                if let Some(target_type) = project_type {
-                    if p_type != target_type {
-                        continue;
-                    }
+            // 3. Resolve each dependency to a ModrinthProject
+            let mut resolved = Vec::new();
+            for dep in version_data.dependencies {
+                if let Some(dep_proj_id) = dep.project_id {
+                    let project = self.get_project(&dep_proj_id).await?;
+                    resolved.push((project, format!("{:?}", dep.dependency_type)));
                 }
-
-                resolved.push((
-                    ModrinthProject {
-                        id,
-                        slug: p_json["slug"].as_str().unwrap_or_default().to_string(),
-                        title: p_json["title"].as_str().unwrap_or_default().to_string(),
-                        description: p_json["description"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string(),
-                        downloads: p_json["downloads"].as_u64().unwrap_or(0),
-                        icon_url: p_json["icon_url"].as_str().map(|s| s.to_string()),
-                        screenshot_urls: None,
-                        author: String::new(),
-                        project_type: p_type,
-                        categories: p_json["categories"].as_array().map(|cats| {
-                            cats.iter()
-                                .filter_map(|c| c.as_str().map(|s| s.to_string()))
-                                .collect()
-                        }),
-                    },
-                    dep_type,
-                ));
             }
-        }
 
-        let _ = self.cache.set(cache_key, resolved.clone()).await;
-        Ok(resolved)
+            Ok(resolved)
+        }.boxed()
     }
 }

@@ -1,15 +1,15 @@
+use anyhow::Result;
+use mc_server_wrapper_core::cache::CacheManager;
+use mc_server_wrapper_core::database::Database;
 use mc_server_wrapper_core::instance::InstanceManager;
 use mc_server_wrapper_core::mods::{self, modrinth::ModrinthClient, types::SearchOptions};
-use mc_server_wrapper_core::database::Database;
-use mc_server_wrapper_core::cache::CacheManager;
-use tempfile::tempdir;
-use anyhow::Result;
-use tokio::fs;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, query_param};
 use serde_json::json;
 use std::io::Write;
 use std::sync::Arc;
+use tempfile::tempdir;
+use tokio::fs;
+use wiremock::matchers::{method, path, query_param};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 async fn setup_instance_manager(dir: &std::path::Path) -> Result<InstanceManager> {
     let db = Arc::new(Database::new(dir.join("test.db")).await?);
@@ -19,16 +19,22 @@ async fn setup_instance_manager(dir: &std::path::Path) -> Result<InstanceManager
 async fn create_dummy_jar(path: &std::path::Path) {
     let file = std::fs::File::create(path).unwrap();
     let mut zip = zip::ZipWriter::new(file);
-    zip.start_file("fabric.mod.json", zip::write::SimpleFileOptions::default()).unwrap();
-    zip.write_all(json!({
-        "schemaVersion": 1,
-        "id": "sodium",
-        "version": "0.5.0",
-        "name": "Sodium",
-        "description": "A powerful optimization mod",
-        "authors": ["jellysquid3"],
-        "license": "LGPL-3.0-only"
-    }).to_string().as_bytes()).unwrap();
+    zip.start_file("fabric.mod.json", zip::write::SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(
+        json!({
+            "schemaVersion": 1,
+            "id": "sodium",
+            "version": "0.5.0",
+            "name": "Sodium",
+            "description": "A powerful optimization mod",
+            "authors": ["jellysquid3"],
+            "license": "LGPL-3.0-only"
+        })
+        .to_string()
+        .as_bytes(),
+    )
+    .unwrap();
     zip.finish().unwrap();
 }
 
@@ -39,7 +45,9 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
     fs::create_dir_all(&instances_dir).await?;
 
     let instance_manager = setup_instance_manager(&instances_dir).await?;
-    let instance = instance_manager.create_instance("Modded Server", "1.20.1").await?;
+    let instance = instance_manager
+        .create_instance("Modded Server", "1.20.1")
+        .await?;
     let instance_path = instance.path.clone();
 
     // 1. User searches for a mod (e.g., "Sodium").
@@ -57,7 +65,18 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
                 "downloads": 15000000,
                 "icon_url": "https://cdn.modrinth.com/icon.png",
                 "author": "jellysquid3",
-                "categories": ["fabric"]
+                "categories": ["fabric"],
+                "display_categories": ["fabric"],
+                "client_side": "required",
+                "server_side": "required",
+                "project_type": "mod",
+                "versions": ["v1"],
+                "follows": 1000,
+                "date_created": "2020-01-01T00:00:00Z",
+                "date_modified": "2020-01-01T00:00:00Z",
+                "latest_version": "1.0.0",
+                "license": "MIT",
+                "gallery": []
             }
         ],
         "offset": 0,
@@ -91,8 +110,8 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
     let dummy_jar_path = dir.path().join("dummy-sodium.jar");
     create_dummy_jar(&dummy_jar_path).await;
     let dummy_jar_content = std::fs::read(&dummy_jar_path)?;
-    
-    use sha1::{Sha1, Digest};
+
+    use sha1::{Digest, Sha1};
     let mut hasher = Sha1::new();
     hasher.update(&dummy_jar_content);
     let sha1_hash = hex::encode(hasher.finalize());
@@ -101,7 +120,13 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
         {
             "id": "v123",
             "project_id": "A76uj67l",
+            "name": "Sodium 0.5.0",
             "version_number": "0.5.0",
+            "version_type": "release",
+            "featured": true,
+            "author_id": "user123",
+            "date_published": "2020-01-01T00:00:00Z",
+            "downloads": 100,
             "files": [
                 {
                     "url": format!("{}/download/sodium-0.5.0.jar", mock_server.uri()),
@@ -109,7 +134,8 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
                     "primary": true,
                     "size": dummy_jar_content.len(),
                     "hashes": {
-                        "sha1": sha1_hash
+                        "sha1": sha1_hash,
+                        "sha512": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
                     }
                 }
             ],
@@ -127,14 +153,16 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
 
     Mock::given(method("GET"))
         .and(path("/download/sodium-0.5.0.jar"))
-        .respond_with(ResponseTemplate::new(200).set_body_raw(dummy_jar_content, "application/java-archive"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(dummy_jar_content, "application/java-archive"),
+        )
         .mount(&mock_server)
         .await;
 
     // Get versions and download
     let versions = client.get_versions("A76uj67l", None, None).await?;
     let version = &versions[0];
-    
+
     let mods_dir = instance_path.join("mods");
     client.download_version(version, &mods_dir).await?;
 

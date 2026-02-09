@@ -10,6 +10,10 @@ pub enum ModrinthProjectType {
     ResourcePack,
     #[serde(rename = "datapack")]
     DataPack,
+    #[serde(rename = "modpack")]
+    Modpack,
+    #[serde(rename = "shader")]
+    Shader,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]

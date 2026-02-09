@@ -1,10 +1,10 @@
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path, query_param};
+use mc_server_wrapper_core::cache::CacheManager;
 use mc_server_wrapper_core::mods::modrinth::ModrinthClient;
 use mc_server_wrapper_core::mods::types::SearchOptions;
-use mc_server_wrapper_core::cache::CacheManager;
-use std::sync::Arc;
 use serde_json::json;
+use std::sync::Arc;
+use wiremock::matchers::{method, path, query_param};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
 async fn test_modrinth_search_parsing() {
@@ -22,7 +22,18 @@ async fn test_modrinth_search_parsing() {
                 "downloads": 150000000,
                 "icon_url": "https://cdn.modrinth.com/data/A76uj67l/icon.png",
                 "author": "FabricMC",
-                "categories": ["fabric"]
+                "categories": ["fabric"],
+                "display_categories": ["fabric"],
+                "client_side": "required",
+                "server_side": "required",
+                "project_type": "mod",
+                "versions": ["1.0.0"],
+                "follows": 1000,
+                "date_created": "2020-01-01T00:00:00Z",
+                "date_modified": "2020-01-01T00:00:00Z",
+                "latest_version": "1.0.0",
+                "license": "MIT",
+                "gallery": []
             }
         ],
         "offset": 0,
@@ -67,7 +78,33 @@ async fn test_modrinth_get_project_parsing() {
         "description": "Core API library for the Fabric mod toolchain.",
         "downloads": 150000000,
         "icon_url": "https://cdn.modrinth.com/data/A76uj67l/icon.png",
-        "categories": ["fabric"]
+        "categories": ["fabric"],
+        "additional_categories": [],
+        "client_side": "required",
+        "server_side": "required",
+        "project_type": "mod",
+        "body": "Detailed description",
+        "team": "team-id",
+        "status": "approved",
+        "published": "2020-01-01T00:00:00Z",
+        "updated": "2020-01-01T00:00:00Z",
+        "followers": 100,
+        "license": {
+            "id": "MIT",
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "game_versions": ["1.20.1"],
+        "loaders": ["fabric"],
+        "issues_url": null,
+        "source_url": null,
+        "wiki_url": null,
+        "discord_url": null,
+        "donation_urls": [],
+        "gallery": [],
+        "thread_id": "thread-id",
+        "monetization_status": "monetized",
+        "versions": ["v1"]
     });
 
     Mock::given(method("GET"))
@@ -96,7 +133,7 @@ async fn test_modrinth_rate_limit() {
 
     let result = client.get_project("A76uj67l").await;
     assert!(result.is_err());
-    // reqwest's error_for_status() is not explicitly called in get_project, 
+    // reqwest's error_for_status() is not explicitly called in get_project,
     // but the json parsing will fail if it's not JSON.
     // Actually, ModrinthClient::get_project calls .json() directly.
 }
