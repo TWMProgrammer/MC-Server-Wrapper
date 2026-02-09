@@ -453,6 +453,23 @@ pub async fn detect_server_type(
                 }
             }
         }
+
+        // Check for common subfolders/files for deeper detection in directories
+        if path.join("libraries/net/minecraftforge").exists() {
+            files.insert("forge_marker".to_string());
+        }
+        if path.join("libraries/net/neoforged").exists() {
+            files.insert("neoforge_marker".to_string());
+        }
+        if path.join("libraries/net/fabricmc").exists() {
+            files.insert("fabric_marker".to_string());
+        }
+        if path.join("libraries/org/quiltmc").exists() {
+            files.insert("quilt_marker".to_string());
+        }
+        if path.join("config/paper-global.yml").exists() || path.join("config/paper-world-defaults.yml").exists() {
+            files.insert("paper_marker".to_string());
+        }
     } else if path.is_file() {
         let extension = path
             .extension()
@@ -497,12 +514,18 @@ pub async fn detect_server_type(
                         if relative_name.contains("net/minecraftforge") {
                             files.insert("forge_marker".to_string());
                         }
+                        if relative_name.contains("net/neoforged") {
+                            files.insert("neoforge_marker".to_string());
+                        }
                         if relative_name.contains("net/fabricmc") {
                             files.insert("fabric_marker".to_string());
                         }
                         if relative_name.contains("org/quiltmc") {
                             files.insert("quilt_marker".to_string());
                         }
+                    }
+                    if relative_name.starts_with("config/paper-") {
+                        files.insert("paper_marker".to_string());
                     }
                 } else {
                     if file.is_dir() {
@@ -520,12 +543,18 @@ pub async fn detect_server_type(
                         if name.contains("net/minecraftforge") {
                             files.insert("forge_marker".to_string());
                         }
+                        if name.contains("net/neoforged") {
+                            files.insert("neoforge_marker".to_string());
+                        }
                         if name.contains("net/fabricmc") {
                             files.insert("fabric_marker".to_string());
                         }
                         if name.contains("org/quiltmc") {
                             files.insert("quilt_marker".to_string());
                         }
+                    }
+                    if name.starts_with("config/paper-") {
+                        files.insert("paper_marker".to_string());
                     }
                 }
             }
@@ -560,12 +589,18 @@ pub async fn detect_server_type(
                                 if relative_name.contains("net/minecraftforge") {
                                     files.insert("forge_marker".to_string());
                                 }
+                                if relative_name.contains("net/neoforged") {
+                                    files.insert("neoforge_marker".to_string());
+                                }
                                 if relative_name.contains("net/fabricmc") {
                                     files.insert("fabric_marker".to_string());
                                 }
                                 if relative_name.contains("org/quiltmc") {
                                     files.insert("quilt_marker".to_string());
                                 }
+                            }
+                            if relative_name.starts_with("config/paper-") {
+                                files.insert("paper_marker".to_string());
                             }
                         }
                     } else {
@@ -584,12 +619,18 @@ pub async fn detect_server_type(
                             if name.contains("net/minecraftforge") {
                                 files.insert("forge_marker".to_string());
                             }
+                            if name.contains("net/neoforged") {
+                                files.insert("neoforge_marker".to_string());
+                            }
                             if name.contains("net/fabricmc") {
                                 files.insert("fabric_marker".to_string());
                             }
                             if name.contains("org/quiltmc") {
                                 files.insert("quilt_marker".to_string());
                             }
+                        }
+                        if name.starts_with("config/paper-") {
+                            files.insert("paper_marker".to_string());
                         }
                     }
                     Ok(true)
@@ -618,22 +659,55 @@ pub async fn detect_server_type(
         return Ok("fabric".to_string());
     }
 
+    // Purpur
+    if files.contains("purpur.yml")
+        || files.iter().any(|f| {
+            let fl = f.to_lowercase();
+            fl.starts_with("purpur") && fl.ends_with(".jar")
+        })
+    {
+        return Ok("purpur".to_string());
+    }
+
+    // Paper/Spigot/Bukkit (Strong Match)
+    // If it's clearly paper/spigot, we check it before modded loaders if there's no mods folder
+    let is_paper_strong = folders.contains("plugins")
+        || files.contains("paper.yml")
+        || files.contains("spigot.yml")
+        || files.contains("bukkit.yml")
+        || files.contains("paper_marker")
+        || files.iter().any(|f| {
+            let fl = f.to_lowercase();
+            (fl.starts_with("paper") || fl.starts_with("spigot")) && fl.ends_with(".jar")
+        });
+
+    if is_paper_strong && !folders.contains("mods") {
+        return Ok("paper".to_string());
+    }
+
+    // NeoForge
+    if files.contains("neoforge_marker")
+        || files.iter().any(|f| {
+            let fl = f.to_lowercase();
+            fl.starts_with("neoforge") && fl.ends_with(".jar") && !fl.contains("installer")
+        })
+    {
+        return Ok("neoforge".to_string());
+    }
+
     // Forge
-    if files
-        .iter()
-        .any(|f| f.to_lowercase().contains("forge") && f.to_lowercase().ends_with(".jar"))
+    if files.contains("forge_marker")
         || files.contains("user_jvm_args.txt")
-        || files.contains("forge_marker")
+        || files.iter().any(|f| {
+            let fl = f.to_lowercase();
+            fl.starts_with("forge") && fl.ends_with(".jar") && !fl.contains("installer")
+        })
     {
         return Ok("forge".to_string());
     }
 
-    // Paper/Spigot/Bukkit
-    if folders.contains("plugins")
-        || files.contains("paper.yml")
-        || files.contains("spigot.yml")
-        || files.contains("bukkit.yml")
-    {
+    // Paper/Spigot/Bukkit (Weak Match / Hybrid Fallback)
+    if is_paper_strong {
         return Ok("paper".to_string());
     }
 
@@ -643,7 +717,10 @@ pub async fn detect_server_type(
     }
 
     // BungeeCord
-    if files.iter().any(|f| f.to_lowercase().contains("bungeecord") && f.to_lowercase().ends_with(".jar")) {
+    if files
+        .iter()
+        .any(|f| f.to_lowercase().contains("bungeecord") && f.to_lowercase().ends_with(".jar"))
+    {
         return Ok("bungeecord".to_string());
     }
 
