@@ -177,7 +177,7 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                   placeholder="Enter instance name..."
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className={`w-full bg-black/5 dark:bg-white/[0.03] border rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-medium ${nameExists
+                  className={`w-full bg-black/5 dark:bg-white/[0.03] border rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/20 focus:outline-none focus:ring-2 transition-all font-medium ${nameExists || !name.trim()
                     ? 'border-accent-rose focus:ring-accent-rose/50 focus:border-accent-rose/50'
                     : 'border-black/10 dark:border-white/10 focus:ring-primary/50 focus:border-primary/50'
                     }`}
