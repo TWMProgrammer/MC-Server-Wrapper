@@ -16,12 +16,7 @@ pub struct ServerConfig {
     pub crash_handling: CrashHandlingMode,
     pub working_dir: PathBuf,
     pub stop_timeout: u64,
-    #[serde(default = "default_stop_command")]
-    pub stop_command: String,
-}
-
-fn default_stop_command() -> String {
-    "stop".to_string()
+    pub server_type: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -37,7 +32,7 @@ impl Default for ServerConfig {
             crash_handling: CrashHandlingMode::Nothing,
             working_dir: PathBuf::from("."),
             stop_timeout: 30,
-            stop_command: "stop".to_string(),
+            server_type: None,
         }
     }
 }

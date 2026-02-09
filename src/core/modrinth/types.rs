@@ -85,7 +85,7 @@ pub struct ModrinthFile {
     pub filename: String,
     pub primary: bool,
     pub size: u64,
-    pub hashes: ModrinthHashes,
+    pub hashes: Option<ModrinthHashes>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

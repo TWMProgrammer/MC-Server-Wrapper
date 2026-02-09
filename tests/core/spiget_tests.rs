@@ -128,6 +128,15 @@ async fn test_spiget_download_resource() {
         .mount(&mock_server)
         .await;
 
+    Mock::given(method("HEAD"))
+        .and(path("/resources/12345/download"))
+        .respond_with(ResponseTemplate::new(200)
+            .insert_header("Content-Type", "application/java-archive")
+            .insert_header("Content-Length", "100")
+            .insert_header("Content-Disposition", "attachment; filename=\"my-actual-plugin.jar\""))
+        .mount(&mock_server)
+        .await;
+
     let filename = client
         .download_resource("12345", temp_dir.path(), None, None)
         .await

@@ -1,9 +1,9 @@
+use crate::server::handle::ServerHandle;
+use crate::server::types::ServerStatus;
 use anyhow::Result;
-use tracing::warn;
 use std::time::Duration;
 use tokio::process::Command;
-use crate::server::types::ServerStatus;
-use crate::server::handle::ServerHandle;
+use tracing::warn;
 
 impl ServerHandle {
     pub async fn stop(&self) -> Result<()> {
@@ -15,17 +15,20 @@ impl ServerHandle {
         *status = ServerStatus::Stopping;
         let config = self.config.lock().await;
         let stop_timeout = config.stop_timeout;
-        let stop_command = config.stop_command.clone();
+        let stop_command = match config.server_type.as_deref() {
+            Some("bungeecord") => "end",
+            _ => "stop",
+        };
         drop(config);
         drop(status);
 
-        if let Err(e) = self.send_command(&stop_command).await {
+        if let Err(e) = self.send_command(stop_command).await {
             warn!("Failed to send stop command: {}. Falling back to kill.", e);
         }
 
         let start_wait = std::time::Instant::now();
         let wait_limit = Duration::from_secs(stop_timeout);
-        
+
         while start_wait.elapsed() < wait_limit {
             if *self.status.lock().await == ServerStatus::Stopped {
                 return Ok(());
@@ -38,11 +41,17 @@ impl ServerHandle {
         if let Some(mut child) = child_lock.take() {
             #[cfg(target_os = "windows")]
             if let Some(pid) = child.id() {
-                let _ = Command::new("taskkill").arg("/F").arg("/T").arg("/PID").arg(pid.to_string()).output().await;
+                let _ = Command::new("taskkill")
+                    .arg("/F")
+                    .arg("/T")
+                    .arg("/PID")
+                    .arg(pid.to_string())
+                    .output()
+                    .await;
             }
             let _ = child.kill().await;
         }
-        
+
         let mut status = self.status.lock().await;
         *status = ServerStatus::Stopped;
         *self.stdin.lock().await = None;
@@ -60,7 +69,13 @@ impl ServerHandle {
         if let Some(mut child) = child_lock.take() {
             #[cfg(target_os = "windows")]
             if let Some(pid) = child.id() {
-                let _ = Command::new("taskkill").arg("/F").arg("/T").arg("/PID").arg(pid.to_string()).output().await;
+                let _ = Command::new("taskkill")
+                    .arg("/F")
+                    .arg("/T")
+                    .arg("/PID")
+                    .arg(pid.to_string())
+                    .output()
+                    .await;
             }
             let _ = child.kill().await;
         }

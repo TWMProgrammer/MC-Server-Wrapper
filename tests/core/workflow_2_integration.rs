@@ -87,6 +87,16 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
     assert_eq!(search_results[0].slug, "sodium");
 
     // 2. User installs it and verifies it appears in the "Installed Mods" list.
+    // Create a dummy jar file to be "downloaded"
+    let dummy_jar_path = dir.path().join("dummy-sodium.jar");
+    create_dummy_jar(&dummy_jar_path).await;
+    let dummy_jar_content = std::fs::read(&dummy_jar_path)?;
+    
+    use sha1::{Sha1, Digest};
+    let mut hasher = Sha1::new();
+    hasher.update(&dummy_jar_content);
+    let sha1_hash = hex::encode(hasher.finalize());
+
     let versions_response = json!([
         {
             "id": "v123",
@@ -97,7 +107,10 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
                     "url": format!("{}/download/sodium-0.5.0.jar", mock_server.uri()),
                     "filename": "sodium-0.5.0.jar",
                     "primary": true,
-                    "size": 1234
+                    "size": dummy_jar_content.len(),
+                    "hashes": {
+                        "sha1": sha1_hash
+                    }
                 }
             ],
             "loaders": ["fabric"],
@@ -111,11 +124,6 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
         .respond_with(ResponseTemplate::new(200).set_body_json(versions_response))
         .mount(&mock_server)
         .await;
-
-    // Create a dummy jar file to be "downloaded"
-    let dummy_jar_path = dir.path().join("dummy-sodium.jar");
-    create_dummy_jar(&dummy_jar_path).await;
-    let dummy_jar_content = std::fs::read(&dummy_jar_path)?;
 
     Mock::given(method("GET"))
         .and(path("/download/sodium-0.5.0.jar"))

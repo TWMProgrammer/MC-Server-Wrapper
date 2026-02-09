@@ -67,7 +67,7 @@ impl ModrinthClient {
                         filename: f.filename,
                         primary: f.primary,
                         size: f.size,
-                        sha1: f.hashes.sha1,
+                        sha1: f.hashes.and_then(|h| h.sha1),
                     })
                     .collect(),
                 loaders: v.loaders,

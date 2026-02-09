@@ -104,8 +104,12 @@ where
             // We'll let the hash verification handle it if provided.
             // If no hash provided, we might want to return Ok if size matches.
             if options.expected_hash.is_none() {
-                on_progress(total, total);
-                return Ok(());
+                // If total is 0, we only skip if the file actually exists.
+                // This prevents skipping downloads when the server doesn't provide a size (or returns 0).
+                if total > 0 || target_path.exists() {
+                    on_progress(total, total);
+                    return Ok(());
+                }
             }
         }
     }

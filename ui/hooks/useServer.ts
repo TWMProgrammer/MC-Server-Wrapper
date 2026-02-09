@@ -180,7 +180,9 @@ export function useServer() {
     if (!command || !selectedInstanceId) return
     const cmdTrimmed = command.trim().toLowerCase()
     const id = selectedInstanceId
-    if (cmdTrimmed === 'stop') {
+    const isBungee = currentInstance?.mod_loader === 'bungeecord'
+    
+    if (cmdTrimmed === 'stop' || (cmdTrimmed === 'end' && isBungee)) {
       setIsTransitioning(prev => ({ ...prev, [id]: 'stopping' }))
     } else if (cmdTrimmed === 'restart') {
       setIsTransitioning(prev => ({ ...prev, [id]: 'restarting' }))
