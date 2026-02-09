@@ -64,15 +64,57 @@ impl ModrinthClient {
                         query_params.push(("index", sort_str.to_string()));
                     }
 
+                    let mut facet_groups = Vec::new();
+
+                    if let Some(project_type) = &options.project_type {
+                        let type_str = match project_type {
+                            ModrinthProjectType::Mod => "mod",
+                            ModrinthProjectType::Plugin => "plugin",
+                            ModrinthProjectType::ResourcePack => "resourcepack",
+                            ModrinthProjectType::DataPack => "datapack",
+                            ModrinthProjectType::Modpack => "modpack",
+                            ModrinthProjectType::Shader => "shader",
+                        };
+                        facet_groups.push(vec![format!("project_type:{}", type_str)]);
+                    }
+
+                    if let Some(version) = &options.game_version {
+                        facet_groups.push(vec![format!("versions:{}", version)]);
+                    }
+
+                    if let Some(loader) = &options.loader {
+                        facet_groups.push(vec![format!("categories:{}", loader.to_lowercase())]);
+                    }
+
                     if let Some(facets) = &options.facets {
                         if !facets.is_empty() {
-                            let mut facet_list = Vec::new();
+                            // If we already have facets from the UI, we should add them as well.
+                            // The UI facets are usually category filters.
                             for f in facets {
-                                facet_list.push(format!("\"{}\"", f));
+                                facet_groups.push(vec![f.clone()]);
                             }
-                            let facets_str = format!("[[{}]]", facet_list.join(","));
-                            query_params.push(("facets", facets_str));
                         }
+                    }
+
+                    if !facet_groups.is_empty() {
+                        let facets_str = format!(
+                            "[{}]",
+                            facet_groups
+                                .iter()
+                                .map(|group| {
+                                    format!(
+                                        "[{}]",
+                                        group
+                                            .iter()
+                                            .map(|f| format!("\"{}\"", f))
+                                            .collect::<Vec<_>>()
+                                            .join(",")
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        );
+                        query_params.push(("facets", facets_str));
                     }
 
                     let url = format!("{}/search", base_url);

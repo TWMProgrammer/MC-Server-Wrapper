@@ -189,6 +189,10 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [x] Refactor manual Modrinth API client to use `ferinth` structures.
   - [x] Restore custom base URL support by wrapping `reqwest` directly.
   - [x] Align test suites with strict `ferinth` serialization requirements.
+- [x] **Marketplace Filtering & Optimization**
+    - [x] Corrected Modrinth search facet logic to use AND logic for multiple filters.
+    - [x] Enforced separate project type filtering for plugins and mods across all providers.
+    - [x] Added support for version and loader filtering in Modrinth searches.
 - [ ] **Advanced Caching System**
   - [ ] Implement persistent disk-backed cache for metadata.
   - [ ] Create a global artifact store for shared server JARs and assets.
