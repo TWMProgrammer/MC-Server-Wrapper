@@ -102,7 +102,7 @@ export function TabRenderer({
     }
 
     if (activeTab === 'stats') {
-      return <StatsTab history={history} settings={settings} />;
+      return <StatsTab history={history} settings={settings} currentInstance={currentInstance} />;
     }
 
     if (activeTab === 'players') {
