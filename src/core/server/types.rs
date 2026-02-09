@@ -7,6 +7,7 @@ pub enum ServerStatus {
     #[default]
     Stopped,
     Starting,
+    Installing,
     Running,
     Stopping,
     Crashed,

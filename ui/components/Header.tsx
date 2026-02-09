@@ -132,23 +132,24 @@ export function Header({
             />
           </div>
 
-          {status === 'Stopped' || status === 'Crashed' || status === 'Starting' || isTransitioning === 'starting' ? (
+          {status === 'Stopped' || status === 'Crashed' || status === 'Starting' || status === 'Installing' || isTransitioning === 'starting' ? (
             <motion.button
               whileHover={isTransitioning ? {} : { scale: 1.05 }}
               whileTap={isTransitioning ? {} : { scale: 0.95 }}
               onClick={onStartServer}
-              disabled={!!isTransitioning || status === 'Starting'}
+              disabled={!!isTransitioning || status === 'Starting' || status === 'Installing'}
               className={cn(
                 "flex items-center gap-2 px-8 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold transition-all shadow-glow-primary shadow-primary/20",
-                (isTransitioning || status === 'Starting') && "opacity-80 cursor-not-allowed"
+                (isTransitioning || status === 'Starting' || status === 'Installing') && "opacity-80 cursor-not-allowed"
               )}
             >
-              {isTransitioning === 'starting' || status === 'Starting' ? (
+              {isTransitioning === 'starting' || status === 'Starting' || status === 'Installing' ? (
                 <Loader2 size={20} className="animate-spin" />
               ) : (
                 <Play size={20} fill="currentColor" />
               )}
-              {isTransitioning === 'starting' || status === 'Starting' ? 'Starting...' : 'Start Server'}
+              {status === 'Installing' ? 'Installing...' : 
+                (isTransitioning === 'starting' || status === 'Starting' ? 'Starting...' : 'Start Server')}
             </motion.button>
           ) : (
             <motion.button

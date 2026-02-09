@@ -31,79 +31,97 @@ impl ModLoaderClient {
             return Ok(vec![]);
         }
 
+        let st = server_type.map(|t| t.to_lowercase());
+
         // Fabric
-        if let Ok(versions) = self.get_fabric_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "Fabric".to_string(),
-                    versions,
-                });
+        if st.is_none() || st.as_deref() == Some("fabric") {
+            if let Ok(versions) = self.get_fabric_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "Fabric".to_string(),
+                        versions,
+                    });
+                }
             }
         }
 
         // Quilt
-        if let Ok(versions) = self.get_quilt_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "Quilt".to_string(),
-                    versions,
-                });
+        if st.is_none() || st.as_deref() == Some("quilt") {
+            if let Ok(versions) = self.get_quilt_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "Quilt".to_string(),
+                        versions,
+                    });
+                }
             }
         }
 
         // Forge
-        if let Ok(versions) = self.get_forge_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "Forge".to_string(),
-                    versions,
-                });
+        if st.is_none() || st.as_deref() == Some("forge") {
+            if let Ok(versions) = self.get_forge_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "Forge".to_string(),
+                        versions,
+                    });
+                }
             }
         }
 
         // NeoForge
-        if let Ok(versions) = self.get_neoforge_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "NeoForge".to_string(),
-                    versions,
-                });
+        if st.is_none() || st.as_deref() == Some("neoforge") {
+            if let Ok(versions) = self.get_neoforge_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "NeoForge".to_string(),
+                        versions,
+                    });
+                }
             }
         }
 
         // Paper
-        if let Ok(versions) = self.get_paper_versions(mc_version).await {
-            if !versions.is_empty() {
-                loaders.push(ModLoader {
-                    name: "Paper".to_string(),
-                    versions,
-                });
+        if st.is_none() || st.as_deref() == Some("paper") {
+            if let Ok(versions) = self.get_paper_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "Paper".to_string(),
+                        versions,
+                    });
+                }
             }
         }
 
         // Purpur
-        if let Ok(versions) = self.get_purpur_versions(mc_version).await {
-            if !versions.is_empty() {
+        if st.is_none() || st.as_deref() == Some("purpur") {
+            if let Ok(versions) = self.get_purpur_versions(mc_version).await {
+                if !versions.is_empty() {
+                    loaders.push(ModLoader {
+                        name: "Purpur".to_string(),
+                        versions,
+                    });
+                }
+            }
+        }
+
+        // Proxies (Velocity/BungeeCord)
+        if st.is_none() || st.as_deref() == Some("velocity") {
+            if let Ok(versions) = self.get_velocity_versions().await {
                 loaders.push(ModLoader {
-                    name: "Purpur".to_string(),
+                    name: "Velocity".to_string(),
                     versions,
                 });
             }
         }
 
-        // Proxies (Velocity/BungeeCord)
-        if let Ok(versions) = self.get_velocity_versions().await {
-            loaders.push(ModLoader {
-                name: "Velocity".to_string(),
-                versions,
-            });
-        }
-
-        if let Ok(versions) = self.get_bungeecord_versions().await {
-            loaders.push(ModLoader {
-                name: "BungeeCord".to_string(),
-                versions,
-            });
+        if st.is_none() || st.as_deref() == Some("bungeecord") {
+            if let Ok(versions) = self.get_bungeecord_versions().await {
+                loaders.push(ModLoader {
+                    name: "BungeeCord".to_string(),
+                    versions,
+                });
+            }
         }
 
         Ok(loaders)

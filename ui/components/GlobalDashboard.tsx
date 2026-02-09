@@ -92,29 +92,30 @@ export function GlobalDashboard({
                       {isTransitioning[instance.id] === 'starting' ? 'Starting...' :
                         isTransitioning[instance.id] === 'stopping' ? 'Stopping...' :
                           isTransitioning[instance.id] === 'restarting' ? 'Restarting...' :
-                            instance.status === 'Stopped' ? 'Offline' : instance.status}
+                            instance.status === 'Installing' ? 'Installing...' :
+                              instance.status === 'Stopped' ? 'Offline' : instance.status}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {instance.status === 'Stopped' || instance.status === 'Crashed' || instance.status === 'Starting' || isTransitioning[instance.id] === 'starting' ? (
+                {instance.status === 'Stopped' || instance.status === 'Crashed' || instance.status === 'Starting' || instance.status === 'Installing' || isTransitioning[instance.id] === 'starting' ? (
                   <motion.button
-                    whileHover={isTransitioning[instance.id] || instance.status === 'Starting' ? {} : { scale: 1.1 }}
-                    whileTap={isTransitioning[instance.id] || instance.status === 'Starting' ? {} : { scale: 0.9 }}
-                    disabled={!!isTransitioning[instance.id] || instance.status === 'Starting'}
+                    whileHover={isTransitioning[instance.id] || instance.status === 'Starting' || instance.status === 'Installing' ? {} : { scale: 1.1 }}
+                    whileTap={isTransitioning[instance.id] || instance.status === 'Starting' || instance.status === 'Installing' ? {} : { scale: 0.9 }}
+                    disabled={!!isTransitioning[instance.id] || instance.status === 'Starting' || instance.status === 'Installing'}
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartServer(instance.id);
                     }}
                     className={cn(
                       "p-2 rounded-lg bg-accent-emerald/10 text-accent-emerald hover:bg-accent-emerald hover:text-white transition-all duration-300",
-                      (isTransitioning[instance.id] || instance.status === 'Starting') && "opacity-50 cursor-not-allowed"
+                      (isTransitioning[instance.id] || instance.status === 'Starting' || instance.status === 'Installing') && "opacity-50 cursor-not-allowed"
                     )}
                     title="Start Server"
                   >
-                    {isTransitioning[instance.id] === 'starting' || instance.status === 'Starting' ? (
+                    {isTransitioning[instance.id] === 'starting' || instance.status === 'Starting' || instance.status === 'Installing' ? (
                       <Loader2 size={18} className="animate-spin" />
                     ) : (
                       <Play size={18} fill="currentColor" />

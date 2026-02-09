@@ -1,5 +1,5 @@
 use super::super::ServerManager;
-use crate::server::ServerHandle;
+use crate::server::{ServerHandle, ServerStatus};
 use crate::utils::fs::is_jar_valid;
 use anyhow::{Result, anyhow};
 use std::sync::Arc;
@@ -84,6 +84,11 @@ impl ServerManager {
 
         // Download jar/binary if missing or corrupt
         if !is_installed {
+            // Set status to Installing
+            {
+                let mut status = server.status.lock().await;
+                *status = ServerStatus::Installing;
+            }
             // Delete potentially corrupt JAR if it exists
             let jar_to_delete = if let Some(loader) = &instance.mod_loader {
                 let loader_lower = loader.to_lowercase();
@@ -232,6 +237,12 @@ impl ServerManager {
                 if !eula_path.exists() {
                     tokio::fs::write(eula_path, "eula=true").await?;
                 }
+            }
+
+            // Reset status back to Stopped after installation
+            {
+                let mut status = server.status.lock().await;
+                *status = ServerStatus::Stopped;
             }
         }
 
