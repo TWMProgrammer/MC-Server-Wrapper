@@ -1,15 +1,15 @@
+use std::collections::HashSet;
 use std::process::Stdio;
-use tokio::process::{Command, Child, ChildStdin};
-use tokio::sync::{Mutex, broadcast};
-use tracing::{info, error};
 use std::sync::Arc;
 use std::time::Duration;
-use std::collections::HashSet;
+use tokio::process::{Child, ChildStdin, Command};
+use tokio::sync::{Mutex, broadcast};
+use tracing::{error, info};
 
-use crate::server::handle::ServerHandle;
-use crate::server::types::{ServerStatus, ResourceUsage, ProgressPayload};
 use crate::config::ServerConfig;
 use crate::instance::CrashHandlingMode;
+use crate::server::handle::ServerHandle;
+use crate::server::types::{ProgressPayload, ResourceUsage, ServerStatus};
 
 impl ServerHandle {
     pub(crate) async fn lifecycle_loop(
@@ -33,7 +33,12 @@ impl ServerHandle {
                 cmd.arg(arg);
             }
 
-            cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+            cmd.stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
 
             let mut child = match cmd.spawn() {
                 Ok(c) => c,
@@ -56,13 +61,23 @@ impl ServerHandle {
                 *start_time_arc.lock().await = Some(std::time::Instant::now());
             }
 
-            let monitor_handle = tokio::spawn(Self::monitor_resources(pid, Arc::clone(&usage_arc), Arc::clone(&start_time_arc), Arc::clone(&online_players_arc)));
-            let stdout_handle = tokio::spawn(Self::process_stdout(stdout, log_sender.clone(), Arc::clone(&status_arc), Arc::clone(&online_players_arc)));
+            let monitor_handle = tokio::spawn(Self::monitor_resources(
+                pid,
+                Arc::clone(&usage_arc),
+                Arc::clone(&start_time_arc),
+                Arc::clone(&online_players_arc),
+            ));
+            let stdout_handle = tokio::spawn(Self::process_stdout(
+                stdout,
+                log_sender.clone(),
+                Arc::clone(&status_arc),
+                Arc::clone(&online_players_arc),
+            ));
             let stderr_handle = tokio::spawn(Self::process_stderr(stderr, log_sender.clone()));
 
             let mut child = child_arc.lock().await.take().expect("Child disappeared");
             let exit_status = child.wait().await;
-            
+
             let _ = tokio::time::timeout(Duration::from_millis(500), stdout_handle).await;
             let _ = tokio::time::timeout(Duration::from_millis(500), stderr_handle).await;
             monitor_handle.abort();
@@ -79,7 +94,10 @@ impl ServerHandle {
             let mut status = status_arc.lock().await;
             let exited_cleanly = exit_status.as_ref().map(|s| s.success()).unwrap_or(false);
 
-            if *status == ServerStatus::Stopping || *status == ServerStatus::Stopped || exited_cleanly {
+            if *status == ServerStatus::Stopping
+                || *status == ServerStatus::Stopped
+                || exited_cleanly
+            {
                 info!("Server stopped gracefully.");
                 *status = ServerStatus::Stopped;
                 *stdin_arc.lock().await = None;
@@ -98,13 +116,16 @@ impl ServerHandle {
 
                 let should_restart = match config_arc.lock().await.crash_handling {
                     CrashHandlingMode::Nothing => false,
-                    CrashHandlingMode::Elevated => exit_status.as_ref().map(|s| !s.success()).unwrap_or(true),
+                    CrashHandlingMode::Elevated => {
+                        exit_status.as_ref().map(|s| !s.success()).unwrap_or(true)
+                    }
                     CrashHandlingMode::Aggressive => true,
                 };
 
                 if should_restart {
                     info!("Crash handling mode active. Restarting in 5 seconds...");
-                    let _ = log_sender.send("Crash handling mode active. Restarting in 5 seconds...".to_string());
+                    let _ = log_sender
+                        .send("Crash handling mode active. Restarting in 5 seconds...".to_string());
                     drop(status);
                     tokio::time::sleep(Duration::from_secs(5)).await;
                     *status_arc.lock().await = ServerStatus::Starting;
@@ -131,21 +152,25 @@ impl ServerHandle {
                 c
             }
         } else {
-            let is_jar = config.jar_path.as_ref()
+            let is_jar = config
+                .jar_path
+                .as_ref()
                 .map(|p| p.to_string_lossy().to_lowercase().ends_with(".jar"))
                 .unwrap_or(true);
 
             if is_jar {
-                let java_cmd = config.java_path.as_ref()
+                let java_cmd = config
+                    .java_path
+                    .as_ref()
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|| "java".to_string());
 
                 let mut c = Command::new(java_cmd);
                 c.arg(format!("-Xmx{}", config.max_memory))
-                 .arg(format!("-Xms{}", config.min_memory))
-                 .arg("-Dterminal.jline=false")
-                 .arg("-Dterminal.ansi=true")
-                 .arg("-Dlog4j.skipJansi=false");
+                    .arg(format!("-Xms{}", config.min_memory))
+                    .arg("-Dterminal.jline=false")
+                    .arg("-Dterminal.ansi=true")
+                    .arg("-Dlog4j.skipJansi=false");
 
                 if let Some(jar_path) = &config.jar_path {
                     c.arg("-jar").arg(jar_path);
