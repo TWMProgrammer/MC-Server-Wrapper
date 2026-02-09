@@ -19,6 +19,8 @@ interface FooterProps {
   startAfterCreation: boolean;
   setStartAfterCreation: (val: boolean) => void;
   nameExists?: boolean;
+  selectedModpack?: string | null;
+  selectedModpackVersion?: string | null;
 }
 
 export function Footer({
@@ -35,12 +37,18 @@ export function Footer({
   bypassServerPropertiesCheck,
   startAfterCreation,
   setStartAfterCreation,
-  nameExists = false
+  nameExists = false,
+  selectedModpack,
+  selectedModpackVersion
 }: FooterProps) {
   const isImport = activeTab === 'import';
+  const isModrinth = activeTab === 'modrinth';
+
   const isDisabled = isImport
     ? !name || !importSourcePath || !selectedJar || creating || nameExists
-    : !name || !selectedVersion || creating || loadingModLoaders || nameExists;
+    : isModrinth
+      ? !name || !selectedModpack || !selectedModpackVersion || creating || nameExists
+      : !name || !selectedVersion || creating || loadingModLoaders || nameExists;
 
   const showWarning = isImport && !serverPropertiesExists && !isDisabled && !bypassServerPropertiesCheck;
 
@@ -48,6 +56,10 @@ export function Footer({
     if (isImport) {
       if (name && importSourcePath && selectedJar) return `Ready to import ${name}`;
       return 'Select a source and JAR to continue';
+    }
+    if (isModrinth) {
+      if (name && selectedModpack && selectedModpackVersion) return `Ready to create ${name} from modpack`;
+      return 'Select a modpack and version to continue';
     }
     return selectedVersion ? `Ready to install Minecraft ${selectedVersion}` : 'Select a software and version to continue';
   };

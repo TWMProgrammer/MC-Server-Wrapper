@@ -92,6 +92,22 @@ impl ServerManager {
         Ok(instance)
     }
 
+    pub async fn create_instance_from_modpack<F>(
+        &self,
+        name: &str,
+        version: &crate::mods::types::ProjectVersion,
+        on_progress: F,
+    ) -> Result<InstanceMetadata>
+    where
+        F: Fn(crate::mods::modrinth::modpack::ModpackProgress) + Send + 'static,
+    {
+        let instance = self
+            .instance_manager
+            .create_instance_from_modpack(name, version, Arc::clone(&self.cache), on_progress)
+            .await?;
+        Ok(instance)
+    }
+
     pub async fn get_bedrock_versions(&self) -> Result<crate::downloader::VersionManifest> {
         self.mod_loader_client.get_bedrock_versions().await
     }

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Check, Package, User, Download, ExternalLink, Star } from 'lucide-react'
 import { Project } from '../types'
 import { useAssetCache } from '../hooks/useAssetCache'
+import { useInView } from '../hooks/useInView'
 import { formatNumber } from '../utils'
 
 interface ModCardProps {
@@ -19,11 +20,13 @@ export function ModCard({
   onShowDetails,
   viewMode = 'grid'
 }: ModCardProps) {
-  const { localUrl: iconUrl } = useAssetCache(project.icon_url);
+  const [ref, isInView] = useInView({ rootMargin: '200px' });
+  const { localUrl: iconUrl } = useAssetCache(project.icon_url, isInView);
 
   if (viewMode === 'list') {
     return (
       <motion.div
+        ref={ref as any}
         layout
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -94,6 +97,7 @@ export function ModCard({
 
   return (
     <motion.div
+      ref={ref as any}
       layout
       data-testid="mod-card"
       initial={{ opacity: 0, y: 20 }}

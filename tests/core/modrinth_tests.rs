@@ -56,6 +56,7 @@ async fn test_modrinth_search_parsing() {
         limit: Some(1),
         game_version: None,
         loader: None,
+        project_type: Some("mod".to_string()),
     };
 
     let results = client.search(&options).await.unwrap();

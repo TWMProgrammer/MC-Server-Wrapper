@@ -1,9 +1,10 @@
-use std::sync::Arc;
 use crate::cache::CacheManager;
 use crate::modrinth::ModrinthClient as CommonClient;
+use std::sync::Arc;
 
-pub mod search;
 pub mod download;
+pub mod modpack;
+pub mod search;
 pub mod versions;
 
 pub struct ModrinthClient {

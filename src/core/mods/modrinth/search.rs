@@ -19,13 +19,21 @@ impl ModrinthClient {
             limit: options.limit,
             game_version: options.game_version.clone(),
             loader: options.loader.clone(),
-            project_type: Some(ModrinthProjectType::Mod),
+            project_type: Some(match options.project_type.as_deref() {
+                Some("modpack") => ModrinthProjectType::Modpack,
+                Some("plugin") => ModrinthProjectType::Plugin,
+                Some("resourcepack") => ModrinthProjectType::ResourcePack,
+                Some("shader") => ModrinthProjectType::Shader,
+                Some("datapack") => ModrinthProjectType::DataPack,
+                _ => ModrinthProjectType::Mod,
+            }),
         };
 
         let results = self.inner.search(&common_options).await?;
 
         Ok(results
             .into_iter()
+            .filter(|p| p.server_side != "unsupported")
             .map(|p| Project {
                 id: p.id,
                 slug: p.slug,

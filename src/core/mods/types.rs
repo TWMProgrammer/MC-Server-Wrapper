@@ -45,19 +45,21 @@ pub struct SearchOptions {
     pub limit: Option<u32>,
     pub game_version: Option<String>,
     pub loader: Option<String>,
+    pub project_type: Option<String>,
 }
 
 impl SearchOptions {
     pub fn cache_key(&self) -> String {
         format!(
-            "q:{}_f:{:?}_s:{:?}_o:{:?}_l:{:?}_v:{:?}_lo:{:?}",
+            "q:{}_f:{:?}_s:{:?}_o:{:?}_l:{:?}_v:{:?}_lo:{:?}_t:{:?}",
             self.query,
             self.facets,
             self.sort,
             self.offset,
             self.limit,
             self.game_version,
-            self.loader
+            self.loader,
+            self.project_type
         )
     }
 }

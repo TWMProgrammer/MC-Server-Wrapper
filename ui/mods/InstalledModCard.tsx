@@ -3,6 +3,7 @@ import { Layers, CheckSquare, Square, Power, ArrowUpCircle, User, Settings, Tras
 import { InstalledMod, ModUpdate } from '../types'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
 import { useAssetCache } from '../hooks/useAssetCache'
+import { useInView } from '../hooks/useInView'
 
 interface InstalledModCardProps {
   mod: InstalledMod;
@@ -46,15 +47,18 @@ export function InstalledModCard({
   onDelete,
   onConfigure
 }: InstalledModCardProps) {
+  const [ref, isInView] = useInView({ rootMargin: '200px' });
   // Use local data icon if available, otherwise fallback to source icon from marketplace
   const { localUrl: iconUrl } = useAssetCache(
     !mod.icon_data && mod.source?.project_id
       ? `https://api.modrinth.com/v2/project/${mod.source.project_id}/icon`
-      : null
+      : null,
+    isInView
   );
 
   return (
     <motion.div
+      ref={ref as any}
       layout
       variants={itemVariants}
       key={mod.filename}

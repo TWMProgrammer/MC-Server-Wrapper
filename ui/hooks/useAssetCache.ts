@@ -6,14 +6,14 @@ import { convertFileSrc } from '@tauri-apps/api/core';
  * A hook that caches a remote image URL locally and returns a local URL.
  * Useful for icons, screenshots, and player heads.
  */
-export function useAssetCache(url: string | null | undefined) {
+export function useAssetCache(url: string | null | undefined, enabled: boolean = true) {
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!url) {
-      setLocalUrl(null);
+    if (!url || !enabled) {
+      if (!enabled) setLocalUrl(null);
       return;
     }
 
@@ -113,13 +113,13 @@ export function useAssetsCache(urls: string[] | null | undefined) {
 /**
  * A hook specifically for player heads.
  */
-export function usePlayerHead(uuid: string | null | undefined) {
+export function usePlayerHead(uuid: string | null | undefined, enabled: boolean = true) {
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!uuid) {
-      setLocalUrl(null);
+    if (!uuid || !enabled) {
+      if (!enabled) setLocalUrl(null);
       return;
     }
 

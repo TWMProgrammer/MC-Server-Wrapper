@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Instance } from '../types'
+import { Instance, Project, ProjectVersion, ModpackProgress } from '../types'
 import { VersionManifest, ModLoader, Tab } from './types'
 import { useToast } from '../hooks/useToast'
+import { useDebounce } from '../hooks/useDebounce'
 
 export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instance) => void, onClose: () => void) {
   const { showToast } = useToast();
@@ -35,6 +36,14 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   const [rootWithinZip, setRootWithinZip] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<{ current: number, total: number, message: string } | null>(null);
 
+  const [modpackResults, setModpackResults] = useState<Project[]>([]);
+  const [searchingModpacks, setSearchingModpacks] = useState(false);
+  const [selectedModpack, setSelectedModpack] = useState<Project | null>(null);
+  const [modpackVersions, setModpackVersions] = useState<ProjectVersion[]>([]);
+  const [selectedModpackVersion, setSelectedModpackVersion] = useState<string | null>(null);
+  const [loadingModpackVersions, setLoadingModpackVersions] = useState(false);
+  const [modpackProgress, setModpackProgress] = useState<ModpackProgress | null>(null);
+
   const resetForm = () => {
     setActiveTab('custom');
     setSelectedServerType(null);
@@ -55,22 +64,33 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     setBypassServerPropertiesCheck(false);
     setRootWithinZip(null);
     setImportProgress(null);
+    setModpackProgress(null);
     setError(null);
+    setModpackResults([]);
+    setSelectedModpack(null);
+    setModpackVersions([]);
+    setSelectedModpackVersion(null);
   };
 
   useEffect(() => {
-    let unlisten: any;
+    let unlistenImport: any;
+    let unlistenModpack: any;
     
-    const setupListener = async () => {
-      unlisten = await listen<{ current: number, total: number, message: string }>('import-progress', (event) => {
+    const setupListeners = async () => {
+      unlistenImport = await listen<{ current: number, total: number, message: string }>('import-progress', (event) => {
         setImportProgress(event.payload);
+      });
+
+      unlistenModpack = await listen<ModpackProgress>('modpack-installation-progress', (event) => {
+        setModpackProgress(event.payload);
       });
     };
 
-    setupListener();
+    setupListeners();
 
     return () => {
-      if (unlisten) unlisten();
+      if (unlistenImport) unlistenImport();
+      if (unlistenModpack) unlistenModpack();
     };
   }, []);
 
@@ -213,11 +233,94 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     }
   }, [filteredVersions, selectedVersion]);
 
+  const debouncedSearch = useDebounce(search, 500);
+
+  useEffect(() => {
+    if (activeTab === 'modrinth') {
+      searchModpacks(debouncedSearch);
+    }
+  }, [debouncedSearch, activeTab]);
+
+  async function searchModpacks(query: string) {
+    try {
+      setSearchingModpacks(true);
+      const results = await invoke<Project[]>('search_mods', {
+        options: {
+          query,
+          project_type: 'modpack'
+        },
+        provider: 'Modrinth'
+      });
+      setModpackResults(results);
+    } catch (e) {
+      console.error('Failed to search modpacks', e);
+      showToast('Failed to search modpacks', 'error');
+    } finally {
+      setSearchingModpacks(false);
+    }
+  }
+
+  async function loadModpackVersions(projectId: string) {
+    try {
+      setLoadingModpackVersions(true);
+      const versions = await invoke<ProjectVersion[]>('get_mod_versions', {
+        projectId,
+        provider: 'Modrinth'
+      });
+      setModpackVersions(versions);
+      if (versions.length > 0) {
+        setSelectedModpackVersion(versions[0].id);
+      }
+    } catch (e) {
+      console.error('Failed to load modpack versions', e);
+      showToast('Failed to load modpack versions', 'error');
+    } finally {
+      setLoadingModpackVersions(false);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedModpack) {
+      loadModpackVersions(selectedModpack.id);
+    } else {
+      setModpackVersions([]);
+      setSelectedModpackVersion(null);
+    }
+  }, [selectedModpack]);
+
   async function handleCreate() {
     console.log('handleCreate called', { name, selectedVersion });
     if (activeTab === 'import') {
       return handleImport();
     }
+
+    if (activeTab === 'modrinth') {
+      if (!name || !selectedModpack || !selectedModpackVersion || nameExists) return;
+      
+      const version = modpackVersions.find(v => v.id === selectedModpackVersion);
+      if (!version) return;
+
+      try {
+        setCreating(true);
+        setError(null);
+        const instance = await invoke<Instance>('create_instance_from_modpack', {
+          name,
+          version,
+          startAfterCreation: startAfterCreation
+        });
+        showToast(`Successfully created instance "${name}"`, 'success');
+        onCreated(instance);
+        resetForm();
+        onClose();
+      } catch (e) {
+        console.error('Failed to create instance from modpack', e);
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
+
     if (!name || !selectedVersion || nameExists) {
       console.log('handleCreate validation failed', { name, selectedVersion, nameExists });
       return;
@@ -339,6 +442,15 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
     rootWithinZip,
     setRootWithinZip,
     importProgress,
-    nameExists
+    nameExists,
+    modpackResults,
+    searchingModpacks,
+    selectedModpack,
+    setSelectedModpack,
+    modpackVersions,
+    selectedModpackVersion,
+    setSelectedModpackVersion,
+    loadingModpackVersions,
+    modpackProgress
   };
 }

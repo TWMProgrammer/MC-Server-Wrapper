@@ -70,6 +70,8 @@ pub struct ModrinthProject {
     pub author: String,
     pub project_type: ModrinthProjectType,
     pub categories: Option<Vec<String>>,
+    pub client_side: String,
+    pub server_side: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

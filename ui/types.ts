@@ -154,6 +154,7 @@ export interface SearchOptions {
   limit?: number;
   game_version?: string;
   loader?: string;
+  project_type?: string;
 }
 
 export interface Project {
@@ -210,4 +211,29 @@ export interface ModUpdate {
   latest_version_id: string;
   project_id: string;
   provider: ModProvider;
+}
+
+export interface ProjectVersion {
+  id: string;
+  project_id: string;
+  version_number: string;
+  files: ProjectFile[];
+  loaders: string[];
+  game_versions: string[];
+}
+
+export interface ProjectFile {
+  url: string;
+  filename: string;
+  primary: boolean;
+  size: number;
+  sha1?: string;
+}
+
+export interface ModpackProgress {
+  currentStep: string;
+  progress: number;
+  currentFile?: string;
+  filesCompleted?: number;
+  totalFiles?: number;
 }

@@ -125,6 +125,95 @@ pub async fn open_instance_folder(
 
 #[tauri::command]
 #[allow(non_snake_case)]
+pub async fn create_instance_from_modpack(
+    server_manager: State<'_, Arc<ServerManager>>,
+    app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+    name: String,
+    version: mc_server_wrapper_core::mods::types::ProjectVersion,
+    startAfterCreation: bool,
+) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
+    let app_handle_for_progress = app_handle.clone();
+    let instance = server_manager
+        .create_instance_from_modpack(&name, &version, move |progress| {
+            let _ = app_handle_for_progress.emit("modpack-installation-progress", progress);
+        })
+        .await
+        .map_err(AppError::from)?;
+
+    // Auto-start or prepare the server
+    let instance_id = instance.id.to_string();
+    let id = instance.id;
+
+    // We run start_server/prepare_server in a separate task so we can return the instance metadata immediately
+    // while the server starts (which might involve downloading)
+    let server_manager_clone = server_manager.inner().clone();
+    let app_state_clone = app_state.inner().clone();
+    let app_handle_clone = app_handle.clone();
+    let instance_id_clone = instance_id.clone();
+
+    tauri::async_runtime::spawn(async move {
+        // Get or create handle early so we can subscribe to logs during installation
+        let server = match server_manager_clone.get_or_create_server(id).await {
+            Ok(s) => s,
+            Err(e) => {
+                let _ = app_handle_clone.emit(
+                    "server-log",
+                    LogPayload {
+                        instance_id: instance_id_clone,
+                        line: format!("Error preparing server: {}", e),
+                    },
+                );
+                return;
+            }
+        };
+
+        // Ensure logs are forwarded
+        if let Err(e) = ensure_server_logs_forwarded(
+            &app_state_clone,
+            server,
+            app_handle_clone.clone(),
+            instance_id_clone.clone(),
+        )
+        .await
+        {
+            let _ = app_handle_clone.emit(
+                "server-log",
+                LogPayload {
+                    instance_id: instance_id_clone.clone(),
+                    line: format!("Error setting up log forwarding: {}", e),
+                },
+            );
+        }
+
+        if startAfterCreation {
+            if let Err(e) = server_manager_clone.start_server(id).await {
+                let _ = app_handle_clone.emit(
+                    "server-log",
+                    LogPayload {
+                        instance_id: instance_id_clone,
+                        line: format!("Error starting server: {}", e),
+                    },
+                );
+            }
+        } else {
+            if let Err(e) = server_manager_clone.prepare_server(id).await {
+                let _ = app_handle_clone.emit(
+                    "server-log",
+                    LogPayload {
+                        instance_id: instance_id_clone,
+                        line: format!("Error preparing server: {}", e),
+                    },
+                );
+            }
+        }
+    });
+
+    Ok(instance)
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
 pub async fn create_instance_full(
     server_manager: State<'_, Arc<ServerManager>>,
     app_state: State<'_, AppState>,

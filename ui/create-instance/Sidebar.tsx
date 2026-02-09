@@ -30,7 +30,6 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         label="Modrinth"
         active={activeTab === 'modrinth'}
         onClick={() => setActiveTab('modrinth')}
-        disabled
       />
       <SidebarItem
         icon={<Package size={18} />}

@@ -17,7 +17,15 @@ impl CurseForgeClient {
         let mut query_params = vec![
             ("gameId", "432".to_string()), // Minecraft
             ("searchFilter", options.query.clone()),
-            ("classId", "6".to_string()), // Mods
+            (
+                "classId",
+                match options.project_type.as_deref() {
+                    Some("modpack") => "4471",
+                    Some("plugin") => "5", // Bukkit Plugins
+                    _ => "6",              // Mods
+                }
+                .to_string(),
+            ),
         ];
 
         if let Some(sort) = options.sort {

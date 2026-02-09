@@ -4,6 +4,7 @@ import { Sidebar } from './create-instance/Sidebar'
 import { SoftwareSelection } from './create-instance/SoftwareSelection'
 import { VersionSelection } from './create-instance/VersionSelection'
 import { ImportSource } from './create-instance/ImportSource'
+import { ModrinthSource } from './create-instance/ModrinthSource'
 import { Footer } from './create-instance/Footer'
 import { useCreateInstance } from './create-instance/useCreateInstance'
 import { CreateInstanceModalProps } from './create-instance/types'
@@ -53,12 +54,22 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
     availableScripts,
     setAvailableScripts,
     selectedScript,
-    setSelectedScript
+    setSelectedScript,
+    modpackResults,
+    searchingModpacks,
+    selectedModpack,
+    setSelectedModpack,
+    modpackVersions,
+    selectedModpackVersion,
+    setSelectedModpackVersion,
+    loadingModpackVersions,
+    modpackProgress
   } = useCreateInstance(isOpen, onCreated, onClose);
 
   if (!isOpen) return null;
 
   const percentage = importProgress?.total ? Math.round((importProgress.current / importProgress.total) * 100) : 0;
+  const modpackPercentage = modpackProgress ? Math.round(modpackProgress.progress * 100) : 0;
 
   return (
     <AnimatePresence>
@@ -134,6 +145,75 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                         </div>
                         <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
                           {percentage < 100 ? 'In Progress' : 'Finishing up...'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {creating && activeTab === 'modrinth' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[60] bg-white/95 dark:bg-gray-950/95 backdrop-blur-md flex items-center justify-center p-8"
+              >
+                <div className="w-full max-w-lg space-y-12">
+                  <div className="flex flex-col items-center text-center gap-6">
+                    <div className="w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center shadow-glow-primary border border-primary/20 relative group">
+                      <div className="absolute inset-0 bg-primary/5 rounded-[2rem] animate-ping opacity-20" />
+                      <Box className="text-primary relative z-10" size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/60">Installing Modpack</div>
+                      <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Setting up instance</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 bg-black/5 dark:bg-white/[0.02] p-8 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-inner">
+                    <div className="flex justify-between items-end gap-8">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-white/20 ml-1">Current Task</span>
+                        <div className="text-sm font-bold text-gray-700 dark:text-white/80 flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+                          <span className="truncate block" title={modpackProgress?.currentStep}>
+                            {modpackProgress?.currentStep || 'Starting installation...'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-4xl font-black font-mono tracking-tighter text-primary tabular-nums">
+                        {modpackPercentage}<span className="text-lg ml-1 opacity-50">%</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="h-4 bg-black/10 dark:bg-white/5 rounded-full overflow-hidden border border-black/5 dark:border-white/5 p-1 relative">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${modpackPercentage}%` }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                          className="h-full bg-gradient-to-r from-primary via-primary-light to-primary rounded-full shadow-glow-primary relative min-w-[1rem]"
+                        >
+                          <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:24px_24px] animate-[progress-stripe_1s_linear_infinite]" />
+                        </motion.div>
+                      </div>
+
+                      <div className="flex justify-between items-center px-1">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
+                          {modpackProgress?.filesCompleted !== undefined && modpackProgress?.totalFiles !== undefined ? (
+                            <>
+                              <span className="text-primary/40">{modpackProgress.filesCompleted}</span>
+                              <span className="opacity-30">/</span>
+                              <span>{modpackProgress.totalFiles} files</span>
+                            </>
+                          ) : (
+                            <span>{modpackProgress?.currentFile || 'Preparing...'}</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-white/20">
+                          {modpackPercentage < 100 ? 'In Progress' : 'Finishing up...'}
                         </div>
                       </div>
                     </div>
@@ -271,6 +351,27 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
                       setSelectedScript={setSelectedScript}
                     />
                   </motion.div>
+                ) : activeTab === 'modrinth' ? (
+                  <motion.div
+                    key="modrinth"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex-1 flex flex-col overflow-hidden"
+                  >
+                    <ModrinthSource
+                      search={search}
+                      setSearch={setSearch}
+                      results={modpackResults}
+                      searching={searchingModpacks}
+                      selectedModpack={selectedModpack}
+                      setSelectedModpack={setSelectedModpack}
+                      versions={modpackVersions}
+                      selectedVersion={selectedModpackVersion}
+                      setSelectedVersion={setSelectedModpackVersion}
+                      loadingVersions={loadingModpackVersions}
+                    />
+                  </motion.div>
                 ) : (
                   <motion.div
                     key="soon"
@@ -307,6 +408,8 @@ export function CreateInstanceModal({ isOpen, onClose, onCreated }: CreateInstan
             startAfterCreation={startAfterCreation}
             setStartAfterCreation={setStartAfterCreation}
             nameExists={nameExists}
+            selectedModpack={selectedModpack?.id}
+            selectedModpackVersion={selectedModpackVersion}
           />
         </motion.div>
       </div>

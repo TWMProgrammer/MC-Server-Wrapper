@@ -99,6 +99,7 @@ async fn test_workflow_2_marketplace_flow() -> Result<()> {
         limit: Some(1),
         game_version: Some("1.20.1".to_string()),
         loader: Some("fabric".to_string()),
+        project_type: Some("mod".to_string()),
     };
 
     let search_results = client.search(&options).await?;

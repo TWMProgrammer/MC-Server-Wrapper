@@ -142,11 +142,20 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
     - [x] Version selection grid with sorting and filtering.
     - [x] Mod loader selection panel (Fabric, Forge, Quilt, NeoForge).
   - [x] **Local Import Support**
-    - [x] Recursive directory copy and ZIP extraction.
-    - [x] Tauri commands for folder/ZIP inspection.
-  - [x] **Backend: Metadata & API Integration**
-    - [x] Fetch detailed version metadata and release dates.
-    - [x] Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
+  - [x] Recursive directory copy and ZIP extraction.
+  - [x] Tauri commands for folder/ZIP inspection.
+- [x] **Modrinth Modpack Support**
+  - [x] Search and selection of modpacks via Modrinth API.
+  - [x] Automated download and extraction of `.mrpack` files.
+  - [x] Handling of `overrides` and `server-overrides`.
+  - [x] Automatic download of modpack-defined dependencies.
+  - [x] Metadata extraction (Game version, Mod loader) from `modrinth.index.json`.
+- [x] **Instance Creation Feedback**
+  - [x] Real-time progress tracking for modpack installation (Download -> Extraction -> Dependencies).
+  - [x] Visual loading bar with detailed status updates in the UI.
+- [x] **Backend: Metadata & API Integration**
+  - [x] Fetch detailed version metadata and release dates.
+  - [x] Mod Loader metadata fetching (Fabric/Forge/Quilt APIs).
 - [x] **Plugin/Mod Downloader**
   - [x] Modrinth API integration for mods and plugins.
   - [x] Spigot (Spiget) API integration.
@@ -190,9 +199,9 @@ To create the "gold standard" of Minecraft server wrappers. Leveraging Rust's sa
   - [x] Restore custom base URL support by wrapping `reqwest` directly.
   - [x] Align test suites with strict `ferinth` serialization requirements.
 - [x] **Marketplace Filtering & Optimization**
-    - [x] Corrected Modrinth search facet logic to use AND logic for multiple filters.
-    - [x] Enforced separate project type filtering for plugins and mods across all providers.
-    - [x] Added support for version and loader filtering in Modrinth searches.
+  - [x] Corrected Modrinth search facet logic to use AND logic for multiple filters.
+  - [x] Enforced separate project type filtering for plugins and mods across all providers.
+  - [x] Added support for version and loader filtering in Modrinth searches.
 - [ ] **Advanced Caching System**
   - [ ] Implement persistent disk-backed cache for metadata.
   - [ ] Create a global artifact store for shared server JARs and assets.

@@ -3,6 +3,7 @@ import { Package, Power, Settings, Trash2, ArrowUpCircle, Info, User, CheckSquar
 import { InstalledPlugin, PluginUpdate } from '../types'
 import { ConfirmDropdown } from '../components/ConfirmDropdown'
 import { useAssetCache } from '../hooks/useAssetCache'
+import { useInView } from '../hooks/useInView'
 
 interface PluginCardProps {
   plugin: InstalledPlugin;
@@ -46,12 +47,13 @@ export function PluginCard({
   onOpenConfig,
   onDelete
 }: PluginCardProps) {
+  const [ref, isInView] = useInView({ rootMargin: '200px' });
   // Use source icon if available (from marketplace)
-  const { localUrl: iconUrl } = useAssetCache(plugin.source?.project_id ? `https://api.modrinth.com/v2/project/${plugin.source.project_id}/icon` : null);
+  const { localUrl: iconUrl } = useAssetCache(plugin.source?.project_id ? `https://api.modrinth.com/v2/project/${plugin.source.project_id}/icon` : null, isInView);
 
   return (
     <motion.div
-      layout
+      ref={ref as any}
       variants={itemVariants}
       key={plugin.filename}
       className={`bg-white/5 border rounded-2xl p-4 transition-all group flex flex-col h-full relative ${!plugin.enabled ? 'opacity-60 grayscale-[0.5]' : ''} ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg shadow-primary/5' : 'border-white/5'}`}

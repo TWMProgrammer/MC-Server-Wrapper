@@ -31,7 +31,7 @@ impl ModrinthClient {
         );
 
         download_with_resumption(
-            &self.inner.client,
+            self.inner.cache.get_client(),
             DownloadOptions {
                 url: &file.url,
                 target_path: &target_path,

@@ -18,6 +18,8 @@ impl From<Project> for ModrinthProject {
             author: "Unknown".to_string(),
             project_type: p.project_type.into(),
             categories: Some(p.categories),
+            client_side: format!("{:?}", p.client_side).to_lowercase(),
+            server_side: format!("{:?}", p.server_side).to_lowercase(),
         }
     }
 }
@@ -35,6 +37,8 @@ impl From<SearchHit> for ModrinthProject {
             author: p.author,
             project_type: p.project_type.into(),
             categories: Some(p.categories),
+            client_side: format!("{:?}", p.client_side).to_lowercase(),
+            server_side: format!("{:?}", p.server_side).to_lowercase(),
         }
     }
 }

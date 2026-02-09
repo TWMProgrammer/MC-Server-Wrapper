@@ -1,15 +1,14 @@
 use super::types::*;
 use crate::cache::CacheManager;
-use anyhow::{Result, anyhow, Context};
-use ferinth::structures::{project::Project, version::Version, search::Response as SearchResponse};
+use anyhow::{Context, Result, anyhow};
+use ferinth::structures::{project::Project, search::Response as SearchResponse, version::Version};
+use futures_util::FutureExt;
+use futures_util::future::BoxFuture;
 use std::sync::Arc;
 use std::time::Duration;
-use futures_util::future::BoxFuture;
-use futures_util::FutureExt;
 
 pub struct ModrinthClient {
     base_url: String,
-    pub(crate) client: reqwest::Client,
     pub cache: Arc<CacheManager>,
 }
 
@@ -19,27 +18,17 @@ impl ModrinthClient {
     }
 
     pub fn with_base_url(base_url: String, cache: Arc<CacheManager>) -> Self {
-        let client = reqwest::Client::builder()
-            .user_agent(format!(
-                "{}/{}",
-                env!("CARGO_CRATE_NAME"),
-                env!("CARGO_PKG_VERSION")
-            ))
-            .build()
-            .unwrap_or_default();
-
         Self {
             base_url: base_url.trim_end_matches('/').to_string(),
-            client,
             cache,
         }
     }
 
     pub async fn search(&self, options: &ModrinthSearchOptions) -> Result<Vec<ModrinthProject>> {
         let cache_key = format!("modrinth_search_{}", options.cache_key());
-        let client = self.client.clone();
         let options = options.clone();
         let base_url = self.base_url.clone();
+        let client = self.cache.get_client().clone();
 
         self.cache
             .fetch_with_options(cache_key, Duration::from_secs(3600), false, move || {
@@ -118,17 +107,23 @@ impl ModrinthClient {
                     }
 
                     let url = format!("{}/search", base_url);
-                    let response = client.get(&url)
+                    let response = client
+                        .get(&url)
                         .query(&query_params)
                         .send()
                         .await
                         .context("Failed to send search request")?;
 
                     if !response.status().is_success() {
-                        return Err(anyhow!("Search request failed with status: {}", response.status()));
+                        return Err(anyhow!(
+                            "Search request failed with status: {}",
+                            response.status()
+                        ));
                     }
 
-                    let search_response: SearchResponse = response.json().await
+                    let search_response: SearchResponse = response
+                        .json()
+                        .await
                         .context("Failed to parse search response")?;
 
                     Ok(search_response.hits.into_iter().map(Into::into).collect())
@@ -139,7 +134,7 @@ impl ModrinthClient {
 
     pub async fn get_project(&self, id: &str) -> Result<ModrinthProject> {
         let cache_key = format!("modrinth_project_{}", id);
-        let client = self.client.clone();
+        let client = self.cache.get_client().clone();
         let url = format!("{}/project/{}", self.base_url, id);
 
         self.cache
@@ -147,16 +142,22 @@ impl ModrinthClient {
                 let client = client.clone();
                 let url = url.clone();
                 async move {
-                    let response = client.get(&url)
+                    let response = client
+                        .get(&url)
                         .send()
                         .await
                         .context("Failed to send project request")?;
 
                     if !response.status().is_success() {
-                        return Err(anyhow!("Project request failed with status: {}", response.status()));
+                        return Err(anyhow!(
+                            "Project request failed with status: {}",
+                            response.status()
+                        ));
                     }
 
-                    let p: Project = response.json().await
+                    let p: Project = response
+                        .json()
+                        .await
                         .context("Failed to parse project response")?;
                     Ok(p.into())
                 }
@@ -174,7 +175,7 @@ impl ModrinthClient {
             "modrinth_versions_{}_v:{:?}_lo:{:?}",
             project_id, game_version, loader
         );
-        let client = self.client.clone();
+        let client = self.cache.get_client().clone();
         let base_url = self.base_url.clone();
         let project_id = project_id.to_string();
         let game_version = game_version.map(|s| s.to_string());
@@ -197,17 +198,23 @@ impl ModrinthClient {
                     }
 
                     let url = format!("{}/project/{}/version", base_url, project_id);
-                    let response = client.get(&url)
+                    let response = client
+                        .get(&url)
                         .query(&query_params)
                         .send()
                         .await
                         .context("Failed to send versions request")?;
 
                     if !response.status().is_success() {
-                        return Err(anyhow!("Versions request failed with status: {}", response.status()));
+                        return Err(anyhow!(
+                            "Versions request failed with status: {}",
+                            response.status()
+                        ));
                     }
 
-                    let versions: Vec<Version> = response.json().await
+                    let versions: Vec<Version> = response
+                        .json()
+                        .await
                         .context("Failed to parse versions response")?;
 
                     Ok(versions.into_iter().map(Into::into).collect())
@@ -226,20 +233,30 @@ impl ModrinthClient {
         async move {
             // 1. Get versions to find a suitable one
             let versions = self.get_versions(project_id, game_version, loader).await?;
-            let version = versions.first().ok_or_else(|| anyhow!("No versions found for project {}", project_id))?;
+            let version = versions
+                .first()
+                .ok_or_else(|| anyhow!("No versions found for project {}", project_id))?;
 
             // 2. Get dependencies for that version
             let url = format!("{}/version/{}", self.base_url, version.id);
-            let response = self.client.get(&url)
+            let response = self
+                .cache
+                .get_client()
+                .get(&url)
                 .send()
                 .await
                 .context("Failed to send version request for dependencies")?;
 
             if !response.status().is_success() {
-                return Err(anyhow!("Version request failed with status: {}", response.status()));
+                return Err(anyhow!(
+                    "Version request failed with status: {}",
+                    response.status()
+                ));
             }
 
-            let version_data: Version = response.json().await
+            let version_data: Version = response
+                .json()
+                .await
                 .context("Failed to parse version response for dependencies")?;
 
             // 3. Resolve each dependency to a ModrinthProject
@@ -252,6 +269,7 @@ impl ModrinthClient {
             }
 
             Ok(resolved)
-        }.boxed()
+        }
+        .boxed()
     }
 }
