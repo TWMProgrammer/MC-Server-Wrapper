@@ -6,6 +6,7 @@ export interface ServerType {
   description: string;
   category: 'Playable Server' | 'Network Proxy' | 'Other';
   icon: React.ReactNode;
+  imageUrl?: string;
   badge?: string;
   badgeColor?: string;
 }

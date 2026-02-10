@@ -8,6 +8,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'The basic Vanilla experience without plugins.',
     category: 'Playable Server',
     icon: <Box className="text-emerald-400" size={24} />,
+    imageUrl: 'https://minecraft.wiki/images/Grass_Block_JE7_BE6.png?2bd37',
   },
   {
     id: 'paper',
@@ -15,6 +16,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'High performance fork of Spigot with many features and performance improvements.',
     category: 'Playable Server',
     icon: <Send className="text-blue-400" size={24} />,
+    imageUrl: 'https://docs.papermc.io/_astro/papermc_logo.256_Z28RK0e.webp',
   },
   {
     id: 'purpur',
@@ -22,6 +24,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Purpur is a drop-in replacement for Paper servers designed for configurability and new features.',
     category: 'Playable Server',
     icon: <Sparkles className="text-purple-400" size={24} />,
+    imageUrl: 'https://purpurmc.org/images/purpur.svg',
   },
   {
     id: 'forge',
@@ -29,6 +32,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Drastically change the way how Minecraft looks and feels with mods.',
     category: 'Playable Server',
     icon: <Hammer className="text-orange-400" size={24} />,
+    imageUrl: 'https://storage.googleapis.com/replit/images/1654232400062_57239fe5995715e769a2e88f9131ee72.png',
   },
   {
     id: 'neoforge',
@@ -36,6 +40,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'A community-driven fork of Forge, designed to be more modern and open.',
     category: 'Playable Server',
     icon: <Zap className="text-amber-400" size={24} />,
+    imageUrl: 'https://neoforged.net/img/authors/neoforged.png',
   },
   {
     id: 'fabric',
@@ -43,6 +48,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Fabric is a lightweight, experimental modding toolchain for Minecraft.',
     category: 'Playable Server',
     icon: <Layers className="text-indigo-400" size={24} />,
+    imageUrl: 'https://fabricmc.net/assets/logo.png',
   },
   {
     id: 'quilt',
@@ -50,6 +56,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Quilt is an open-source, community-driven modding toolchain, designed primarily for Minecraft.',
     category: 'Playable Server',
     icon: <Box className="text-pink-400" size={24} />,
+    imageUrl: 'https://quiltmc.org/assets/img/logo.svg',
   },
   {
     id: 'bungeecord',
@@ -64,6 +71,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Modern alternative to Waterfall. Designed with performance and stability in mind.',
     category: 'Network Proxy',
     icon: <Zap className="text-blue-400" size={24} />,
+    imageUrl: 'https://docs.papermc.io/_astro/velocity_logo_blue.min_ZLBWdW.webp',
   },
   {
     id: 'bedrock',
@@ -71,6 +79,7 @@ export const SERVER_TYPES: ServerType[] = [
     description: 'Multi-platform versions of Minecraft for Mobile, Console & Other',
     category: 'Other',
     icon: <Gamepad2 className="text-gray-400" size={24} />,
+    imageUrl: 'https://minecraft.wiki/images/Bedrock_JE2_BE2.png?5ea94',
     badge: 'preview',
     badgeColor: 'text-orange-400',
   },

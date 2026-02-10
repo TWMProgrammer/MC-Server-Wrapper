@@ -21,8 +21,8 @@ export function SoftwareSelection({ onSelect }: SoftwareSelectionProps) {
             onClick={() => setViewMode('list')}
             className={cn(
               "p-1.5 rounded-md transition-all duration-200",
-              viewMode === 'list' 
-                ? "bg-white dark:bg-white/10 text-primary shadow-sm" 
+              viewMode === 'list'
+                ? "bg-white dark:bg-white/10 text-primary shadow-sm"
                 : "text-gray-400 hover:text-gray-600 dark:hover:text-white/60"
             )}
             title="List View"
@@ -33,8 +33,8 @@ export function SoftwareSelection({ onSelect }: SoftwareSelectionProps) {
             onClick={() => setViewMode('grid')}
             className={cn(
               "p-1.5 rounded-md transition-all duration-200",
-              viewMode === 'grid' 
-                ? "bg-white dark:bg-white/10 text-primary shadow-sm" 
+              viewMode === 'grid'
+                ? "bg-white dark:bg-white/10 text-primary shadow-sm"
                 : "text-gray-400 hover:text-gray-600 dark:hover:text-white/60"
             )}
             title="Grid View"
@@ -49,11 +49,11 @@ export function SoftwareSelection({ onSelect }: SoftwareSelectionProps) {
           {categories.map((category, catIdx) => (
             <div key={category} className="space-y-4">
               <h2 className="text-[10px] font-black text-gray-500 dark:text-white/30 uppercase tracking-[0.2em] px-2">{category}</h2>
-              
+
               <div className={cn(
                 "gap-4",
-                viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" 
+                viewMode === 'grid'
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                   : "flex flex-col"
               )}>
                 <AnimatePresence mode="popLayout">
@@ -90,12 +90,23 @@ export function SoftwareSelection({ onSelect }: SoftwareSelectionProps) {
                         "absolute top-0 right-0 bg-primary/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-primary/10 transition-colors",
                         viewMode === 'grid' ? "w-24 h-24" : "w-16 h-16"
                       )} />
-                      
+
                       <div className={cn(
-                        "rounded-xl bg-black/10 dark:bg-black/40 w-fit group-hover:bg-primary/20 group-hover:text-primary transition-all shadow-inner-light flex items-center justify-center shrink-0",
-                        viewMode === 'grid' ? "p-3" : "p-2.5"
+                        "rounded-xl bg-black/10 dark:bg-black/40 w-fit group-hover:bg-primary/20 group-hover:text-primary transition-all shadow-inner-light flex items-center justify-center shrink-0 overflow-hidden",
+                        viewMode === 'grid' ? "w-12 h-12" : "w-10 h-10"
                       )}>
-                        {type.icon}
+                        {type.imageUrl ? (
+                          <img
+                            src={type.imageUrl}
+                            alt={type.name}
+                            className={cn(
+                              "w-full h-full object-contain",
+                              type.id === 'vanilla' || type.id === 'bedrock' ? "p-1.5" : "p-2"
+                            )}
+                          />
+                        ) : (
+                          type.icon
+                        )}
                       </div>
 
                       <div className="flex-1 space-y-1 relative z-10 min-w-0">
