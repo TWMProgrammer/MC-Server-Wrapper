@@ -10,7 +10,7 @@ interface SoftwareSelectionProps {
 
 export function SoftwareSelection({ onSelect }: SoftwareSelectionProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const categories = ['Playable Server', 'Network Proxy', 'Other'] as const;
+  const categories = ['Official', 'Plugins', 'Mods', 'Network Proxy', 'Other'] as const;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">

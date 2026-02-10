@@ -4,7 +4,7 @@ export interface ServerType {
   id: string;
   name: string;
   description: string;
-  category: 'Playable Server' | 'Network Proxy' | 'Other';
+  category: 'Official' | 'Plugins' | 'Mods' | 'Network Proxy' | 'Other' | 'Playable Server';
   icon: React.ReactNode;
   imageUrl?: string;
   badge?: string;

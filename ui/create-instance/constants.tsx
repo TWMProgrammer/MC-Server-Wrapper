@@ -1,62 +1,74 @@
-import { Box, Send, Sparkles, Hammer, Zap, Layers, Network, Gamepad2 } from 'lucide-react'
-import { ServerType } from './types'
+import React from 'react';
+import { Box, FileCode, Zap, Flame, Hammer, Network, Share2, Globe, Database, Settings, ShieldCheck } from 'lucide-react';
+import { ServerType } from './types';
+
+// Local icon imports
+import vanillaIcon from '../assets/software/vanilla.png';
+import bedrockIcon from '../assets/software/bedrock.png';
+import paperIcon from '../assets/software/paper.webp';
+import purpurIcon from '../assets/software/purpur.svg';
+import forgeIcon from '../assets/software/forge.png';
+import neoforgeIcon from '../assets/software/neoforge.png';
+import fabricIcon from '../assets/software/fabric.png';
+import quiltIcon from '../assets/software/quilt.svg';
+import velocityIcon from '../assets/software/velocity.webp';
 
 export const SERVER_TYPES: ServerType[] = [
   {
     id: 'vanilla',
     name: 'Vanilla',
-    description: 'The basic Vanilla experience without plugins.',
-    category: 'Playable Server',
+    description: 'The official Minecraft server software from Mojang. Simple, clean, and always up-to-date.',
+    category: 'Official',
     icon: <Box className="text-emerald-400" size={24} />,
-    imageUrl: 'https://minecraft.wiki/images/Grass_Block_JE7_BE6.png?2bd37',
+    imageUrl: vanillaIcon,
   },
   {
     id: 'paper',
     name: 'Paper',
-    description: 'High performance fork of Spigot with many features and performance improvements.',
-    category: 'Playable Server',
-    icon: <Send className="text-blue-400" size={24} />,
-    imageUrl: 'https://docs.papermc.io/_astro/papermc_logo.256_Z28RK0e.webp',
+    description: 'The most popular high-performance Spigot fork. Extensive plugin support and optimizations.',
+    category: 'Plugins',
+    icon: <Zap className="text-emerald-400" size={24} />,
+    imageUrl: paperIcon,
   },
   {
     id: 'purpur',
     name: 'Purpur',
-    description: 'Purpur is a drop-in replacement for Paper servers designed for configurability and new features.',
-    category: 'Playable Server',
-    icon: <Sparkles className="text-purple-400" size={24} />,
-    imageUrl: 'https://purpurmc.org/images/purpur.svg',
+    description: 'A drop-in replacement for Paper designed for configurability and new gameplay features.',
+    category: 'Plugins',
+    icon: <Flame className="text-emerald-400" size={24} />,
+    imageUrl: purpurIcon,
   },
   {
     id: 'forge',
     name: 'Forge',
-    description: 'Drastically change the way how Minecraft looks and feels with mods.',
-    category: 'Playable Server',
-    icon: <Hammer className="text-orange-400" size={24} />,
-    imageUrl: 'https://storage.googleapis.com/replit/images/1654232400062_57239fe5995715e769a2e88f9131ee72.png',
+    description: 'The classic modding platform. Required for many popular large-scale modpacks.',
+    category: 'Mods',
+    icon: <Hammer className="text-emerald-400" size={24} />,
+    imageUrl: forgeIcon,
   },
   {
     id: 'neoforge',
     name: 'NeoForge',
-    description: 'A community-driven fork of Forge, designed to be more modern and open.',
-    category: 'Playable Server',
-    icon: <Zap className="text-amber-400" size={24} />,
-    imageUrl: 'https://neoforged.net/img/authors/neoforged.png',
+    description: 'A modern, community-driven fork of Forge. Better performance and cleaner modding API.',
+    category: 'Mods',
+    icon: <Zap className="text-emerald-400" size={24} />,
+    imageUrl: neoforgeIcon,
   },
   {
     id: 'fabric',
     name: 'Fabric',
-    description: 'Fabric is a lightweight, experimental modding toolchain for Minecraft.',
-    category: 'Playable Server',
-    icon: <Layers className="text-indigo-400" size={24} />,
-    imageUrl: 'https://fabricmc.net/assets/logo.png',
+    description: 'A lightweight, modular modding toolchain. Known for fast updates and great performance.',
+    category: 'Mods',
+    icon: <FileCode className="text-emerald-400" size={24} />,
+    imageUrl: fabricIcon,
   },
   {
     id: 'quilt',
     name: 'Quilt',
-    description: 'Quilt is an open-source, community-driven modding toolchain, designed primarily for Minecraft.',
-    category: 'Playable Server',
-    icon: <Box className="text-pink-400" size={24} />,
-    imageUrl: 'https://quiltmc.org/assets/img/logo.svg',
+    description: 'A community-first modloader compatible with most Fabric mods. Focuses on modularity.',
+    category: 'Mods',
+    icon: <Globe className="text-emerald-400" size={24} />,
+    imageUrl: quiltIcon,
   },
   {
     id: 'bungeecord',
@@ -68,19 +80,17 @@ export const SERVER_TYPES: ServerType[] = [
   {
     id: 'velocity',
     name: 'Velocity',
-    description: 'Modern alternative to Waterfall. Designed with performance and stability in mind.',
+    description: 'The next-generation high-performance proxy. Unmatched scalability and security.',
     category: 'Network Proxy',
-    icon: <Zap className="text-blue-400" size={24} />,
-    imageUrl: 'https://docs.papermc.io/_astro/velocity_logo_blue.min_ZLBWdW.webp',
+    icon: <Zap className="text-emerald-400" size={24} />,
+    imageUrl: velocityIcon,
   },
   {
     id: 'bedrock',
     name: 'Bedrock',
-    description: 'Multi-platform versions of Minecraft for Mobile, Console & Other',
-    category: 'Other',
-    icon: <Gamepad2 className="text-gray-400" size={24} />,
-    imageUrl: 'https://minecraft.wiki/images/Bedrock_JE2_BE2.png?5ea94',
-    badge: 'preview',
-    badgeColor: 'text-orange-400',
+    description: 'Official Bedrock Edition server. Play with friends on mobile, console, and Windows 10.',
+    category: 'Official',
+    icon: <Box className="text-emerald-400" size={24} />,
+    imageUrl: bedrockIcon,
   },
 ];

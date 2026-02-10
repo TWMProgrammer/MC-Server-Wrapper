@@ -145,15 +145,18 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
   }, [name]);
 
   async function loadVersions() {
+    if (!selectedServerType) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
       if (selectedServerType === 'bedrock') {
         const manifest = await invoke<VersionManifest>('get_bedrock_versions');
         setManifest(manifest);
       } else if (selectedServerType === 'velocity') {
-        // For Velocity, we first get the versions, then we'll show builds for the latest version
-        // Actually, the user wants to see builds directly in the list.
-        // Let's fetch the builds for the latest stable velocity version.
         const versions = await invoke<string[]>('get_velocity_versions');
         const latestVersion = versions[0];
         const builds = await invoke<string[]>('get_velocity_builds', { version: latestVersion });
@@ -183,6 +186,7 @@ export function useCreateInstance(isOpen: boolean, onCreated: (instance: Instanc
       }
     } catch (e) {
       console.error('Failed to load versions', e);
+      setError('Failed to load versions. Please check your internet connection.');
     } finally {
       setLoading(false);
     }
