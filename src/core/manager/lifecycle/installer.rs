@@ -10,6 +10,19 @@ use uuid::Uuid;
 impl ServerManager {
     pub async fn prepare_server(&self, instance_id: Uuid) -> Result<Arc<ServerHandle>> {
         let server = self.get_or_create_server(instance_id).await?;
+
+        // Check if already installing and wait if so
+        {
+            let status = server.get_status().await;
+            if status == ServerStatus::Installing {
+                info!("Server is already being prepared, waiting...");
+                // Simple poll-wait for status change
+                while server.get_status().await == ServerStatus::Installing {
+                    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                }
+            }
+        }
+
         let mut instance = self
             .instance_manager
             .get_instance(instance_id)

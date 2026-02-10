@@ -128,6 +128,22 @@ export function useServer() {
     }
   }
 
+  function addInstance(instance: Instance) {
+    const enriched = {
+      ...instance,
+      server_type: instance.server_type || 'Vanilla',
+      ip: instance.ip || '127.0.0.1',
+      port: instance.port || instance.settings.port || 25565,
+      description: instance.description || instance.settings.description || 'There is no description for this server.',
+      max_players: instance.max_players || 20,
+      status: instance.status || 'Installing'
+    };
+    setInstances(prev => {
+      if (prev.find(i => i.id === instance.id)) return prev;
+      return [...prev, enriched];
+    });
+  }
+
   async function startServer(instanceId?: string) {
     const id = instanceId || selectedInstanceId;
     if (!id || !(window as any).__TAURI_INTERNALS__) return;
@@ -215,6 +231,7 @@ export function useServer() {
     loading,
     logs,
     loadInstances,
+    addInstance,
     startServer,
     stopServer,
     restartServer,

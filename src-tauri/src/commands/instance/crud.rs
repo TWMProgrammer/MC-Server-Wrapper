@@ -10,10 +10,10 @@ use uuid::Uuid;
 
 #[tauri::command]
 pub async fn list_instances(
-    instance_manager: State<'_, Arc<InstanceManager>>,
+    server_manager: State<'_, Arc<ServerManager>>,
 ) -> CommandResult<Vec<InstanceMetadata>> {
-    instance_manager
-        .list_instances()
+    server_manager
+        .list_instances_with_status()
         .await
         .map_err(AppError::from)
 }
@@ -134,12 +134,15 @@ pub async fn create_instance_from_modpack(
     startAfterCreation: bool,
 ) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
     let app_handle_for_progress = app_handle.clone();
-    let instance = server_manager
+    let mut instance = server_manager
         .create_instance_from_modpack(&name, &version, move |progress| {
             let _ = app_handle_for_progress.emit("modpack-installation-progress", progress);
         })
         .await
         .map_err(AppError::from)?;
+
+    // Set status to Installing immediately so the UI reflects it right away
+    instance.status = mc_server_wrapper_core::server::ServerStatus::Installing;
 
     // Auto-start or prepare the server
     let instance_id = instance.id.to_string();
@@ -152,22 +155,16 @@ pub async fn create_instance_from_modpack(
     let app_handle_clone = app_handle.clone();
     let instance_id_clone = instance_id.clone();
 
-    tauri::async_runtime::spawn(async move {
-        // Get or create handle early so we can subscribe to logs during installation
-        let server = match server_manager_clone.get_or_create_server(id).await {
-            Ok(s) => s,
-            Err(e) => {
-                let _ = app_handle_clone.emit(
-                    "server-log",
-                    LogPayload {
-                        instance_id: instance_id_clone,
-                        line: format!("Error preparing server: {}", e),
-                    },
-                );
-                return;
-            }
-        };
+    // Create the server handle and set status BEFORE returning
+    let server = server_manager_clone
+        .get_or_create_server(id)
+        .await
+        .map_err(AppError::from)?;
+    server
+        .set_status(mc_server_wrapper_core::server::ServerStatus::Installing)
+        .await;
 
+    tauri::async_runtime::spawn(async move {
         // Ensure logs are forwarded
         if let Err(e) = ensure_server_logs_forwarded(
             &app_state_clone,
@@ -224,10 +221,13 @@ pub async fn create_instance_full(
     loaderVersion: Option<String>,
     startAfterCreation: bool,
 ) -> CommandResult<mc_server_wrapper_core::instance::InstanceMetadata> {
-    let instance = server_manager
+    let mut instance = server_manager
         .create_instance_full(&name, &version, modLoader, loaderVersion)
         .await
         .map_err(AppError::from)?;
+
+    // Set status to Installing immediately so the UI reflects it right away
+    instance.status = mc_server_wrapper_core::server::ServerStatus::Installing;
 
     // Auto-start or prepare the server
     let instance_id = instance.id.to_string();
@@ -240,22 +240,16 @@ pub async fn create_instance_full(
     let app_handle_clone = app_handle.clone();
     let instance_id_clone = instance_id.clone();
 
-    tauri::async_runtime::spawn(async move {
-        // Get or create handle early so we can subscribe to logs during installation
-        let server = match server_manager_clone.get_or_create_server(id).await {
-            Ok(s) => s,
-            Err(e) => {
-                let _ = app_handle_clone.emit(
-                    "server-log",
-                    LogPayload {
-                        instance_id: instance_id_clone,
-                        line: format!("Error preparing server: {}", e),
-                    },
-                );
-                return;
-            }
-        };
+    // Create the server handle and set status BEFORE returning
+    let server = server_manager_clone
+        .get_or_create_server(id)
+        .await
+        .map_err(AppError::from)?;
+    server
+        .set_status(mc_server_wrapper_core::server::ServerStatus::Installing)
+        .await;
 
+    tauri::async_runtime::spawn(async move {
         // Ensure logs are forwarded
         if let Err(e) = ensure_server_logs_forwarded(
             &app_state_clone,

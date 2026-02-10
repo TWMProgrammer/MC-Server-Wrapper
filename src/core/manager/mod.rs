@@ -200,6 +200,19 @@ impl ServerManager {
         self.mod_loader_client.get_velocity_builds(version).await
     }
 
+    pub async fn list_instances_with_status(&self) -> Result<Vec<InstanceMetadata>> {
+        let mut instances = self.instance_manager.list_instances().await?;
+        let servers = self.servers.lock().await;
+
+        for instance in &mut instances {
+            if let Some(server) = servers.get(&instance.id) {
+                instance.status = *server.status.lock().await;
+            }
+        }
+
+        Ok(instances)
+    }
+
     pub async fn get_bungeecord_versions(&self) -> Result<Vec<String>> {
         self.mod_loader_client.get_bungeecord_versions().await
     }

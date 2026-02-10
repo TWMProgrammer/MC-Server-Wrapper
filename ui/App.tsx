@@ -28,6 +28,7 @@ function App() {
     history,
     logs,
     loadInstances,
+    addInstance,
     startServer,
     stopServer,
     restartServer,
@@ -199,9 +200,12 @@ function App() {
               isOpen={showCreateModal}
               onClose={() => setShowCreateModal(false)}
               onCreated={(instance) => {
-                loadInstances(instance.id)
+                addInstance(instance)
+                setSelectedInstanceId(instance.id)
                 setActiveTab('dashboard')
                 setShowCreateModal(false)
+                // Also trigger a background load to sync any other changes
+                loadInstances(instance.id)
               }}
             />
           )}

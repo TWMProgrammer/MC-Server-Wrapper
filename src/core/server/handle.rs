@@ -43,6 +43,10 @@ impl ServerHandle {
         *self.status.lock().await
     }
 
+    pub async fn set_status(&self, status: ServerStatus) {
+        *self.status.lock().await = status;
+    }
+
     pub async fn get_stop_timeout(&self) -> u64 {
         self.config.lock().await.stop_timeout
     }
