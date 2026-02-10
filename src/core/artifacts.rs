@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 use tracing::{debug, info};
+use uuid::Uuid;
 
 /// Supported hash algorithms for artifact verification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,16 +86,24 @@ impl ArtifactStore {
                 .with_context(|| format!("Failed to create directory {:?}", parent))?;
         }
 
-        // Safe concurrent write: write to a temporary file and then rename
-        let temp_path = target_path.with_extension("tmp");
+        // Safe concurrent write: write to a unique temporary file and then rename
+        let temp_path = target_path.with_extension(format!("{}.tmp", Uuid::new_v4()));
         fs::copy(source_path, &temp_path)
             .await
             .with_context(|| format!("Failed to copy {:?} to {:?}", source_path, temp_path))?;
 
-        // Rename is atomic on most filesystems
-        fs::rename(&temp_path, &target_path)
-            .await
-            .with_context(|| format!("Failed to rename {:?} to {:?}", temp_path, target_path))?;
+        // Rename is atomic on most filesystems. If the target already exists, 
+        // it might have been added by another process while we were copying.
+        if let Err(e) = fs::rename(&temp_path, &target_path).await {
+            if target_path.exists() {
+                debug!("Artifact {} was already added by another process", expected_hash);
+                let _ = fs::remove_file(&temp_path).await;
+            } else {
+                return Err(e).with_context(|| {
+                    format!("Failed to rename {:?} to {:?}", temp_path, target_path)
+                });
+            }
+        }
 
         info!("Added artifact {} to store", expected_hash);
         Ok(target_path)
@@ -118,9 +127,22 @@ impl ArtifactStore {
             fs::create_dir_all(parent).await?;
         }
 
-        fs::copy(&artifact_path, target_path)
+        // Use temp-and-rename for safe concurrent provisioning
+        let temp_path = target_path.with_extension(format!("{}.tmp", Uuid::new_v4()));
+        fs::copy(&artifact_path, &temp_path)
             .await
-            .with_context(|| format!("Failed to provision artifact to {:?}", target_path))?;
+            .with_context(|| format!("Failed to copy artifact to temporary path {:?}", temp_path))?;
+
+        if let Err(e) = fs::rename(&temp_path, target_path).await {
+            if target_path.exists() {
+                // Someone else already provisioned it
+                let _ = fs::remove_file(&temp_path).await;
+            } else {
+                return Err(e).with_context(|| {
+                    format!("Failed to rename {:?} to {:?}", temp_path, target_path)
+                });
+            }
+        }
 
         Ok(())
     }

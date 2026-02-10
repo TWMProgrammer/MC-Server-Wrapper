@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs;
 use tracing::{debug, info};
+use uuid::Uuid;
 
 const VERSION_MANIFEST_URL: &str = "https://launchermeta.mojang.com/mc/game/version_manifest.json";
 
@@ -189,8 +190,8 @@ impl VersionDownloader {
         }
 
         let temp_file_path = temp_dir.join(format!(
-            "mc_server_{}_{}.jar.tmp",
-            version_id, expected_sha1
+            "mc_server_{}_{}_{}.jar.tmp",
+            version_id, expected_sha1, Uuid::new_v4()
         ));
 
         download_with_resumption(
