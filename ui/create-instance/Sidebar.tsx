@@ -24,7 +24,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         onClick={() => setActiveTab('import')}
       />
       <div className="my-3 border-t border-black/5 dark:border-white/5" />
-      <div className="px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-white/30">Coming Soon</div>
+      <div className="px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 dark:text-white/30">Modpacks</div>
       <SidebarItem
         icon={<Package size={18} />}
         label="Modrinth"
